@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Perfil | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Importação do Componente de Sidebar -->
+    <script src="../../sidebar.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-collapsed .sidebar-text, .sidebar-collapsed .sidebar-category-header, .sidebar-collapsed .chevron-icon, .sidebar-collapsed .sidebar-category-title { display: none; }
+        .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
+        .sidebar-collapsed .logo-full { display: none; }
+        .sidebar-collapsed .logo-short { display: block; }
+        .logo-short { display: none; }
+        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.05); }
+        .category-content.open { max-height: 1000px; }
+        .rotate-180 { transform: rotate(180deg); }
+        
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+
+        .form-card {
+            background: white;
+            border-radius: 32px;
+            border: 1px solid #f1f5f9;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            transition: all 0.3s ease;
+        }
+        .form-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+        }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden">
+
+    <!-- SIDEBAR CONTAINER -->
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0">
+            <div class="flex flex-col">
+                <h1 class="text-xl font-bold text-fmm-dark">Meu Perfil</h1>
+                <p class="text-xs text-slate-400">Gerencie suas informações e segurança da conta</p>
+            </div>
+            
+            <div id="statusMessage" class="hidden px-4 py-2 rounded-xl text-xs font-bold animate-fade-in-up"></div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            <div class="max-w-4xl mx-auto space-y-8 pb-12">
+                
+                <!-- SEÇÃO: DADOS PESSOAIS -->
+                <div class="form-card p-8 animate-fade-in-up" style="animation-delay: 0.1s">
+                    <div class="flex items-center gap-4 mb-8">
+                        <div class="w-12 h-12 bg-fmm-blue/10 rounded-2xl flex items-center justify-center">
+                            <i data-lucide="user" class="text-fmm-blue w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-fmm-dark">Dados Pessoais</h3>
+                            <p class="text-xs text-slate-400">Informações básicas de identificação</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-1.5 md:col-span-2">
+                            <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Nome Completo</label>
+                            <input type="text" id="profNome" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all font-medium text-fmm-dark">
+                        </div>
+                        
+                        <div class="space-y-1.5">
+                            <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">E-mail (Login)</label>
+                            <input type="email" id="profEmail" disabled class="w-full px-5 py-3 bg-slate-100 border border-slate-100 rounded-2xl outline-none text-slate-400 cursor-not-allowed font-medium">
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">WhatsApp / Telefone</label>
+                            <input type="tel" id="profPhone" placeholder="(92) 9XXXX-XXXX" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all font-medium text-fmm-dark">
+                        </div>
+                    </div>
+
+                    <div class="mt-8 flex justify-end">
+                        <button onclick="updateProfile()" id="btnUpdateProfile" class="bg-fmm-blue hover:bg-fmm-dark text-white px-8 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all shadow-lg shadow-fmm-blue/20">
+                            <i data-lucide="save" class="w-4 h-4"></i> Salvar Alterações
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SEÇÃO: SEGURANÇA -->
+                <div class="form-card p-8 animate-fade-in-up" style="animation-delay: 0.2s">
+                    <div class="flex items-center gap-4 mb-8">
+                        <div class="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center">
+                            <i data-lucide="lock" class="text-red-500 w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-fmm-dark">Segurança</h3>
+                            <p class="text-xs text-slate-400">Alteração de senha de acesso</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-1.5">
+                            <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Nova Senha</label>
+                            <input type="password" id="newPass" placeholder="••••••••" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-red-400 transition-all font-medium">
+                        </div>
+                        
+                        <div class="space-y-1.5">
+                            <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Confirmar Nova Senha</label>
+                            <input type="password" id="confirmPass" placeholder="••••••••" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-red-400 transition-all font-medium">
+                        </div>
+                    </div>
+
+                    <div class="mt-8 flex justify-end">
+                        <button onclick="updatePassword()" id="btnUpdatePass" class="bg-fmm-dark hover:bg-black text-white px-8 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all shadow-lg">
+                            <i data-lucide="key" class="w-4 h-4"></i> Atualizar Senha
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SEÇÃO: CARGO E PERMISSÕES -->
+                <div class="form-card p-8 animate-fade-in-up border-l-8 border-l-fmm-lime" style="animation-delay: 0.3s">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="w-12 h-12 bg-fmm-lime/10 rounded-2xl flex items-center justify-center">
+                            <i data-lucide="shield-check" class="text-fmm-lime w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-fmm-dark">Permissões de Acesso</h3>
+                            <p class="text-xs text-slate-400">Nível administrativo atual</p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-3" id="permsList">
+                        <!-- Gerado via JS -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const supabaseUrl = 'https://panxfescmzjdltthreqy.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhbnhmZXNjbXpqZGx0dGhyZXF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwNTA5NDMsImV4cCI6MjA4MjYyNjk0M30.jSZVhw2TFD52zRV4NZUGUeXKBHedWXcdH7w_fXeoGhA';
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        let currentUser = null;
+
+        async function initProfile() {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) return window.location.href = '../../index.html'; 
+            
+            currentUser = user;
+            await SidebarComponent.render('sidebar-container');
+            await fetchProfileData();
+            lucide.createIcons();
+        }
+
+        async function fetchProfileData() {
+            const { data: perfil, error } = await supabaseClient
+                .from('perfis')
+                .select('*')
+                .eq('id', currentUser.id)
+                .single();
+
+            if (error) {
+                console.error(error);
+                return showStatus("Erro ao carregar dados do perfil", "error");
+            }
+
+            document.getElementById('profNome').value = perfil.nome_completo;
+            document.getElementById('profEmail').value = perfil.email;
+            document.getElementById('profPhone').value = perfil.telefone || '';
+
+            // Renderizar permissões
+            const permsList = document.getElementById('permsList');
+            const niveis = perfil.niveis_acesso || [];
+            
+            permsList.innerHTML = `
+                <div class="px-4 py-2 bg-fmm-dark text-white rounded-xl text-[10px] font-black uppercase tracking-widest">${perfil.cargo}</div>
+            ` + niveis.map(n => `
+                <div class="px-4 py-2 bg-slate-100 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-200">${n}</div>
+            `).join('');
+        }
+
+        async function updateProfile() {
+            const nome = document.getElementById('profNome').value;
+            const phone = document.getElementById('profPhone').value;
+            const btn = document.getElementById('btnUpdateProfile');
+
+            if (!nome) return showStatus("O nome não pode estar vazio", "error");
+
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Salvando...';
+            lucide.createIcons();
+
+            const { error } = await supabaseClient
+                .from('perfis')
+                .update({ 
+                    nome_completo: nome,
+                    telefone: phone
+                })
+                .eq('id', currentUser.id);
+
+            if (error) {
+                showStatus("Erro ao atualizar perfil: " + error.message, "error");
+            } else {
+                showStatus("Perfil atualizado com sucesso!", "success");
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Salvar Alterações';
+            lucide.createIcons();
+        }
+
+        async function updatePassword() {
+            const pass = document.getElementById('newPass').value;
+            const confirm = document.getElementById('confirmPass').value;
+            const btn = document.getElementById('btnUpdatePass');
+
+            if (!pass) return showStatus("Digite a nova senha", "error");
+            if (pass.length < 6) return showStatus("A senha deve ter pelo menos 6 caracteres", "error");
+            if (pass !== confirm) return showStatus("As senhas não coincidem", "error");
+
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Atualizando...';
+            lucide.createIcons();
+
+            const { error } = await supabaseClient.auth.updateUser({ password: pass });
+
+            if (error) {
+                showStatus("Erro ao atualizar senha: " + error.message, "error");
+            } else {
+                showStatus("Senha alterada com sucesso!", "success");
+                document.getElementById('newPass').value = '';
+                document.getElementById('confirmPass').value = '';
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="key" class="w-4 h-4"></i> Atualizar Senha';
+            lucide.createIcons();
+        }
+
+        function showStatus(msg, type) {
+            const el = document.getElementById('statusMessage');
+            el.innerText = msg;
+            el.classList.remove('hidden', 'bg-green-100', 'text-green-600', 'bg-red-100', 'text-red-600');
+            
+            if (type === 'success') {
+                el.classList.add('bg-green-100', 'text-green-600');
+            } else {
+                el.classList.add('bg-red-100', 'text-red-600');
+            }
+            
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 5000);
+        }
+
+        // --- SIDEBAR HELPERS ---
+        function toggleSidebar() { if(window.SidebarComponent) SidebarComponent.toggleSidebar(); }
+        function toggleCategory(id) { if(window.SidebarComponent) SidebarComponent.toggleCategory(id); }
+        async function handleLogout() { if(window.SidebarComponent) SidebarComponent.logout(); }
+
+        window.onload = initProfile;
+    </script>
+</body>
+</html>

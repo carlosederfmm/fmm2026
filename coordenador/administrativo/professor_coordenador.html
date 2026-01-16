@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- Importação do Componente de Sidebar -->
     <script src="../../sidebar.js"></script>
@@ -33,7 +33,6 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
         
-        /* Sidebar e Transições (necessários para o container e animações do JS) */
         .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .sidebar-collapsed .sidebar-text, .sidebar-collapsed .sidebar-category-header, .sidebar-collapsed .chevron-icon, .sidebar-collapsed .sidebar-category-title { display: none; }
         .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
@@ -41,30 +40,16 @@
         .sidebar-collapsed .logo-short { display: block; }
         .logo-short { display: none; }
 
-        /* Accordion Menu Styles (Usados pelo JS) */
-        .category-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .category-content.open {
-            max-height: 1000px;
-        }
-        .chevron-icon {
-            transition: transform 0.3s ease;
-        }
-        .rotate-180 {
-            transform: rotate(180deg);
-        }
+        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .category-content.open { max-height: 1000px; }
+        .chevron-icon { transition: transform 0.3s ease; }
+        .rotate-180 { transform: rotate(180deg); }
 
         .modal-content::-webkit-scrollbar { width: 6px; }
         .modal-content::-webkit-scrollbar-track { background: transparent; }
         .modal-content::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
@@ -72,14 +57,9 @@
 </head>
 <body class="flex h-screen w-screen overflow-hidden">
 
-    <!-- SIDEBAR CONTAINER (Componente injetado via JS) -->
-    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20">
-        <!-- Carregando... -->
-    </aside>
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
 
-    <!-- CONTEÚDO PRINCIPAL -->
     <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
-        
         <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0">
             <div class="flex flex-col">
                 <h1 class="text-xl font-bold text-fmm-dark">Corpo Docente</h1>
@@ -90,7 +70,6 @@
             </button>
         </header>
 
-        <!-- BUSCA E FILTROS -->
         <div class="px-8 pt-8 flex-shrink-0">
             <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4">
                 <div class="flex-1 relative group">
@@ -98,14 +77,9 @@
                     <input type="text" id="searchInput" onkeyup="fetchProfessores()" placeholder="Procurar por nome ou e-mail..." 
                            class="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
                 </div>
-                <div class="flex items-center px-4 bg-slate-50 border border-slate-100 rounded-2xl">
-                    <i data-lucide="filter" class="w-4 h-4 text-slate-400 mr-2"></i>
-                    <span class="text-xs font-bold text-slate-500 uppercase">Professores Ativos</span>
-                </div>
             </div>
         </div>
 
-        <!-- TABELA DE PROFESSORES -->
         <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
             <div class="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
                 <table class="w-full text-left border-collapse">
@@ -117,28 +91,21 @@
                             <th class="px-8 py-5 text-center">Ações</th>
                         </tr>
                     </thead>
-                    <tbody id="professoresTableBody" class="divide-y divide-slate-50">
-                        <!-- Conteúdo carregado via Supabase -->
-                    </tbody>
+                    <tbody id="professoresTableBody" class="divide-y divide-slate-50"></tbody>
                 </table>
             </div>
         </div>
     </main>
 
-    <!-- MODAL DE CADASTRO E VÍNCULO -->
     <div id="professorModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
         <div class="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl flex flex-col animate-fade-in-up overflow-hidden">
-            
             <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
                 <h2 class="text-2xl font-bold text-fmm-dark" id="modalTitle">Novo Professor</h2>
                 <button onclick="closeModal()" class="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-slate-100">
                     <i data-lucide="x" class="w-6 h-6"></i>
                 </button>
             </div>
-
             <div class="modal-content overflow-y-auto p-8 space-y-8 max-h-[70vh] custom-scrollbar">
-                
-                <!-- Informações Básicas -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div class="space-y-1.5 md:col-span-2">
                         <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Nome Completo</label>
@@ -153,25 +120,18 @@
                         <input type="tel" id="inPhone" placeholder="(92) 9XXXX-XXXX" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
                     </div>
                 </div>
-
                 <div id="passwordField" class="space-y-1.5">
                     <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Senha de Acesso</label>
                     <input type="password" id="inSenha" placeholder="Mínimo 6 caracteres" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
                 </div>
-
-                <!-- Vínculo de Disciplinas Categorizado -->
                 <div class="space-y-6">
                     <div class="flex items-center justify-between border-b pb-2">
                         <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Disciplinas Disponíveis</label>
                         <span class="text-[10px] font-bold text-fmm-blue bg-fmm-blue/10 px-2 py-0.5 rounded">Selecione as áreas</span>
                     </div>
-                    
-                    <div id="disciplinasList" class="space-y-6">
-                        <!-- Carregado via JS -->
-                    </div>
+                    <div id="disciplinasList" class="space-y-6"></div>
                 </div>
             </div>
-
             <div class="p-8 border-t bg-slate-50/50 rounded-b-[32px] flex justify-end gap-4">
                 <button onclick="closeModal()" class="px-6 py-3 text-sm font-bold text-slate-500 hover:text-slate-700 transition-all">Cancelar</button>
                 <button id="btnSave" onclick="saveProfessor()" class="px-10 py-3.5 bg-fmm-lime text-fmm-dark font-bold text-sm rounded-2xl shadow-xl shadow-fmm-lime/20 hover:scale-105 active:scale-95 transition-all">
@@ -182,46 +142,39 @@
     </div>
 
     <script>
-        // CONFIGURAÇÃO OFICIAL SUPABASE
         const supabaseUrl = 'https://panxfescmzjdltthreqy.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhbnhmZXNjbXpqZGx0dGhyZXF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwNTA5NDMsImV4cCI6MjA4MjYyNjk0M30.jSZVhw2TFD52zRV4NZUGUeXKBHedWXcdH7w_fXeoGhA';
-        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+        window.supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         let editingId = null;
         let allSubjects = [];
+        let listProfessoresCache = []; // Cache para evitar SyntaxError no onclick
 
-        // --- INICIALIZAÇÃO ---
         async function init() {
             const { data: { user } } = await supabaseClient.auth.getUser();
             if (!user) return window.location.href = '../../index.html'; 
-            
-            // Inicializar Sidebar Componentizada
             await SidebarComponent.render('sidebar-container');
-
             await fetchProfessores();
             await fetchDisciplinasParaModal();
             lucide.createIcons();
         }
 
-        // --- FETCH DE DADOS ---
         async function fetchProfessores() {
             const termo = document.getElementById('searchInput').value;
             const body = document.getElementById('professoresTableBody');
             
-            // Busca perfis com cargo professor e suas disciplinas vinculadas
             let { data: professores, error } = await supabaseClient
                 .from('perfis')
-                .select(`
-                    *,
-                    professor_disciplinas (sigla_disciplina)
-                `)
+                .select(`*, professor_disciplinas (sigla_disciplina)`)
                 .eq('cargo', 'professor')
                 .ilike('nome_completo', `%${termo}%`)
                 .order('nome_completo');
 
-            if (error) return console.error("Erro ao buscar professores:", error);
+            if (error) return console.error(error);
+            
+            listProfessoresCache = professores || []; // Atualiza o cache
 
-            body.innerHTML = professores.map(p => {
+            body.innerHTML = listProfessoresCache.map(p => {
                 const disciplinas = p.professor_disciplinas.map(pd => 
                     `<span class="px-2 py-1 bg-fmm-blue/5 text-fmm-blue text-[10px] font-bold rounded-md border border-fmm-blue/10">${pd.sigla_disciplina}</span>`
                 ).join(' ');
@@ -240,19 +193,19 @@
                             </div>
                         </td>
                         <td class="px-6 py-5">
-                            <div class="flex flex-wrap gap-1.5 max-w-xs">
-                                ${disciplinas || '<span class="text-xs text-slate-300 italic">Nenhuma disciplina vinculada</span>'}
-                            </div>
+                            <div class="flex flex-wrap gap-1.5 max-w-xs">${disciplinas || '<span class="text-xs text-slate-300 italic">Nenhuma</span>'}</div>
                         </td>
                         <td class="px-6 py-5 text-center">
-                            <span class="px-2.5 py-1 bg-green-50 text-green-600 text-[10px] font-bold rounded-full border border-green-100 uppercase">
-                                ${p.cargo}
-                            </span>
+                            <span class="px-2.5 py-1 bg-green-50 text-green-600 text-[10px] font-bold rounded-full border border-green-100 uppercase">${p.cargo}</span>
                         </td>
                         <td class="px-8 py-5 text-center">
                             <div class="flex items-center justify-center gap-2">
-                                <button onclick='prepEdit(${JSON.stringify(p)})' class="p-2.5 text-slate-400 hover:text-fmm-blue hover:bg-fmm-blue/10 rounded-xl transition-all"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                                <button onclick="deleteProfessor('${p.id}')" class="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                <button onclick="prepEdit('${p.id}')" class="p-2.5 text-slate-400 hover:text-fmm-blue hover:bg-fmm-blue/10 rounded-xl transition-all shadow-sm">
+                                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="deleteProfessor('${p.id}')" class="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all shadow-sm">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -264,28 +217,16 @@
         async function fetchDisciplinasParaModal() {
             const { data, error } = await supabaseClient.from('disciplinas').select('sigla, nome, tipo').order('nome');
             if (error) return console.error(error);
-            
             allSubjects = data;
             const container = document.getElementById('disciplinasList');
             container.innerHTML = '';
-
-            // Mapeamento correto para os tipos que temos no banco
-            const categorias = {
-                "BCC": "BNCC (Base Comum)",
-                "Técnica": "Área Técnica"
-            };
-
+            const categorias = { "BCC": "BNCC (Base Comum)", "Técnica": "Área Técnica" };
             for (const [key, label] of Object.entries(categorias)) {
-                // Filtro flexível para casar 'Técnica' do banco com a chave 'Técnica' do objeto
                 const lista = data.filter(d => d.tipo === key);
-                
                 if (lista.length > 0) {
                     const section = document.createElement('div');
                     section.innerHTML = `
-                        <h4 class="text-[10px] font-bold text-fmm-blue uppercase mb-3 tracking-wider flex items-center gap-2">
-                            <span class="w-1 h-3 bg-fmm-lime rounded-full"></span>
-                            ${label}
-                        </h4>
+                        <h4 class="text-[10px] font-bold text-fmm-blue uppercase mb-3 tracking-wider flex items-center gap-2"><span class="w-1 h-3 bg-fmm-lime rounded-full"></span>${label}</h4>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
                             ${lista.map(d => `
                                 <label class="flex items-center p-3 bg-white border border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors shadow-sm">
@@ -300,78 +241,48 @@
             }
         }
 
-        // --- OPERAÇÕES CRUD ---
         async function saveProfessor() {
             const nome = document.getElementById('inNome').value;
             const email = document.getElementById('inEmail').value;
             const phone = document.getElementById('inPhone').value;
             const senha = document.getElementById('inSenha').value;
-            const btn = document.getElementById('btnSave');
-
-            const checkboxes = document.querySelectorAll('input[name="disciplina"]:checked');
-            const disciplinasSelecionadas = Array.from(checkboxes).map(cb => cb.value);
+            const disciplinasSelecionadas = Array.from(document.querySelectorAll('input[name="disciplina"]:checked')).map(cb => cb.value);
 
             if(!nome || !email) return alert("Nome e e-mail são obrigatórios.");
-
-            btn.disabled = true;
-            btn.innerHTML = "Processando...";
+            const btn = document.getElementById('btnSave');
+            btn.disabled = true; btn.innerHTML = "Processando...";
 
             try {
                 let userId = editingId;
-
                 if (!editingId) {
-                    // MODO CADASTRO NOVO
                     if(!senha || senha.length < 6) throw new Error("A senha deve ter pelo menos 6 caracteres.");
-                    
                     const { data: authData, error: authError } = await supabaseClient.auth.signUp({
-                        email,
-                        password: senha,
-                        options: {
-                            data: { full_name: nome, role: 'professor', phone: phone }
-                        }
+                        email, password: senha, options: { data: { full_name: nome, role: 'professor', phone: phone } }
                     });
                     if (authError) throw authError;
                     userId = authData.user.id;
                 } else {
-                    // MODO EDIÇÃO PERFIL
-                    const { error: profileError } = await supabaseClient
-                        .from('perfis')
-                        .update({ nome_completo: nome, telefone: phone })
-                        .eq('id', editingId);
-                    if (profileError) throw profileError;
+                    const { error } = await supabaseClient.from('perfis').update({ nome_completo: nome, telefone: phone }).eq('id', editingId);
+                    if (error) throw error;
                 }
 
-                // SINCRONIZAR DISCIPLINAS (Limpar e Re-inserir)
-                // Primeiro remove todas as disciplinas atuais desse professor
-                const { error: delError } = await supabaseClient
-                    .from('professor_disciplinas')
-                    .delete()
-                    .eq('id_professor', userId);
-                
-                if (delError) throw delError;
-
-                // Depois insere as novas selecionadas
+                await supabaseClient.from('professor_disciplinas').delete().eq('id_professor', userId);
                 if (disciplinasSelecionadas.length > 0) {
-                    const links = disciplinasSelecionadas.map(sigla => ({
-                        id_professor: userId,
-                        sigla_disciplina: sigla
-                    }));
-                    const { error: insError } = await supabaseClient.from('professor_disciplinas').insert(links);
-                    if (insError) throw insError;
+                    const links = disciplinasSelecionadas.map(sigla => ({ id_professor: userId, sigla_disciplina: sigla }));
+                    await supabaseClient.from('professor_disciplinas').insert(links);
                 }
 
-                alert("Dados do professor guardados com sucesso!");
-                closeModal();
-                fetchProfessores();
-            } catch (err) {
-                alert("Erro: " + err.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = "Salvar Professor";
-            }
+                alert("Professor guardado com sucesso!");
+                closeModal(); fetchProfessores();
+            } catch (err) { alert("Erro: " + err.message); } 
+            finally { btn.disabled = false; btn.innerHTML = "Salvar Professor"; }
         }
 
-        function prepEdit(p) {
+        // Correção aqui: Recebe ID e busca no cache para evitar erros de sintaxe no HTML
+        function prepEdit(id) {
+            const p = listProfessoresCache.find(prof => prof.id === id);
+            if (!p) return;
+
             editingId = p.id;
             document.getElementById('modalTitle').innerText = "Editar Professor";
             document.getElementById('btnSave').innerText = "Atualizar Professor";
@@ -390,41 +301,24 @@
         }
 
         async function deleteProfessor(id) {
-            if (!confirm("Tem certeza que deseja remover este professor? Isso não apagará o login dele no sistema, apenas o perfil e vínculos acadêmicos.")) return;
+            if (!confirm("Remover este professor? O login não será apagado, apenas o perfil e vínculos.")) return;
             const { error } = await supabaseClient.from('perfis').delete().eq('id', id);
-            if (error) alert(error.message);
-            else fetchProfessores();
+            if (error) alert(error.message); else fetchProfessores();
         }
 
-        // --- UI UTILS ---
-        function toggleSidebar() {
-            if (window.SidebarComponent) SidebarComponent.toggleSidebar();
-        }
-
-        function toggleCategory(id) {
-             if (window.SidebarComponent) SidebarComponent.toggleCategory(id);
-        }
-
-        async function openModal() {
-            // Garantir que as disciplinas estejam carregadas antes de abrir
-            if (allSubjects.length === 0) await fetchDisciplinasParaModal();
-            document.getElementById('professorModal').classList.remove('hidden');
-        }
-
+        function toggleSidebar() { if (window.SidebarComponent) SidebarComponent.toggleSidebar(); }
+        function toggleCategory(id) { if (window.SidebarComponent) SidebarComponent.toggleCategory(id); }
+        async function openModal() { if (allSubjects.length === 0) await fetchDisciplinasParaModal(); document.getElementById('professorModal').classList.remove('hidden'); }
         function closeModal() { 
-            document.getElementById('professorModal').classList.add('hidden');
-            editingId = null;
+            document.getElementById('professorModal').classList.add('hidden'); editingId = null;
             document.getElementById('modalTitle').innerText = "Novo Professor";
             document.getElementById('btnSave').innerText = "Salvar Professor";
             document.getElementById('inEmail').disabled = false;
             document.getElementById('passwordField').classList.remove('hidden');
-            // Limpar campos de input
             document.querySelectorAll('#professorModal input[type="text"], #professorModal input[type="email"], #professorModal input[type="password"], #professorModal input[type="tel"]').forEach(i => i.value = '');
-            // Limpar checkboxes
             document.querySelectorAll('#professorModal input[type="checkbox"]').forEach(i => i.checked = false);
         }
-
-        async function handleLogout() { if (confirm("Deseja sair?")) { await supabaseClient.auth.signOut(); window.location.href = "../../index.html"; } }
+        async function logout() { if (confirm("Deseja sair?")) { await supabaseClient.auth.signOut(); window.location.href = "../../index.html"; } }
 
         window.onload = init;
     </script>

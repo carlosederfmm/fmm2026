@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conteúdo Ministrado | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Importação da Sidebar Centralizada -->
+    <script src="../sidebar.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-collapsed .sidebar-text, .sidebar-collapsed .sidebar-category-header, .sidebar-collapsed .chevron-icon { display: none; }
+        .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
+        .sidebar-collapsed .logo-full { display: none; }
+        .sidebar-collapsed .logo-short { display: block; }
+        .logo-short { display: none; }
+        
+        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+        .category-content.open { max-height: 1000px; }
+        .rotate-180 { transform: rotate(180deg); }
+        .sidebar-item-active { background-color: rgba(200, 212, 0, 0.15); border-left: 4px solid #c8d400; color: #ffffff !important; }
+
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fadeInUp 0.4s ease-out forwards; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .content-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 24px;
+            padding: 24px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .content-card:hover {
+            border-color: #cbd5e1;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+        }
+
+        .top-bar-select {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #003c5b;
+            outline: none;
+            transition: all 0.2s;
+            min-width: 140px;
+        }
+        .top-bar-select:focus { border-color: #00638f; background: white; box-shadow: 0 0 0 4px rgba(0, 99, 143, 0.05); }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden">
+
+    <!-- SIDEBAR CONTAINER -->
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20">
+        <!-- Carregado via JS -->
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <!-- HEADER -->
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-30 shadow-sm flex-shrink-0">
+            <div class="flex items-center gap-6">
+                <div class="flex flex-col">
+                    <h1 class="text-base font-black text-fmm-dark tracking-tight flex items-center gap-2">
+                        <span class="w-1.5 h-4 bg-fmm-lime rounded-full"></span>
+                        Conteúdo Ministrado
+                    </h1>
+                </div>
+
+                <div class="h-8 w-px bg-slate-100 hidden md:block"></div>
+
+                <div class="flex items-center gap-3">
+                    <select id="selectTurma" onchange="loadContentHistory()" class="top-bar-select">
+                        <option value="">Turma...</option>
+                    </select>
+                    <select id="selectDisc" onchange="loadContentHistory()" class="top-bar-select w-48">
+                        <option value="">Disciplina...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                 <button onclick="openRecordModal()" id="btnAdd" class="hidden bg-fmm-blue text-white px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-lg hover:bg-fmm-dark">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Registar Aula
+                </button>
+            </div>
+        </header>
+
+        <!-- ÁREA DE CONTEÚDO -->
+        <div class="flex-1 overflow-auto custom-scrollbar p-8 bg-slate-50">
+            
+            <div id="loading-overlay" class="hidden h-full flex flex-col items-center justify-center text-slate-300 gap-4">
+                <i data-lucide="loader-2" class="w-10 h-10 animate-spin text-fmm-blue"></i>
+                <p class="text-xs font-bold uppercase tracking-widest">Carregando Diário...</p>
+            </div>
+
+            <div id="empty-view" class="h-full flex flex-col items-center justify-center p-20 text-center">
+                <div class="w-20 h-20 bg-white rounded-full shadow-xl flex items-center justify-center mb-6 border border-slate-100">
+                    <i data-lucide="book-open" class="w-10 h-10 text-slate-200"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-400">Selecione Turma e Disciplina</h3>
+                <p class="text-sm text-slate-300 italic mt-1">O histórico de aulas aparecerá aqui.</p>
+            </div>
+
+            <div id="content-list" class="hidden space-y-6 max-w-5xl mx-auto">
+                <!-- Timeline injetada via JS -->
+            </div>
+
+        </div>
+    </main>
+
+    <!-- MODAL DE REGISTRO -->
+    <div id="recordModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl flex flex-col animate-fade-in-up max-h-[90vh]">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white rounded-t-[32px]">
+                <h2 class="text-xl font-bold text-fmm-dark flex items-center gap-3">
+                    <span class="w-10 h-10 rounded-xl bg-fmm-blue/10 flex items-center justify-center text-fmm-blue">
+                        <i data-lucide="pen-tool" class="w-5 h-5"></i>
+                    </span>
+                    <span id="modalTitle">Registar Aula</span>
+                </h2>
+                <button onclick="closeRecordModal()" class="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-slate-100 transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <div class="p-8 space-y-6 overflow-y-auto custom-scrollbar bg-slate-50/30">
+                <input type="hidden" id="recordId">
+                
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Data da Aula</label>
+                        <input type="date" id="recDate" class="w-full px-5 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue font-medium text-slate-700 text-sm">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Qtd. Tempos</label>
+                        <select id="recTempos" class="w-full px-5 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue font-bold text-slate-700 text-sm">
+                            <option value="1">1 Tempo (50min)</option>
+                            <option value="2">2 Tempos (100min)</option>
+                            <option value="3">3 Tempos</option>
+                            <option value="4">4 Tempos</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Conteúdo Ministrado</label>
+                    <textarea id="recContent" rows="5" class="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm text-slate-700 leading-relaxed resize-none font-medium" placeholder="Descreva os tópicos abordados na aula..."></textarea>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Observações (Opcional)</label>
+                    <textarea id="recObs" rows="2" class="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm text-slate-700 leading-relaxed resize-none" placeholder="Ex: Trabalhos recolhidos, avisos dados..."></textarea>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-slate-100 bg-white rounded-b-[32px] flex justify-between gap-3">
+                 <button id="btnDelete" onclick="deleteRecord()" class="hidden px-6 py-3 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-black uppercase rounded-xl transition-all flex items-center gap-2">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i> Excluir
+                </button>
+                <div class="flex gap-3 ml-auto">
+                    <button onclick="closeRecordModal()" class="px-6 py-3 text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors">Cancelar</button>
+                    <button onclick="saveRecord()" id="btnSave" class="px-8 py-3 bg-fmm-lime text-fmm-dark text-xs font-black uppercase tracking-wider rounded-xl shadow-lg shadow-fmm-lime/20 hover:scale-105 transition-all flex items-center gap-2">
+                        <i data-lucide="check" class="w-4 h-4"></i> Salvar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="fixed bottom-8 right-8 z-50 translate-y-20 opacity-0 transition-all duration-500">
+        <div class="bg-slate-900 text-white px-8 py-5 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/5">
+            <div class="w-10 h-10 bg-fmm-lime/20 rounded-full flex items-center justify-center">
+                <i data-lucide="check" class="w-5 h-5 text-fmm-lime"></i>
+            </div>
+            <span class="text-sm font-bold tracking-tight" id="toast-msg">Sucesso</span>
+        </div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://panxfescmzjdltthreqy.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhbnhmZXNjbXpqZGx0dGhyZXF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwNTA5NDMsImV4cCI6MjA4MjYyNjk0M30.jSZVhw2TFD52zRV4NZUGUeXKBHedWXcdH7w_fXeoGhA';
+        window.supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        let currentUser = null;
+        let currentTurmaId = "";
+        let currentDiscSigla = "";
+
+        // Nomes amigáveis para atividades extras (fallback)
+        const EXTRA_NAMES = {
+            'CLUBE': 'Clubes Olímpicos',
+            'PLAN': 'Planejamento',
+            'APROF': 'Aprofundamento',
+            'FORM': 'Formação',
+            'REF': 'Reforço'
+        };
+
+        async function init() {
+            if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if (!user) return window.location.href = '../index.html';
+            
+            const { data: profile } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).single();
+            currentUser = profile;
+
+            document.getElementById('recDate').valueAsDate = new Date();
+            await populateSelectors();
+            lucide.createIcons();
+        }
+
+        async function populateSelectors() {
+            // Busca grade para identificar turmas e disciplinas vinculadas
+            const { data: grade } = await window.supabaseClient
+                .from('grade_horaria')
+                .select('id_turma, turmas(*), sigla_disciplina, disciplinas(nome)')
+                .eq('id_professor', currentUser.id);
+            
+            const turmas = new Map();
+            const disciplinas = new Map();
+
+            if (grade) {
+                grade.forEach(g => {
+                    if (g.turmas) turmas.set(g.id_turma, g.turmas);
+                    
+                    // CORREÇÃO CRÍTICA AQUI: Mapear Sigla -> Nome corretamente
+                    let nomeDisciplina = g.sigla_disciplina; // Fallback: usa a sigla
+                    
+                    if (g.disciplinas && g.disciplinas.nome) {
+                        nomeDisciplina = g.disciplinas.nome;
+                    } else if (EXTRA_NAMES[g.sigla_disciplina]) {
+                        nomeDisciplina = EXTRA_NAMES[g.sigla_disciplina];
+                    }
+                    
+                    // A chave do Map deve ser a SIGLA (string), o valor é o NOME (string)
+                    disciplinas.set(g.sigla_disciplina, nomeDisciplina);
+                });
+            }
+
+            const selectT = document.getElementById('selectTurma');
+            const selectD = document.getElementById('selectDisc');
+
+            selectT.innerHTML = '<option value="">Turma...</option>' + 
+                Array.from(turmas.values()).map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
+            
+            // Agora o value é a sigla correta e o texto é o nome amigável
+            selectD.innerHTML = '<option value="">Disciplina...</option>' + 
+                Array.from(disciplinas.entries()).map(([sigla, nome]) => `<option value="${sigla}">${nome}</option>`).join('');
+        }
+
+        async function loadContentHistory() {
+            currentTurmaId = document.getElementById('selectTurma').value;
+            currentDiscSigla = document.getElementById('selectDisc').value;
+
+            if (!currentTurmaId || !currentDiscSigla) {
+                document.getElementById('content-list').classList.add('hidden');
+                document.getElementById('empty-view').classList.remove('hidden');
+                document.getElementById('btnAdd').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('empty-view').classList.add('hidden');
+            document.getElementById('content-list').classList.add('hidden');
+            document.getElementById('loading-overlay').classList.remove('hidden');
+            document.getElementById('btnAdd').classList.remove('hidden');
+
+            try {
+                const { data, error } = await window.supabaseClient
+                    .from('conteudos_aula')
+                    .select('*')
+                    .eq('id_turma', currentTurmaId)
+                    .eq('sigla_disciplina', currentDiscSigla)
+                    .order('data_aula', { ascending: false });
+
+                if (error) throw error;
+                
+                renderTimeline(data || []);
+            } catch (err) {
+                console.error(err);
+                alert("Erro ao carregar histórico.");
+            } finally {
+                document.getElementById('loading-overlay').classList.add('hidden');
+                document.getElementById('content-list').classList.remove('hidden');
+            }
+        }
+
+        function renderTimeline(records) {
+            const list = document.getElementById('content-list');
+            list.innerHTML = '';
+
+            if (records.length === 0) {
+                list.innerHTML = `<div class="text-center py-12 text-slate-300 italic text-sm">Nenhum conteúdo registrado nesta turma.</div>`;
+                return;
+            }
+
+            records.forEach(rec => {
+                const dateParts = rec.data_aula.split('-');
+                const displayDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+                const obsHTML = rec.observacoes ? `<div class="mt-4 pt-3 border-t border-slate-100"><p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Observações</p><p class="text-xs text-slate-500 italic">${rec.observacoes}</p></div>` : '';
+
+                const item = `
+                <div class="content-card group cursor-pointer" onclick='openRecordModal(${JSON.stringify(rec).replace(/'/g, "&#39;")})'>
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-fmm-blue/10 text-fmm-blue p-2 rounded-xl font-bold text-xs flex flex-col items-center min-w-[50px]">
+                                <span class="text-[10px] opacity-70 uppercase">Dia</span>
+                                <span class="text-lg leading-none">${dateParts[2]}</span>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-black text-fmm-dark">Aula Registada</h4>
+                                <p class="text-xs text-slate-400 font-bold">${displayDate}</p>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-[10px] font-bold uppercase border border-slate-200">
+                            ${rec.numero_tempos} Tempo(s)
+                        </span>
+                    </div>
+                    
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-700 leading-relaxed whitespace-pre-line font-medium">
+                        ${rec.conteudo}
+                    </div>
+
+                    ${obsHTML}
+
+                    <div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                         <button class="p-2 bg-slate-100 rounded-full hover:bg-fmm-blue hover:text-white text-slate-400 transition-colors">
+                            <i data-lucide="edit-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                `;
+                list.innerHTML += item;
+            });
+            lucide.createIcons();
+        }
+
+        // --- CRUD ---
+        function openNewRecordModal() {
+            openRecordModal(null);
+        }
+
+        function openRecordModal(record) {
+            const modal = document.getElementById('recordModal');
+            const btnDelete = document.getElementById('btnDelete');
+            const title = document.getElementById('modalTitle');
+            
+            // Reset
+            document.getElementById('recDate').valueAsDate = new Date();
+            document.getElementById('recTempos').value = "1";
+            document.getElementById('recContent').value = '';
+            document.getElementById('recObs').value = '';
+
+            if (record) {
+                document.getElementById('recordId').value = record.id;
+                document.getElementById('recDate').value = record.data_aula;
+                document.getElementById('recTempos').value = record.numero_tempos;
+                document.getElementById('recContent').value = record.conteudo;
+                document.getElementById('recObs').value = record.observacoes || '';
+                
+                title.innerText = "Editar Conteúdo";
+                btnDelete.classList.remove('hidden');
+            } else {
+                document.getElementById('recordId').value = '';
+                title.innerText = "Registar Aula";
+                btnDelete.classList.add('hidden');
+            }
+
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeRecordModal() {
+            document.getElementById('recordModal').classList.add('hidden');
+        }
+
+        async function saveRecord() {
+            const id = document.getElementById('recordId').value;
+            const data_aula = document.getElementById('recDate').value;
+            const numero_tempos = document.getElementById('recTempos').value;
+            const conteudo = document.getElementById('recContent').value;
+            const observacoes = document.getElementById('recObs').value;
+
+            if (!data_aula || !conteudo) return alert("Preencha a data e o conteúdo.");
+
+            const payload = {
+                id_turma: currentTurmaId,
+                sigla_disciplina: currentDiscSigla,
+                id_professor: currentUser.id,
+                data_aula, numero_tempos, conteudo, observacoes
+            };
+
+            const btn = document.getElementById('btnSave');
+            btn.disabled = true; btn.innerText = "Salvando...";
+
+            try {
+                let error;
+                if (id) {
+                    ({ error } = await window.supabaseClient.from('conteudos_aula').update(payload).eq('id', id));
+                } else {
+                    ({ error } = await window.supabaseClient.from('conteudos_aula').insert(payload));
+                }
+
+                if (error) throw error;
+                
+                showToast("Conteúdo salvo!");
+                closeRecordModal();
+                loadContentHistory();
+            } catch (err) {
+                console.error(err);
+                alert("Erro ao salvar: " + err.message);
+            } finally {
+                btn.disabled = false; btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> Salvar`;
+                lucide.createIcons();
+            }
+        }
+
+        async function deleteRecord() {
+            const id = document.getElementById('recordId').value;
+            if (!id || !confirm("Tem certeza que deseja apagar este registo?")) return;
+
+            const { error } = await window.supabaseClient.from('conteudos_aula').delete().eq('id', id);
+            if (error) return alert(error.message);
+
+            showToast("Registo removido");
+            closeRecordModal();
+            loadContentHistory();
+        }
+
+        // --- STUBS ---
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            t.classList.replace('opacity-0', 'opacity-100'); t.classList.replace('translate-y-20', 'translate-y-0');
+            setTimeout(() => { t.classList.replace('opacity-100', 'opacity-0'); t.classList.replace('translate-y-0', 'translate-y-20'); }, 2500);
+        }
+        function toggleSidebar() { if(window.SidebarComponent) SidebarComponent.toggleSidebar(); }
+        async function logout() { if(window.SidebarComponent) SidebarComponent.logout(); }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

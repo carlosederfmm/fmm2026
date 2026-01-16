@@ -4,7 +4,8 @@ const SidebarComponent = {
     menuItems: {
         principal: [
             { label: 'Dashboard', icon: 'pie-chart', link: '../principal/dashboard_coordenador.html', roles: ['coordenador', 'diretor'] },
-            { label: 'Tarefas (Scrum)', icon: 'check-square', link: '../principal/tarefas_coordenador.html', roles: ['coordenador', 'diretor'] }
+            { label: 'Tarefas (Scrum)', icon: 'check-square', link: '../principal/tarefas_coordenador.html', roles: ['coordenador', 'diretor'] },
+            { label: 'Meu Perfil', icon: 'user-circle', link: '../principal/perfil_coordenador.html', roles: ['coordenador', 'diretor'] }
         ],
         administrativo: [
             { label: 'Usuários / Staff', icon: 'shield-check', link: '../administrativo/usuarios_coordenador.html', roles: ['coordenador', 'diretor'] },
@@ -29,8 +30,10 @@ const SidebarComponent = {
         // Menu específico do Professor (caminhos absolutos ou relativos à raiz do professor)
         docente: [
             { label: 'Dashboard', icon: 'layout-dashboard', link: '../../professor/dashboard_professor.html', roles: ['professor'] },
+            { label: 'Meu Perfil', icon: 'user-circle', link: '../../professor/perfil_professor.html', roles: ['professor']  },
             { label: 'Presença', icon: 'calendar-check', link: '../../professor/presenca_professor.html', roles: ['professor'] },
             { label: 'Lançar Notas', icon: 'graduation-cap', link: '../../professor/notas_professor.html', roles: ['professor'] },
+            { label: 'Lançar Conteúdo', icon: 'book', link:'../../professor/conteudo_professor.html', roles: ['professor'] },
             { label: 'Gestão Individual', icon: 'user-search', link: '../../professor/individual_professor.html', roles: ['professor'] }
         ]
     },

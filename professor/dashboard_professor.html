@@ -60,15 +60,26 @@
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
         }
 
-        .task-card {
-            border-left: 4px solid #e2e8f0;
-            transition: all 0.2s;
+        /* Estilo da Linha da Tabela de Turmas - REDESENHADO */
+        .turma-row {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid #f1f5f9;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
         }
-        .task-card:hover { background: #f8fafc; padding-left: 1.25rem; }
-        .status-todo { border-left-color: #ef4444; }
-        .status-doing { border-left-color: #f59e0b; }
-        .status-review { border-left-color: #f97316; }
-        .status-done { border-left-color: #22c55e; }
+        .turma-row:hover {
+            border-color: #00638f40;
+            background: #f8fafc;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+        }
+        .turma-badge {
+            background: linear-gradient(135deg, #00638f 0%, #003c5b 100%);
+            color: white;
+            box-shadow: 0 2px 4px rgba(0, 60, 91, 0.2);
+        }
     </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden">
@@ -102,11 +113,19 @@
         <!-- ÁREA DE CONTEÚDO -->
         <div class="flex-1 overflow-auto custom-scrollbar p-8 bg-slate-50 space-y-8">
             
-            <!-- BOAS VINDAS -->
+            <!-- BOAS VINDAS DINÂMICO -->
             <div class="bg-fmm-dark rounded-[40px] p-10 text-white relative overflow-hidden shadow-2xl animate-fade-in-up">
                 <div class="relative z-10">
                     <h2 class="text-3xl font-black mb-2 tracking-tight">Olá, Prof. <span id="welcomeName">...</span>!</h2>
-                    <p class="text-slate-300 max-w-md font-medium text-sm leading-relaxed">Bem-vindo à nova SME. Aqui você gerencia suas turmas, notas e presenças de forma ágil e intuitiva.</p>
+                    
+                    <div class="mt-4 flex flex-col gap-1">
+                        <p class="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">Sua turma neste momento:</p>
+                        <div id="current-class-card" class="flex flex-wrap items-baseline gap-x-3">
+                            <span id="current-class-name" class="text-2xl font-black text-fmm-lime tracking-tight">Verificando grade...</span>
+                            <span id="current-class-disc" class="text-sm font-bold text-white/60"></span>
+                        </div>
+                    </div>
+
                     <div class="flex gap-4 mt-8">
                         <a href="presenca_professor.html" class="bg-fmm-lime text-fmm-dark px-6 py-2.5 rounded-2xl font-black text-xs uppercase tracking-wider hover:scale-105 transition-all flex items-center gap-2">
                             <i data-lucide="calendar-check" class="w-4 h-4"></i> Iniciar Chamada
@@ -116,11 +135,11 @@
                         </a>
                     </div>
                 </div>
-                <i data-lucide="sparkles" class="absolute right-[-20px] top-[-20px] w-64 h-64 text-white/5 rotate-12"></i>
+                <i data-lucide="clock" class="absolute right-[-20px] top-[-20px] w-64 h-64 text-white/5 rotate-12"></i>
             </div>
 
             <!-- CARDS DE ESTATÍSTICAS -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in-up" style="animation-delay: 0.1s;">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in-up" style="animation-delay: 0.1s;">
                 <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-5 stat-card">
                     <div class="w-14 h-14 bg-fmm-blue/10 rounded-2xl flex items-center justify-center text-fmm-blue"><i data-lucide="library" class="w-7 h-7"></i></div>
                     <div class="flex flex-col">
@@ -136,46 +155,42 @@
                     </div>
                 </div>
                 <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-5 stat-card">
-                    <div class="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500"><i data-lucide="check-circle" class="w-7 h-7"></i></div>
-                    <div class="flex flex-col">
-                        <span class="text-2xl font-black text-fmm-dark" id="stat-tasks">0</span>
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Minhas Tasks</span>
-                    </div>
-                </div>
-                <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-5 stat-card">
                     <div class="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600"><i data-lucide="clock" class="w-7 h-7"></i></div>
                     <div class="flex flex-col">
-                        <span class="text-2xl font-black text-fmm-dark">26</span>
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tempos / Semana</span>
+                        <span class="text-2xl font-black text-fmm-dark" id="stat-tempos">0</span>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tempos Semanais</span>
                     </div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-fade-in-up" style="animation-delay: 0.2s;">
-                <!-- LISTA DE TURMAS -->
-                <div class="lg:col-span-2 space-y-6">
-                    <div class="flex items-center justify-between px-2">
-                        <h3 class="text-lg font-black text-fmm-dark">Suas Turmas Vinculadas</h3>
-                        <span class="text-[10px] font-bold text-fmm-blue uppercase bg-fmm-blue/5 px-3 py-1 rounded-full">Ano Letivo 2026</span>
+            <!-- GRADE HORÁRIA DO PROFESSOR (APENAS LEITURA) -->
+            <div class="space-y-6 animate-fade-in-up" style="animation-delay: 0.2s;">
+                <div class="flex items-center justify-between px-2">
+                    <div class="flex flex-col">
+                        <h3 class="text-lg font-black text-fmm-dark">Sua Grade Horária</h3>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Cronograma semanal de aulas</p>
                     </div>
-                    <div id="list-turmas" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Gerado via JS -->
-                        <div class="col-span-full py-12 flex flex-col items-center justify-center text-slate-300 italic text-sm">
-                            <i data-lucide="loader-2" class="w-8 h-8 animate-spin mb-2 opacity-20"></i> Carregando suas turmas...
-                        </div>
-                    </div>
+                    <span class="text-[10px] font-bold text-fmm-blue uppercase bg-fmm-blue/5 px-4 py-1.5 rounded-full border border-fmm-blue/10">Ano Letivo 2026</span>
                 </div>
 
-                <!-- TASKS ASSIGNED -->
-                <div class="space-y-6">
-                    <div class="flex items-center justify-between px-2">
-                        <h3 class="text-lg font-black text-fmm-dark">Minhas Tarefas</h3>
-                        <a href="../coordenador/tarefas_coordenador.html" id="link-scrum-card" class="text-[10px] font-bold text-fmm-blue uppercase hover:underline hidden">Ver todas</a>
+                <div class="bg-white rounded-[32px] border border-slate-100 shadow-xl overflow-hidden p-6">
+                    <div class="overflow-x-auto">
+                        <!-- Ajuste de colunas para grade fixa -->
+                        <div class="grid grid-cols-[100px_repeat(5,minmax(0,1fr))] border border-e2e8f0 bg-white rounded-3xl overflow-hidden min-w-[800px]">
+                            <div class="grid-header bg-f8fafc p-3 text-center font-bold text-xs uppercase text-64748b border-b border-r border-e2e8f0">Horário</div>
+                            <div class="grid-header bg-f8fafc p-3 text-center font-bold text-xs uppercase text-64748b border-b border-r border-e2e8f0">Segunda</div>
+                            <div class="grid-header bg-f8fafc p-3 text-center font-bold text-xs uppercase text-64748b border-b border-r border-e2e8f0">Terça</div>
+                            <div class="grid-header bg-f8fafc p-3 text-center font-bold text-xs uppercase text-64748b border-b border-r border-e2e8f0">Quarta</div>
+                            <div class="grid-header bg-f8fafc p-3 text-center font-bold text-xs uppercase text-64748b border-b border-r border-e2e8f0">Quinta</div>
+                            <div class="grid-header bg-f8fafc p-3 text-center font-bold text-xs uppercase text-64748b border-b border-e2e8f0">Sexta</div>
+
+                            <div id="grade-rows-container" class="contents"></div>
+                        </div>
                     </div>
-                    <div class="bg-white rounded-[32px] border border-slate-100 shadow-xl p-6 overflow-hidden">
-                        <div id="list-tasks" class="space-y-4">
-                            <!-- Gerado via JS -->
-                            <p class="text-center py-6 text-slate-300 text-xs italic">Nenhuma tarefa pendente</p>
+                     <div class="mt-4 flex justify-end">
+                        <div class="flex items-center gap-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                            <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-fmm-blue"></span> Disciplina</div>
+                            <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-fmm-green"></span> Atividade Extra</div>
                         </div>
                     </div>
                 </div>
@@ -187,13 +202,11 @@
     <script>
         const supabaseUrl = 'https://panxfescmzjdltthreqy.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhbnhmZXNjbXpqZGx0dGhyZXF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwNTA5NDMsImV4cCI6MjA4MjYyNjk0M30.jSZVhw2TFD52zRV4NZUGUeXKBHedWXcdH7w_fXeoGhA';
-        // Tornar cliente global para a sidebar
         window.supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         let currentUser = null;
 
         async function init() {
-            // Inicializar Sidebar
             if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
 
             const { data: { user } } = await window.supabaseClient.auth.getUser();
@@ -204,6 +217,8 @@
 
             updateUIWithProfile();
             await fetchDashboardData();
+            renderGradeSkeleton(); // Renderiza a estrutura da grade
+            await loadTeacherSchedule(); // Carrega os dados da grade
             lucide.createIcons();
         }
 
@@ -215,11 +230,34 @@
             document.getElementById('headerUserRole').innerText = currentUser.cargo;
 
             const dateOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
-            document.getElementById('current-date-display').innerText = new Date().toLocaleDateString('pt-PT', dateOptions);
+            document.getElementById('current-date-display').innerText = new Date().toLocaleDateString('pt-BR', dateOptions);
+        }
 
-            if (currentUser.cargo === 'coordenador' || currentUser.cargo === 'diretor') {
-                document.getElementById('link-scrum-card').classList.remove('hidden');
-            }
+        function getCurrentPeriod() {
+            const manausTime = new Date().toLocaleString("en-US", {timeZone: "America/Manaus"});
+            const now = new Date(manausTime);
+            const timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+            const dayMap = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+            const day = dayMap[now.getDay()];
+
+            const schedule = [
+                { p: 1, start: "07:00", end: "07:50" },
+                { p: 2, start: "07:50", end: "08:40" },
+                { p: 3, start: "08:40", end: "09:30" },
+                { break: "09:30 - 09:50", type: "Lanche" },
+                { p: 4, start: "09:50", end: "10:40" },
+                { p: 5, start: "10:40", end: "11:30" },
+                { lunch: "11:30 - 13:00", type: "Almoço" },
+                { p: 6, start: "13:00", end: "13:50" },
+                { p: 7, start: "13:50", end: "14:40" },
+                { p: 8, start: "14:40", end: "15:30" },
+                { break: "15:30 - 15:50", type: "Lanche" },
+                { p: 9, start: "15:50", end: "16:40" },
+                { p: 10, start: "16:40", end: "17:30" }
+            ];
+
+            const current = schedule.find(s => timeStr >= s.start && timeStr < s.end);
+            return { day, period: current };
         }
 
         async function fetchDashboardData() {
@@ -232,86 +270,132 @@
                 .eq('id_professor', profId);
             document.getElementById('stat-disciplinas').innerText = discCount || 0;
 
-            // 2. Turmas vinculadas na Grade
+            // 2. Turmas Únicas na Grade (para estatística apenas)
             const { data: gradeData } = await window.supabaseClient
                 .from('grade_horaria')
-                .select('id_turma, turmas(id, nome, serie, nivel)')
+                .select('id_turma')
                 .eq('id_professor', profId);
 
-            // Remover duplicatas de turmas
-            const uniqueTurmas = [];
-            const map = new Map();
+            document.getElementById('stat-tempos').innerText = gradeData?.length || 0;
+
+            const uniqueTurmas = new Set();
             if(gradeData) {
                 gradeData.forEach(item => {
-                    if(!map.has(item.id_turma)) {
-                        map.set(item.id_turma, true);
-                        uniqueTurmas.push(item.turmas);
-                    }
+                    if(item.id_turma) uniqueTurmas.add(item.id_turma);
                 });
             }
+            document.getElementById('stat-turmas').innerText = uniqueTurmas.size;
 
-            document.getElementById('stat-turmas').innerText = uniqueTurmas.length;
-            renderTurmas(uniqueTurmas);
+            // 3. Determinar Turma Atual (Tempo Real Manaus)
+             const { day, period } = getCurrentPeriod();
+            const currentClassName = document.getElementById('current-class-name');
+            const currentClassDisc = document.getElementById('current-class-disc');
 
-            // 3. Minhas Tasks Scrum
-            const { data: tasks } = await window.supabaseClient
-                .from('tarefa_responsaveis')
-                .select('tarefas_scrum(*)')
-                .eq('id_perfil', profId)
-                .limit(5);
+             // Precisamos buscar os detalhes da grade para o tempo atual
+             const { data: currentGrade } = await window.supabaseClient
+                .from('grade_horaria')
+                .select('turmas(nome), disciplinas(nome), sigla_disciplina')
+                .eq('id_professor', profId)
+                .eq('dia_semana', day)
+                .eq('numero_tempo', period?.p) // period pode ser undefined
+                .maybeSingle();
 
-            const filteredTasks = (tasks || []).map(t => t.tarefas_scrum).filter(t => t && t.status !== 'done');
-            document.getElementById('stat-tasks').innerText = filteredTasks.length;
-            renderTasks(filteredTasks);
+            if (day === 'SAB' || day === 'DOM') {
+                currentClassName.innerText = "Fim de Semana";
+                currentClassDisc.innerText = "";
+            } else if (!period || period.break || period.lunch) { // Corrigido para verificar break/lunch
+                 currentClassName.innerText = (period && (period.break || period.lunch)) ? "Intervalo" : "Fora de Horário";
+                 currentClassDisc.innerText = "";
+            } else {
+                if (currentGrade) {
+                    currentClassName.innerText = currentGrade.turmas ? currentGrade.turmas.nome : "Atividade";
+                    currentClassDisc.innerText = `| ${currentGrade.disciplinas?.nome || currentGrade.sigla_disciplina}`;
+                } else {
+                    currentClassName.innerText = "Sem aula agora";
+                    currentClassDisc.innerText = "";
+                }
+            }
+        }
+        
+        // --- FUNÇÕES DA GRADE HORÁRIA (READ-ONLY) ---
+
+        function renderGradeSkeleton() {
+            const container = document.getElementById('grade-rows-container');
+            const times = [
+                { start: "07:00", end: "07:50", p: 1 },
+                { start: "07:50", end: "08:40", p: 2 },
+                { start: "08:40", end: "09:30", p: 3 },
+                { break: "09:30 - 09:50", type: "Lanche" },
+                { start: "09:50", end: "10:40", p: 4 },
+                { start: "10:40", end: "11:30", p: 5 },
+                { lunch: "11:30 - 13:00", type: "Almoço" },
+                { start: "13:00", end: "13:50", p: 6 },
+                { start: "13:50", end: "14:40", p: 7 },
+                { start: "14:40", end: "15:30", p: 8 },
+                { break: "15:30 - 15:50", type: "Lanche" },
+                { start: "15:50", end: "16:40", p: 9 },
+                { start: "16:40", end: "17:30", p: 10 }
+            ];
+
+            const days = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
+            let html = '';
+
+            times.forEach(item => {
+                if (item.break || item.lunch) {
+                    const label = item.break ? `Lanche (${item.break})` : `Almoço (${item.lunch})`;
+                    // Classes inline para evitar dependência de CSS externo que pode não estar carregado
+                    html += `<div class="col-span-6 p-2 text-center text-[10px] font-bold uppercase tracking-widest ${item.break ? 'bg-amber-50 text-amber-600 border-b border-amber-100' : 'bg-green-50 text-green-600 border-b border-green-100'}">${label}</div>`;
+                } else {
+                    html += `<div class="p-2 border-r border-b border-slate-100 flex items-center justify-center bg-slate-50 font-bold text-[10px] text-slate-500">${item.start}</div>`;
+                    days.forEach(day => {
+                        html += `<div class="p-1 border-r border-b border-slate-100 min-h-[60px]" id="${day}-${item.p}"></div>`;
+                    });
+                }
+            });
+            container.innerHTML = html;
         }
 
-        function renderTurmas(turmas) {
-            const list = document.getElementById('list-turmas');
-            if (turmas.length === 0) {
-                list.innerHTML = `<p class="col-span-full py-12 text-center text-slate-300 italic text-sm">Nenhuma turma atribuída na sua grade.</p>`;
+        async function loadTeacherSchedule() {
+            const profId = currentUser.id;
+            
+            // Busca a grade completa deste professor
+            const { data: gradeData, error } = await window.supabaseClient
+                .from('grade_horaria')
+                .select('dia_semana, numero_tempo, sigla_disciplina, turmas(nome), disciplinas(nome, cor)')
+                .eq('id_professor', profId);
+
+            if (error) {
+                console.error("Erro ao carregar grade:", error);
                 return;
             }
 
-            list.innerHTML = turmas.map(t => `
-                <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center justify-between group hover:border-fmm-blue/20 transition-all">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-fmm-blue/10 rounded-2xl flex items-center justify-center text-fmm-blue font-black text-sm">
-                            ${t.nome}
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="text-sm font-black text-fmm-dark">${t.serie}</span>
-                            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${t.nivel}</span>
-                        </div>
-                    </div>
-                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                        <a href="presenca_professor.html" title="Chamada" class="p-2.5 bg-slate-50 text-slate-400 hover:text-fmm-blue hover:bg-fmm-blue/5 rounded-xl transition-all">
-                            <i data-lucide="calendar-check" class="w-4 h-4"></i>
-                        </a>
-                        <a href="notas_professor.html" title="Notas" class="p-2.5 bg-slate-50 text-slate-400 hover:text-fmm-blue hover:bg-fmm-blue/5 rounded-xl transition-all">
-                            <i data-lucide="graduation-cap" class="w-4 h-4"></i>
-                        </a>
-                    </div>
-                </div>
-            `).join('');
-            lucide.createIcons();
-        }
+            // Popula a grade visualmente
+            gradeData.forEach(item => {
+                const cell = document.getElementById(`${item.dia_semana}-${item.numero_tempo}`);
+                if (cell) {
+                    const extraColors = {
+                        'CLUBE': '#a855f7', 'PLAN': '#64748b', 'APROF': '#f59e0b', 'FORM': '#06b6d4', 'REF': '#22c55e'
+                    };
+                    const extraNames = {
+                        'CLUBE': 'CLUBES OLÍMPICOS', 'PLAN': 'PLANEJAMENTO', 'APROF': 'APROFUNDAMENTO', 'FORM': 'FORMAÇÃO', 'REF': 'REFORÇO'
+                    };
 
-        function renderTasks(tasks) {
-            const list = document.getElementById('list-tasks');
-            if (tasks.length === 0) {
-                list.innerHTML = `<p class="text-center py-6 text-slate-300 text-xs italic">Você não tem tarefas pendentes.</p>`;
-                return;
-            }
+                    const cor = item.disciplinas?.cor || extraColors[item.sigla_disciplina] || '#334155';
+                    const disciplinaNome = item.disciplinas?.nome || extraNames[item.sigla_disciplina] || item.sigla_disciplina;
+                    const turmaNome = item.turmas?.nome || '---';
 
-            list.innerHTML = tasks.map(t => `
-                <div class="task-card p-4 bg-slate-50/50 rounded-2xl status-${t.status}">
-                    <h4 class="text-xs font-bold text-fmm-dark mb-1">${t.titulo}</h4>
-                    <div class="flex items-center justify-between">
-                        <span class="text-[9px] font-black uppercase tracking-wider text-slate-400">${t.status}</span>
-                        <span class="text-[9px] font-bold text-slate-500">${t.data_limite ? t.data_limite.split('-').reverse().join('/') : 'Sem prazo'}</span>
-                    </div>
-                </div>
-            `).join('');
+                    cell.innerHTML = `
+                        <div class="h-full w-full rounded-lg p-2 flex flex-col justify-center border-l-4 animate-fade-in-up" style="border-left-color: ${cor}; background-color: ${cor}15">
+                            <span class="text-[10px] font-black uppercase truncate leading-tight text-slate-700" title="${turmaNome}">
+                                ${turmaNome}
+                            </span>
+                            <span class="text-[8px] font-bold text-slate-400 truncate mt-0.5" title="${disciplinaNome}">
+                                ${disciplinaNome}
+                            </span>
+                        </div>
+                    `;
+                }
+            });
         }
 
         // --- STUBS ---
