@@ -1,9 +1,9 @@
 /**
  * Componente de Sidebar Reutilizável SME FMM 2026
- * Versão Consolidada: Suporte a GitHub Pages, Multi-nível e Multi-cargo.
+ * Versão Ultra-Robusta: À prova de falhas de conexão e RLS.
  */
 const SidebarComponent = {
-    // Configuração de todos os itens de menu do sistema
+    // Configuração de todos os itens de menu
     menuItems: {
         principal: [
             { label: 'Dashboard', icon: 'pie-chart', link: 'coordenador/principal/dashboard_coordenador.html', roles: ['coordenador', 'diretor', 'orientador'] },
@@ -39,14 +39,11 @@ const SidebarComponent = {
         ]
     },
 
-    // Detecta a profundidade da pasta atual para ajustar links (GitHub Pages fix)
     getRelativePrefix: function() {
         const path = window.location.pathname;
-        // Se houver duas subpastas após a raiz (ex: /coordenador/notas/)
         if (path.includes('/notas/') || path.includes('/pedagogico/') || path.includes('/administrativo/') || path.includes('/principal/')) {
             return '../../';
         }
-        // Se houver uma subpasta (ex: /professor/ ou /coordenador/)
         if (path.includes('/professor/') || path.includes('/coordenador/')) {
             return '../';
         }
@@ -54,19 +51,31 @@ const SidebarComponent = {
     },
 
     render: async function(containerId) {
+        console.log("SME FMM: Renderizando Sidebar...");
         const prefix = this.getRelativePrefix();
         const container = document.getElementById(containerId);
-        if (!container) return;
+        if (!container) {
+            console.error(`Container #${containerId} não encontrado.`);
+            return;
+        }
 
-        // 1. Obter cargo do usuário para filtrar menus
-        let userRole = 'professor'; // Default seguro
+        // 1. Tentar obter cargo, mas com timeout e fallback
+        let userRole = 'professor'; 
         try {
-            const { data: { user } } = await window.supabaseClient.auth.getUser();
-            if (user) {
-                const { data: profile } = await window.supabaseClient.from('perfis').select('cargo').eq('id', user.id).single();
-                userRole = profile?.cargo?.toLowerCase() || 'professor';
+            if (window.supabaseClient) {
+                const { data: { user } } = await window.supabaseClient.auth.getUser();
+                if (user) {
+                    const { data: profile } = await window.supabaseClient
+                        .from('perfis')
+                        .select('cargo')
+                        .eq('id', user.id)
+                        .maybeSingle();
+                    userRole = profile?.cargo?.toLowerCase() || 'professor';
+                }
             }
-        } catch (e) { console.error("Erro ao identificar cargo para sidebar."); }
+        } catch (e) { 
+            console.warn("Falha ao buscar cargo no banco. Usando visão padrão 'professor'.", e);
+        }
 
         const activePage = window.location.pathname.split('/').pop();
         let navHTML = '';
@@ -74,7 +83,6 @@ const SidebarComponent = {
         if (userRole === 'professor') {
             navHTML += this.buildSimpleCategory('Portal do Docente', this.menuItems.docente, activePage, prefix);
         } else {
-            // Lógica de Coordenador/Diretor com Acordeão
             navHTML += this.buildAccordion('Principal', 'cat-principal', 'layout', this.menuItems.principal, activePage, prefix);
             navHTML += this.buildAccordion('Administrativo', 'cat-adm', 'settings', this.menuItems.administrativo, activePage, prefix);
             navHTML += this.buildAccordion('Pedagógico', 'cat-ped', 'heart-handshake', this.menuItems.pedagogico, activePage, prefix);
@@ -82,33 +90,31 @@ const SidebarComponent = {
         }
 
         container.innerHTML = `
-            <div class="flex flex-col h-full overflow-hidden bg-fmm-dark">
-                <!-- Header Sidebar -->
+            <div class="flex flex-col h-full overflow-hidden bg-[#003c5b]">
                 <div class="p-6 h-24 border-b border-white/5 flex items-center justify-center relative flex-shrink-0">
-                    <img src="${prefix}assets/logo-fmm-white.png" alt="FMM" class="logo-full h-10 object-contain" onerror="this.src='https://ui-avatars.com/api/?name=FMM&background=003c5b&color=fff'">
-                    <div class="logo-short font-black text-2xl text-fmm-lime hidden">M</div>
-                    
-                    <button onclick="SidebarComponent.toggleSidebar()" class="absolute -right-3 top-20 bg-fmm-lime text-fmm-dark rounded-full p-1 shadow-lg hover:scale-110 transition-transform z-50">
+                    <img src="${prefix}assets/logo-fmm-white.png" alt="FMM" class="logo-full h-10 object-contain">
+                    <div class="logo-short font-black text-2xl text-[#c8d400] hidden">M</div>
+                    <button onclick="SidebarComponent.toggleSidebar()" class="absolute -right-3 top-20 bg-[#c8d400] text-[#003c5b] rounded-full p-1 shadow-lg hover:scale-110 transition-transform z-[60]">
                         <i id="sidebar-toggle-icon" data-lucide="chevron-left" class="w-4 h-4"></i>
                     </button>
                 </div>
-
-                <!-- Navegação -->
                 <nav class="flex-1 overflow-y-auto py-4 custom-scrollbar">
                     ${navHTML}
                 </nav>
-
-                <!-- Logout -->
                 <div class="p-4 border-t border-white/5 flex-shrink-0">
                     <button onclick="SidebarComponent.logout()" class="sidebar-item w-full flex items-center px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 rounded-xl transition-all group">
                         <i data-lucide="log-out" class="w-5 h-5 flex-shrink-0 group-hover:scale-110 transition-transform"></i>
-                        <span class="sidebar-text ml-3 font-bold">Sair do Sistema</span>
+                        <span class="sidebar-text ml-3 font-bold">Sair</span>
                     </button>
                 </div>
             </div>
         `;
         
-        lucide.createIcons();
+        if (window.lucide) {
+            lucide.createIcons();
+        } else {
+            console.error("Lucide não carregado corretamente.");
+        }
     },
 
     buildSimpleCategory: function(title, items, activePage, prefix) {
@@ -127,7 +133,7 @@ const SidebarComponent = {
 
         return `
             <div class="category-group">
-                <button onclick="SidebarComponent.toggleCategory('${id}')" class="sidebar-category-header w-full flex items-center justify-between px-6 py-4 hover:bg-white/5 transition-all border-b border-white/5">
+                <button onclick="SidebarComponent.toggleCategory('${id}')" class="sidebar-category-header w-full flex items-center justify-between px-6 py-4 hover:bg-white/5 transition-all border-b border-white/5 text-left">
                     <div class="flex items-center gap-3">
                         <i data-lucide="${iconName}" class="w-4 h-4 text-slate-400"></i>
                         <span class="sidebar-text text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">${title}</span>
@@ -157,18 +163,6 @@ const SidebarComponent = {
         const target = document.getElementById(id);
         const icon = document.getElementById(`icon-${id}`);
         if (!target) return;
-
-        const isOpening = !target.classList.contains('open');
-        
-        // Opcional: Fecha outros acordeões (estilo sanfona)
-        if (isOpening) {
-            document.querySelectorAll('.category-content.open').forEach(c => {
-                c.classList.remove('open');
-                const otherIcon = document.getElementById(`icon-${c.id}`);
-                if (otherIcon) otherIcon.classList.remove('rotate-180');
-            });
-        }
-
         target.classList.toggle('open');
         if (icon) icon.classList.toggle('rotate-180');
     },
@@ -177,16 +171,15 @@ const SidebarComponent = {
         const body = document.body;
         const icon = document.getElementById('sidebar-toggle-icon');
         body.classList.toggle('sidebar-collapsed');
-        
-        const isCollapsed = body.classList.contains('sidebar-collapsed');
-        if (icon) {
+        if (icon && window.lucide) {
+            const isCollapsed = body.classList.contains('sidebar-collapsed');
             icon.setAttribute('data-lucide', isCollapsed ? 'chevron-right' : 'chevron-left');
             lucide.createIcons();
         }
     },
 
     logout: async function() {
-        if (confirm("Deseja realmente sair do sistema?")) {
+        if (confirm("Deseja realmente sair?")) {
             const prefix = this.getRelativePrefix();
             if (window.supabaseClient) await window.supabaseClient.auth.signOut();
             sessionStorage.clear();
@@ -195,33 +188,21 @@ const SidebarComponent = {
     }
 };
 
-// Estilos dinâmicos para suportar o modo colapsado e animações
-if (!document.getElementById('sidebar-dynamic-styles')) {
+// EXPORTAÇÃO EXPLICITA PARA O OBJETO WINDOW (FIX PARA NÃO CARREGAMENTO)
+window.SidebarComponent = SidebarComponent;
+
+// Injetar estilos base caso não existam
+if (!document.getElementById('sidebar-core-styles')) {
     const style = document.createElement('style');
-    style.id = 'sidebar-dynamic-styles';
+    style.id = 'sidebar-core-styles';
     style.innerHTML = `
+        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+        .category-content.open { max-height: 500px; }
+        .sidebar-item-active { background-color: rgba(200, 212, 0, 0.1); border-left: 3px solid #c8d400; }
         .sidebar-collapsed #sidebar-container { width: 80px !important; }
-        .sidebar-collapsed .sidebar-text, 
-        .sidebar-collapsed .sidebar-category,
-        .sidebar-collapsed .sidebar-category-header .chevron-icon { display: none !important; }
+        .sidebar-collapsed .sidebar-text, .sidebar-collapsed .chevron-icon { display: none !important; }
         .sidebar-collapsed .logo-full { display: none; }
         .sidebar-collapsed .logo-short { display: block !important; }
-        .sidebar-collapsed .sidebar-item { justify-content: center; padding-left: 0; padding-right: 0; }
-        .sidebar-collapsed .sidebar-category-header { justify-content: center; }
-        
-        /* Força ícones a aparecerem quando minimizado mesmo com acordeão fechado */
-        .sidebar-collapsed .category-content { 
-            max-height: none !important; 
-            display: flex !important; 
-            flex-direction: column;
-            overflow: visible !important;
-        }
-        .sidebar-collapsed .category-content .sidebar-item .sidebar-text { display: none !important; }
-        
-        .sidebar-item-active {
-            background-color: rgba(200, 212, 0, 0.15) !important;
-            border-left: 4px solid #c8d400 !important;
-        }
     `;
     document.head.appendChild(style);
 }
