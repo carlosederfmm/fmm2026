@@ -11,6 +11,7 @@
     
     <!-- Importação do Componente de Sidebar -->
     <script src="../../sidebar.js"></script>
+    <!-- Importação do Cliente Global -->
     <script src="../../assets/js/supabase_client.js"></script>
 
     <script>
@@ -33,40 +34,30 @@
 
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
-        
         .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .sidebar-collapsed .sidebar-text, .sidebar-collapsed .sidebar-category-header, .sidebar-collapsed .chevron-icon { display: none; }
         .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
         .sidebar-collapsed .logo-full { display: none; }
         .sidebar-collapsed .logo-short { display: block; }
         .logo-short { display: none; }
-
         .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.05); }
         .category-content.open { max-height: 1000px; }
-        .chevron-icon { transition: transform 0.3s ease; }
         .rotate-180 { transform: rotate(180deg); }
-
         .kanban-board-vertical { display: flex; flex-direction: column; gap: 2rem; width: 100%; }
         .kanban-column { width: 100%; background-color: white; border-radius: 24px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02); }
-
         .task-list-item { background: white; padding: 16px 20px; border-bottom: 1px solid #f1f5f9; transition: all 0.2s; display: flex; flex-direction: column; gap: 6px; position: relative; cursor: pointer; }
         .task-list-item:hover { background: #f8fafc; padding-left: 24px; }
-        
         .status-indicator { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; transition: width 0.2s; }
         .task-list-item:hover .status-indicator { width: 10px; }
-
         .status-todo { background-color: #ef4444; }    
         .status-doing { background-color: #f59e0b; }   
         .status-review { background-color: #f97316; }  
         .status-done { background-color: #22c55e; }    
-
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-
         .project-item.active { background: #00638f; color: white; }
-
         .status-btn { flex: 1; padding: 10px; border-radius: 12px; font-size: 10px; font-weight: 800; text-transform: uppercase; border: 2px solid transparent; opacity: 0.5; transition: all 0.2s; }
         .status-btn.active { opacity: 1; transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .btn-todo { background: #fee2e2; color: #ef4444; }
@@ -77,27 +68,21 @@
         .btn-review.active { border-color: #f97316; }
         .btn-done { background: #dcfce7; color: #22c55e; }
         .btn-done.active { border-color: #22c55e; }
-
         .filter-active { background-color: #c8d400 !important; color: #003c5b !important; border-color: #c8d400 !important; }
     </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden">
 
     <!-- SIDEBAR CONTAINER -->
-    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20">
-        <!-- Carregado via JS -->
-    </aside>
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
 
-    <!-- CONTEÚDO PRINCIPAL -->
     <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
-        
         <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0">
             <div class="flex flex-col">
                 <h1 class="text-xl font-bold text-fmm-dark">Projetos e Sprints Scrum</h1>
                 <p class="text-xs text-slate-400" id="project-breadcrumb">Gestão > Selecione um evento</p>
             </div>
             <div class="flex items-center gap-3">
-                <!-- Filtro Personalizado -->
                 <button onclick="togglePersonalFilter()" id="btnMyTasks" class="border-2 border-slate-200 text-slate-500 px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all hover:border-fmm-lime">
                     <i data-lucide="user" class="w-4 h-4"></i> Minhas Tasks
                 </button>
@@ -112,188 +97,135 @@
         </header>
 
         <div class="flex-1 flex overflow-hidden">
-            
-            <!-- LISTA DE EVENTOS (Sidebar Interna) -->
             <div class="w-72 bg-white border-r border-slate-100 flex flex-col p-6 space-y-4 flex-shrink-0">
                 <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Eventos Ativos</h3>
-                <div class="space-y-2 overflow-y-auto custom-scrollbar" id="project-list">
-                    <!-- Injetado dinamicamente -->
-                </div>
+                <div class="space-y-2 overflow-y-auto custom-scrollbar" id="project-list"></div>
             </div>
 
-            <!-- QUADRO KANBAN EM FORMATO DE LISTAS VERTICAIS -->
             <div class="flex-1 overflow-y-auto p-8 custom-scrollbar bg-slate-50">
                 <div class="kanban-board-vertical" id="kanban-board">
-                    
-                    <!-- SEÇÃO: À FAZER -->
                     <div class="kanban-column animate-fade-in-up">
                         <div class="p-5 flex items-center justify-between bg-white border-b border-slate-100">
-                            <div class="flex items-center gap-2">
-                                <span class="w-3 h-3 rounded-full bg-red-500"></span>
-                                <h3 class="font-black text-slate-700 text-xs uppercase tracking-widest">À Fazer</h3>
-                            </div>
+                            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-500"></span><h3 class="font-black text-slate-700 text-xs uppercase tracking-widest">À Fazer</h3></div>
                             <span class="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black rounded-full" id="count-todo">0</span>
                         </div>
-                        <div id="col-todo" class="flex flex-col"></div>
+                        <div id="col-todo" class="flex flex-col min-h-[50px]"></div>
                     </div>
-
-                    <!-- SEÇÃO: EM ANDAMENTO -->
                     <div class="kanban-column animate-fade-in-up" style="animation-delay: 0.1s;">
                         <div class="p-5 flex items-center justify-between bg-white border-b border-slate-100">
-                            <div class="flex items-center gap-2">
-                                <span class="w-3 h-3 rounded-full bg-amber-500"></span>
-                                <h3 class="font-black text-slate-700 text-xs uppercase tracking-widest">Em Andamento</h3>
-                            </div>
+                            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-amber-500"></span><h3 class="font-black text-slate-700 text-xs uppercase tracking-widest">Em Andamento</h3></div>
                             <span class="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black rounded-full" id="count-doing">0</span>
                         </div>
-                        <div id="col-doing" class="flex flex-col"></div>
+                        <div id="col-doing" class="flex flex-col min-h-[50px]"></div>
                     </div>
-
-                    <!-- SEÇÃO: EM REVISÃO -->
                     <div class="kanban-column animate-fade-in-up" style="animation-delay: 0.2s;">
                         <div class="p-5 flex items-center justify-between bg-white border-b border-slate-100">
-                            <div class="flex items-center gap-2">
-                                <span class="w-3 h-3 rounded-full bg-orange-500"></span>
-                                <h3 class="font-black text-slate-700 text-xs uppercase tracking-widest">Em Revisão</h3>
-                            </div>
+                            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-orange-500"></span><h3 class="font-black text-slate-700 text-xs uppercase tracking-widest">Em Revisão</h3></div>
                             <span class="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black rounded-full" id="count-review">0</span>
                         </div>
-                        <div id="col-review" class="flex flex-col"></div>
+                        <div id="col-review" class="flex flex-col min-h-[50px]"></div>
                     </div>
-
-                    <!-- SEÇÃO: CONCLUÍDO -->
                     <div class="kanban-column animate-fade-in-up" style="animation-delay: 0.3s;">
                         <div class="p-5 flex items-center justify-between bg-white border-b border-slate-100">
-                            <div class="flex items-center gap-2">
-                                <span class="w-3 h-3 rounded-full bg-green-500"></span>
-                                <h3 class="font-black text-slate-700 text-xs uppercase tracking-widest">Concluído</h3>
-                            </div>
+                            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-green-500"></span><h3 class="font-black text-slate-700 text-xs uppercase tracking-widest">Concluído</h3></div>
                             <span class="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black rounded-full" id="count-done">0</span>
                         </div>
-                        <div id="col-done" class="flex flex-col"></div>
+                        <div id="col-done" class="flex flex-col min-h-[50px]"></div>
                     </div>
-
+                </div>
+                <!-- Div de feedback para quando não há projetos -->
+                <div id="no-projects-view" class="hidden h-full flex flex-col items-center justify-center text-slate-300 gap-4">
+                    <i data-lucide="layout" class="w-16 h-16 opacity-10"></i>
+                    <p class="text-sm italic">Nenhum evento selecionado ou ativo.</p>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- MODAL DE PROJETO/EVENTO -->
+    <!-- MODAIS -->
     <div id="eventModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
         <div class="bg-white w-full max-w-lg rounded-[32px] shadow-2xl flex flex-col animate-fade-in-up">
-            <div class="p-8 border-b border-slate-100 flex justify-between items-center">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white rounded-t-[32px]">
                 <h2 class="text-2xl font-bold text-fmm-dark" id="eventModalTitle">Novo Evento</h2>
-                <button onclick="closeEventModal()" class="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-slate-100">
-                    <i data-lucide="x" class="w-6 h-6"></i>
-                </button>
+                <button onclick="closeEventModal()" class="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-slate-100"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
             <div class="p-8 space-y-4">
                 <div class="space-y-1.5">
                     <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Nome do Evento</label>
-                    <input type="text" id="evName" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue">
+                    <input type="text" id="evName" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-1.5">
-                        <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Data Início</label>
-                        <input type="date" id="evStart" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm">
-                    </div>
-                    <div class="space-y-1.5">
-                        <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Data Fim</label>
-                        <input type="date" id="evEnd" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm">
-                    </div>
+                    <div class="space-y-1.5"><label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Início</label><input type="date" id="evStart" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-sm"></div>
+                    <div class="space-y-1.5"><label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Fim</label><input type="date" id="evEnd" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-sm"></div>
                 </div>
             </div>
             <div class="p-8 border-t bg-slate-50/50 rounded-b-[32px] flex justify-end gap-4">
-                <button id="btnDeleteEvent" onclick="deleteCurrentEvent()" class="hidden px-6 py-3 bg-red-50 text-red-600 rounded-2xl font-bold text-xs hover:bg-red-100 transition-all flex items-center gap-2">
-                    <i data-lucide="trash-2" class="w-4 h-4"></i> Excluir Evento
-                </button>
-                <div class="flex gap-4 ml-auto">
-                    <button onclick="closeEventModal()" class="px-6 py-3 text-sm font-bold text-slate-500">Cancelar</button>
-                    <button onclick="saveCurrentEvent()" id="btnSaveEvent" class="px-10 py-3.5 bg-fmm-dark text-white font-bold text-sm rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all">
-                        Salvar Evento
-                    </button>
-                </div>
+                <button id="btnDeleteEvent" onclick="deleteCurrentEvent()" class="hidden px-6 py-3 bg-red-50 text-red-600 rounded-2xl font-bold text-xs">Excluir</button>
+                <button onclick="closeEventModal()" class="px-6 py-3 text-sm font-bold text-slate-500">Cancelar</button>
+                <button onclick="saveCurrentEvent()" id="btnSaveEvent" class="px-10 py-3.5 bg-fmm-dark text-white font-bold text-sm rounded-2xl shadow-xl">Salvar</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL DE TASK -->
     <div id="taskModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
         <div class="bg-white w-full max-w-xl rounded-[32px] shadow-2xl flex flex-col animate-fade-in-up">
-            <div class="p-8 border-b border-slate-100 flex justify-between items-center">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white rounded-t-[32px]">
                 <h2 class="text-2xl font-bold text-fmm-dark" id="taskModalTitle">Nova Task</h2>
-                <button onclick="closeTaskModal()" class="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-slate-100">
-                    <i data-lucide="x" class="w-6 h-6"></i>
-                </button>
+                <button onclick="closeTaskModal()" class="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-slate-100"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
             <div class="p-8 space-y-6 overflow-y-auto custom-scrollbar max-h-[70vh]">
                 <div class="space-y-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Título da Task</label>
-                    <input type="text" id="taskTitleInput" placeholder="Ex: Preparar as provas" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Título</label>
+                    <input type="text" id="taskTitleInput" placeholder="O que precisa ser feito?" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue">
                 </div>
-                
                 <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-1.5">
-                        <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Data Limite</label>
-                        <input type="date" id="taskDeadline" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm">
-                    </div>
+                    <div class="space-y-1.5"><label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Data Limite</label><input type="date" id="taskDeadline" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm outline-none"></div>
                     <div class="space-y-1.5">
                         <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Responsáveis</label>
-                        <!-- Buscador por nome de staff -->
                         <div class="relative">
-                            <input type="text" id="taskResponsiblesSearch" onkeyup="searchStaff(this.value)" placeholder="Buscar staff..." class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm">
+                            <input type="text" id="taskResponsiblesSearch" onkeyup="searchStaff(this.value)" placeholder="Buscar staff..." class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm outline-none">
                             <div id="staffSearchResults" class="absolute w-full mt-2 bg-white border border-slate-100 rounded-2xl shadow-2xl max-h-40 overflow-y-auto z-50 hidden"></div>
                         </div>
-                        <div id="selectedStaffList" class="flex flex-wrap gap-2 mt-2"></div>
                     </div>
                 </div>
-
+                <div id="selectedStaffList" class="flex flex-wrap gap-2"></div>
                 <div class="space-y-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Estado da Task</label>
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Status</label>
                     <div class="flex gap-2">
                         <button onclick="setStatus('todo')" id="btn-status-todo" class="status-btn btn-todo">À Fazer</button>
-                        <button onclick="setStatus('doing')" id="btn-status-doing" class="status-btn btn-doing">Em Andamento</button>
-                        <button onclick="setStatus('review')" id="btn-status-review" class="status-btn btn-review">Em Revisão</button>
-                        <button onclick="setStatus('done')" id="btn-status-done" class="status-btn btn-done">Concluída</button>
+                        <button onclick="setStatus('doing')" id="btn-status-doing" class="status-btn btn-doing">Execução</button>
+                        <button onclick="setStatus('review')" id="btn-status-review" class="status-btn btn-review">Revisão</button>
+                        <button onclick="setStatus('done')" id="btn-status-done" class="status-btn btn-done">Concluído</button>
                     </div>
                     <input type="hidden" id="taskStatusValue" value="todo">
                 </div>
-
                 <div class="space-y-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Descrição / O que deve ser feito</label>
-                    <textarea id="taskDescription" rows="4" placeholder="Descreva os detalhes desta tarefa..." class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm resize-none"></textarea>
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Descrição</label>
+                    <textarea id="taskDescription" rows="4" placeholder="Detalhes da tarefa..." class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm resize-none outline-none focus:ring-2 focus:ring-fmm-blue"></textarea>
                 </div>
             </div>
-            <div class="p-8 border-t bg-slate-50/50 rounded-b-[32px] flex justify-between items-center">
-                <button id="btnDeleteTask" onclick="deleteCurrentTask()" class="hidden px-6 py-3 bg-red-50 text-red-600 rounded-2xl font-bold text-xs hover:bg-red-100 transition-all flex items-center gap-2">
-                    <i data-lucide="trash-2" class="w-4 h-4"></i> Excluir Task
-                </button>
-                <div class="flex gap-4 ml-auto">
-                    <button onclick="closeTaskModal()" class="px-6 py-3 text-sm font-bold text-slate-500">Cancelar</button>
-                    <button onclick="saveCurrentTask()" id="btnSaveTask" class="px-10 py-3.5 bg-fmm-blue text-white font-bold text-sm rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all">
-                        Salvar Task
-                    </button>
-                </div>
+            <div class="p-8 border-t bg-slate-50/50 rounded-b-[32px] flex justify-end gap-4">
+                <button id="btnDeleteTask" onclick="deleteCurrentTask()" class="hidden px-6 py-3 bg-red-50 text-red-600 rounded-2xl font-bold text-xs">Excluir</button>
+                <button onclick="closeTaskModal()" class="px-6 py-3 text-sm font-bold text-slate-500">Cancelar</button>
+                <button onclick="saveCurrentTask()" id="btnSaveTask" class="px-10 py-3.5 bg-fmm-blue text-white font-bold text-sm rounded-2xl shadow-xl">Salvar Task</button>
             </div>
         </div>
     </div>
 
     <script>
-        
-
         let currentUserProfile = null, myTasksOnly = false, allStaff = [], selectedStaff = [], selectedProjectId = null, editingTaskId = null, editingProjectId = null;
 
         async function init() {
             // Inicializar Sidebar Componentizada
-            await SidebarComponent.render('sidebar-container');
+            if (window.SidebarComponent) await SidebarComponent.render('sidebar-container');
             
-            const { data: { user } } = await supabaseClient.auth.getUser();
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
             if (!user) return window.location.href = '../../index.html';
 
-            const { data: profile } = await supabaseClient.from('perfis').select('*').eq('id', user.id).single();
+            const { data: profile } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).single();
             currentUserProfile = profile;
 
-            const { data: staff } = await supabaseClient.from('perfis').select('id, nome_completo, cargo').order('nome_completo');
+            const { data: staff } = await window.supabaseClient.from('perfis').select('id, nome_completo, cargo').order('nome_completo');
             allStaff = staff || [];
 
             await fetchProjects();
@@ -301,15 +233,21 @@
         }
 
         async function fetchProjects() {
-            const { data } = await supabaseClient.from('vw_progresso_projetos').select('*').order('nome');
-            const { data: fullProj } = await supabaseClient.from('projetos_scrum').select('*');
+            const { data } = await window.supabaseClient.from('vw_progresso_projetos').select('*').order('nome');
+            const { data: fullProj } = await window.supabaseClient.from('projetos_scrum').select('*');
             const list = document.getElementById('project-list');
+            const kanban = document.getElementById('kanban-board');
+            const empty = document.getElementById('no-projects-view');
             
             if (!data || data.length === 0) { 
                 list.innerHTML = `<p class="text-center py-10 text-slate-300 text-xs italic">Sem eventos</p>`; 
-                document.getElementById('kanban-board').innerHTML = '';
+                kanban.classList.add('hidden');
+                empty.classList.remove('hidden');
                 return; 
             }
+
+            kanban.classList.remove('hidden');
+            empty.classList.add('hidden');
 
             list.innerHTML = data.map(p => {
                 const proj = fullProj.find(x => x.id === p.id);
@@ -318,12 +256,17 @@
                 const endStr = proj.data_fim ? proj.data_fim.split('-').reverse().slice(0,2).join('/') : '--';
 
                 return `
-                <div onclick="selectProject('${p.id}')" class="project-item ${isActive ? 'active' : 'bg-slate-50'} group p-4 rounded-2xl cursor-pointer transition-all border border-transparent">
-                    <div class="flex justify-between items-start"><h4 class="text-sm font-bold truncate">${p.nome}</h4><button onclick="event.stopPropagation(); openEventModal('${p.id}')" class="p-1 opacity-0 group-hover:opacity-100 ${isActive ? 'text-white' : 'text-fmm-blue'}"><i data-lucide="edit-3" class="w-3.5 h-3.5"></i></button></div>
-                    <p class="text-[10px] ${isActive ? 'text-white/70' : 'text-slate-400'} font-medium">
-                        ${startStr} à ${endStr}
-                    </p>
-                    <div class="mt-3 h-1 w-full bg-black/10 rounded-full overflow-hidden"><div class="h-full bg-fmm-lime" style="width: ${p.progresso}%"></div></div>
+                <div onclick="selectProject('${p.id}')" class="project-item ${isActive ? 'active' : 'bg-slate-50'} group p-4 rounded-2xl cursor-pointer transition-all border border-transparent mb-2">
+                    <div class="flex justify-between items-start">
+                        <h4 class="text-sm font-bold truncate">${p.nome}</h4>
+                        <button onclick="event.stopPropagation(); openEventModal('${p.id}')" class="p-1 opacity-0 group-hover:opacity-100 ${isActive ? 'text-white' : 'text-fmm-blue'}">
+                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                    <p class="text-[10px] ${isActive ? 'text-white/70' : 'text-slate-400'} font-medium">${startStr} à ${endStr}</p>
+                    <div class="mt-3 h-1 w-full bg-black/10 rounded-full overflow-hidden">
+                        <div class="h-full bg-fmm-lime" style="width: ${p.progresso}%"></div>
+                    </div>
                 </div>`;
             }).join('');
             
@@ -334,33 +277,73 @@
         async function selectProject(id) {
             selectedProjectId = id;
             await fetchProjects();
-            const { data: proj } = await supabaseClient.from('projetos_scrum').select('nome').eq('id', id).single();
-            document.getElementById('project-breadcrumb').innerText = `Gestão > ${proj.nome}`;
+            const { data: proj } = await window.supabaseClient.from('projetos_scrum').select('nome').eq('id', id).single();
+            if(proj) document.getElementById('project-breadcrumb').innerText = `Gestão > ${proj.nome}`;
             fetchTasks();
         }
 
         async function fetchTasks() {
-            const cols = { todo: document.getElementById('col-todo'), doing: document.getElementById('col-doing'), review: document.getElementById('col-review'), done: document.getElementById('col-done') };
-            Object.values(cols).forEach(c => c.innerHTML = '');
+            const cols = { 
+                todo: document.getElementById('col-todo'), 
+                doing: document.getElementById('col-doing'), 
+                review: document.getElementById('col-review'), 
+                done: document.getElementById('col-done') 
+            };
+            
+            // Segurança: Verifica se os elementos existem antes de limpar
+            Object.values(cols).forEach(c => { if(c) c.innerHTML = ''; });
+            
+            const counts = { todo: 0, doing: 0, review: 0, done: 0 };
             if (!selectedProjectId) return;
 
-            const { data: tasks } = await supabaseClient.from('tarefas_scrum').select('*, tarefa_responsaveis(id_perfil)').eq('id_projeto', selectedProjectId);
+            const { data: tasks } = await window.supabaseClient.from('tarefas_scrum').select('*, tarefa_responsaveis(id_perfil)').eq('id_projeto', selectedProjectId);
             let filtered = tasks || [];
             if (myTasksOnly && currentUserProfile) filtered = filtered.filter(t => t.tarefa_responsaveis.some(r => r.id_perfil === currentUserProfile.id));
 
             filtered.forEach(task => {
-                const names = task.tarefa_responsaveis.map(tr => { const p = allStaff.find(s => s.id === tr.id_perfil); return p ? p.nome_completo.split(' ')[0] : '...'; }).join(', ');
+                const names = task.tarefa_responsaveis.map(tr => { 
+                    const p = allStaff.find(s => s.id === tr.id_perfil); 
+                    return p ? p.nome_completo.split(' ')[0] : '...'; 
+                }).join(', ');
+                
                 const dateStr = task.data_limite ? task.data_limite.split('-').reverse().slice(0,2).join('/') : '--/--';
                 
                 const item = document.createElement('div');
                 item.className = 'task-list-item group animate-fade-in-up';
                 item.onclick = () => openTaskModal(task.id);
-                item.innerHTML = `<div class="status-indicator status-${task.status}"></div><div class="flex justify-between items-start"><h4 class="text-[14px] font-bold text-fmm-dark leading-snug">${task.titulo}</h4></div><div class="flex items-center gap-6 mt-1"><span class="text-[10px] font-bold text-slate-400">${names || 'Ninguém'}</span><div class="flex items-center gap-1.5 text-[10px] font-black text-slate-500"><i data-lucide="calendar-check" class="w-3.5 h-3.5 text-slate-300"></i><span>LIMITE: ${dateStr}</span></div></div>`;
-                cols[task.status].appendChild(item);
+                item.innerHTML = `
+                    <div class="status-indicator status-${task.status}"></div>
+                    <div class="flex justify-between items-start">
+                        <h4 class="text-[14px] font-bold text-fmm-dark leading-snug">${task.titulo}</h4>
+                    </div>
+                    <div class="flex items-center gap-6 mt-1">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter truncate max-w-[120px]">${names || 'Ninguém'}</span>
+                        <div class="flex items-center gap-1.5 text-[10px] font-black text-slate-500">
+                            <i data-lucide="calendar-check" class="w-3 h-3 text-slate-300"></i>
+                            <span>${dateStr}</span>
+                        </div>
+                    </div>`;
+                
+                if(cols[task.status]) {
+                    cols[task.status].appendChild(item);
+                    counts[task.status]++;
+                }
+            });
+
+            // Atualizar contadores
+            ['todo', 'doing', 'review', 'done'].forEach(s => {
+                const el = document.getElementById(`count-${s}`);
+                if(el) el.innerText = counts[s];
             });
             
-            // Re-aplicar contadores ou outros updates se necessário
             lucide.createIcons();
+        }
+
+        function setStatus(s) { 
+            document.getElementById('taskStatusValue').value = s; 
+            document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active')); 
+            const btn = document.getElementById(`btn-status-${s}`);
+            if(btn) btn.classList.add('active'); 
         }
 
         function openEventModal(id = null) { 
@@ -369,14 +352,13 @@
             const deleteBtn = document.getElementById('btnDeleteEvent');
             const saveBtn = document.getElementById('btnSaveEvent');
             
-            // Limpar campos
             document.getElementById('evName').value = '';
             document.getElementById('evStart').value = '';
             document.getElementById('evEnd').value = '';
 
             if (id) {
-                // Carregar dados
-                supabaseClient.from('projetos_scrum').select('*').eq('id', id).single().then(({ data }) => {
+                window.supabaseClient.from('projetos_scrum').select('*').eq('id', id).single().then(({ data }) => {
+                    if(!data) return;
                     modalTitle.innerText = "Editar Evento";
                     document.getElementById('evName').value = data.nome;
                     document.getElementById('evStart').value = data.data_inicio;
@@ -392,37 +374,41 @@
             document.getElementById('eventModal').classList.remove('hidden'); 
         }
 
-        function closeEventModal() { 
-            document.getElementById('eventModal').classList.add('hidden'); 
-            editingProjectId = null;
+        function closeEventModal() { document.getElementById('eventModal').classList.add('hidden'); editingProjectId = null; }
+
+        async function saveCurrentEvent() {
+            const nome = document.getElementById('evName').value;
+            if (!nome) return alert("Nome do evento obrigatório.");
+            const payload = { nome, data_inicio: document.getElementById('evStart').value || null, data_fim: document.getElementById('evEnd').value || null };
+            if (editingProjectId) payload.id = editingProjectId;
+            const { data, error } = await window.supabaseClient.from('projetos_scrum').upsert(payload).select().single();
+            if (error) return alert(error.message);
+            selectedProjectId = data.id; closeEventModal(); fetchProjects();
+        }
+
+        async function deleteCurrentEvent() {
+            if (!confirm("Excluir evento e todas as tarefas?")) return;
+            await window.supabaseClient.from('projetos_scrum').delete().eq('id', editingProjectId);
+            selectedProjectId = null; closeEventModal(); fetchProjects();
         }
 
         function openTaskModal(id = null) { 
-            if (!selectedProjectId) return alert("Crie ou selecione um evento primeiro!");
-            
+            if (!selectedProjectId) return alert("Selecione um evento primeiro!");
             editingTaskId = id;
             selectedStaff = [];
-            
-            const modalTitle = document.getElementById('taskModalTitle');
-            const deleteBtn = document.getElementById('btnDeleteTask');
-            const saveBtn = document.getElementById('btnSaveTask');
-            
-            // Limpar campos
             document.getElementById('taskTitleInput').value = '';
             document.getElementById('taskDeadline').value = '';
-            document.getElementById('taskResponsiblesSearch').value = '';
             document.getElementById('taskDescription').value = '';
             setStatus('todo');
-            renderSelectedStaff();
 
             if (id) {
-                supabaseClient.from('tarefas_scrum').select('*, tarefa_responsaveis(id_perfil)').eq('id', id).single().then(({ data }) => {
-                    modalTitle.innerText = "Editar Task";
+                window.supabaseClient.from('tarefas_scrum').select('*, tarefa_responsaveis(id_perfil)').eq('id', id).single().then(({ data }) => {
+                    if(!data) return;
+                    document.getElementById('taskModalTitle').innerText = "Editar Task";
                     document.getElementById('taskTitleInput').value = data.titulo;
                     document.getElementById('taskDeadline').value = data.data_limite;
                     document.getElementById('taskDescription').value = data.descricao || '';
                     setStatus(data.status);
-                    
                     if (data.tarefa_responsaveis) {
                         data.tarefa_responsaveis.forEach(tr => {
                             const p = allStaff.find(s => s.id === tr.id_perfil);
@@ -430,106 +416,52 @@
                         });
                         renderSelectedStaff();
                     }
-
-                    deleteBtn.classList.remove('hidden');
-                    saveBtn.innerText = "Atualizar Task";
+                    document.getElementById('btnDeleteTask').classList.remove('hidden');
                 });
             } else {
-                modalTitle.innerText = "Nova Task";
-                // Adicionar usuário atual como padrão na criação
-                if (currentUserProfile) {
-                    selectedStaff.push({ id: currentUserProfile.id, nome: currentUserProfile.nome_completo });
-                    renderSelectedStaff();
-                }
-                deleteBtn.classList.add('hidden');
-                saveBtn.innerText = "Criar Task";
+                document.getElementById('taskModalTitle').innerText = "Nova Task";
+                if (currentUserProfile) selectedStaff.push({ id: currentUserProfile.id, nome: currentUserProfile.nome_completo });
+                renderSelectedStaff();
+                document.getElementById('btnDeleteTask').classList.add('hidden');
             }
-            
             document.getElementById('taskModal').classList.remove('hidden');
             lucide.createIcons();
         }
 
-        function closeTaskModal() { 
-            document.getElementById('taskModal').classList.add('hidden'); 
-            editingTaskId = null;
-        }
-        
-        function setStatus(s) { 
-            document.getElementById('taskStatusValue').value = s; 
-            document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active')); 
-            document.getElementById(`btn-status-${s}`).classList.add('active'); 
-        }
-        
-        async function saveCurrentEvent() {
-            const nome = document.getElementById('evName').value;
-            const data_inicio = document.getElementById('evStart').value || null;
-            const data_fim = document.getElementById('evEnd').value || null;
-            if (!nome) return alert("Nome do evento obrigatório.");
-            const payload = { nome, data_inicio, data_fim };
-            if (editingProjectId) payload.id = editingProjectId;
-            const { data, error } = await supabaseClient.from('projetos_scrum').upsert(payload).select().single();
-            if (error) return alert(error.message);
-            selectedProjectId = data.id; closeEventModal(); fetchProjects(); selectProject(selectedProjectId);
-        }
-
-        async function deleteCurrentEvent() {
-            if (!confirm("Tem certeza?")) return;
-            await supabaseClient.from('projetos_scrum').delete().eq('id', editingProjectId);
-            selectedProjectId = null; closeEventModal(); fetchProjects();
-        }
+        function closeTaskModal() { document.getElementById('taskModal').classList.add('hidden'); editingTaskId = null; }
 
         async function saveCurrentTask() {
             const titulo = document.getElementById('taskTitleInput').value;
-            const data_limite = document.getElementById('taskDeadline').value || null;
-            const status = document.getElementById('taskStatusValue').value;
-            const descricao = document.getElementById('taskDescription').value;
             if (!titulo) return alert("Título obrigatório.");
-            const payload = { id_projeto: selectedProjectId, titulo, data_limite, status, descricao };
+            const payload = { id_projeto: selectedProjectId, titulo, data_limite: document.getElementById('taskDeadline').value || null, status: document.getElementById('taskStatusValue').value, descricao: document.getElementById('taskDescription').value };
             if (editingTaskId) payload.id = editingTaskId;
-            const { data: task, error } = await supabaseClient.from('tarefas_scrum').upsert(payload).select().single();
+            const { data: task, error } = await window.supabaseClient.from('tarefas_scrum').upsert(payload).select().single();
             if (error) return alert(error.message);
-            await supabaseClient.from('tarefa_responsaveis').delete().eq('id_tarefa', task.id);
-            if (selectedStaff.length > 0) {
-                const links = selectedStaff.map(s => ({ id_tarefa: task.id, id_perfil: s.id }));
-                await supabaseClient.from('tarefa_responsaveis').insert(links);
-            }
+            await window.supabaseClient.from('tarefa_responsaveis').delete().eq('id_tarefa', task.id);
+            if (selectedStaff.length > 0) await window.supabaseClient.from('tarefa_responsaveis').insert(selectedStaff.map(s => ({ id_tarefa: task.id, id_perfil: s.id })));
             closeTaskModal(); fetchTasks(); fetchProjects();
         }
 
         async function deleteCurrentTask() {
             if (!confirm("Excluir esta tarefa?")) return;
-            await supabaseClient.from('tarefas_scrum').delete().eq('id', editingTaskId);
+            await window.supabaseClient.from('tarefas_scrum').delete().eq('id', editingTaskId);
             closeTaskModal(); fetchTasks(); fetchProjects();
         }
-        
+
         function searchStaff(val) {
             const results = document.getElementById('staffSearchResults');
             if (!val) return results.classList.add('hidden');
             const filtered = allStaff.filter(s => s.nome_completo.toLowerCase().includes(val.toLowerCase()));
-            results.innerHTML = filtered.map(s => `<div onclick="addStaffToTask('${s.id}', '${s.nome_completo}')" class="p-3 hover:bg-slate-50 cursor-pointer flex flex-col border-b border-slate-50 last:border-0"><span class="text-xs font-bold text-fmm-dark">${s.nome_completo}</span><span class="text-[9px] text-slate-400 uppercase font-bold">${s.cargo}</span></div>`).join('');
+            results.innerHTML = filtered.map(s => `<div onclick="addStaffToTask('${s.id}', '${s.nome_completo}')" class="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0"><span class="text-xs font-bold text-fmm-dark block">${s.nome_completo}</span><span class="text-[9px] text-slate-400 uppercase font-bold">${s.cargo}</span></div>`).join('');
             results.classList.remove('hidden');
         }
 
-        function addStaffToTask(id, nome) {
-            if (selectedStaff.some(s => s.id === id)) return;
-            selectedStaff.push({ id, nome });
-            renderSelectedStaff();
-            document.getElementById('staffSearchResults').classList.add('hidden');
-            document.getElementById('taskResponsiblesSearch').value = '';
-        }
-
+        function addStaffToTask(id, nome) { if (!selectedStaff.some(s => s.id === id)) { selectedStaff.push({ id, nome }); renderSelectedStaff(); } document.getElementById('staffSearchResults').classList.add('hidden'); document.getElementById('taskResponsiblesSearch').value = ''; }
         function removeStaff(id) { selectedStaff = selectedStaff.filter(s => s.id !== id); renderSelectedStaff(); }
-
-        function renderSelectedStaff() {
-            document.getElementById('selectedStaffList').innerHTML = selectedStaff.map(s => `<div class="px-3 py-1 bg-fmm-blue/10 text-fmm-blue rounded-full text-[10px] font-bold flex items-center gap-2">${s.nome}<button onclick="removeStaff('${s.id}')"><i data-lucide="x" class="w-3 h-3"></i></button></div>`).join('');
-            lucide.createIcons();
-        }
-
-        function togglePersonalFilter() {
-            myTasksOnly = !myTasksOnly;
-            document.getElementById('btnMyTasks').classList.toggle('filter-active', myTasksOnly);
-            fetchTasks();
-        }
+        function renderSelectedStaff() { document.getElementById('selectedStaffList').innerHTML = selectedStaff.map(s => `<div class="px-3 py-1 bg-fmm-blue/10 text-fmm-blue rounded-full text-[10px] font-bold flex items-center gap-2">${s.nome}<button onclick="removeStaff('${s.id}')"><i data-lucide="x" class="w-3 h-3"></i></button></div>`).join(''); lucide.createIcons(); }
+        function togglePersonalFilter() { myTasksOnly = !myTasksOnly; document.getElementById('btnMyTasks').classList.toggle('filter-active', myTasksOnly); fetchTasks(); }
+        function toggleSidebar() { if (window.SidebarComponent) SidebarComponent.toggleSidebar(); }
+        async function handleLogout() { if(confirm("Sair do sistema?")) { await window.supabaseClient.auth.signOut(); window.location.href = "../../index.html"; } }
 
         window.onload = init;
     </script>

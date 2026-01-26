@@ -11,7 +11,8 @@ const DB_CONSTANTS = Object.freeze({
         DIRETOR: 'diretor',
         COORDENADOR: 'coordenador',
         PROFESSOR: 'professor',
-        ORIENTADOR: 'orientador'
+        ORIENTADOR: 'orientador',
+        INSPETOR: 'inspetor'
     },
 
     // Níveis de Ensino
