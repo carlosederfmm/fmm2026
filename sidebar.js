@@ -8,6 +8,7 @@ const SidebarComponent = {
         principal: [
             { label: 'Dashboard', icon: 'pie-chart', link: 'coordenador/principal/dashboard_coordenador.html', roles: ['coordenador', 'diretor', 'orientador'] },
             { label: 'Tarefas (Scrum)', icon: 'check-square', link: 'coordenador/principal/tarefas_coordenador.html', roles: ['coordenador', 'diretor'] },
+            { label: 'Requerimentos', icon: 'inbox', link: 'coordenador/principal/requerimentos.html', roles: ['coordenador', 'diretor'], badge: true }, // NOVA TELA
             { label: 'Meu Perfil', icon: 'user-circle', link: 'coordenador/principal/perfil_coordenador.html', roles: ['coordenador', 'diretor', 'orientador'] }
         ],
         administrativo: [
@@ -41,12 +42,16 @@ const SidebarComponent = {
 
     getRelativePrefix: function() {
         const path = window.location.pathname;
+        // Ajuste conforme a estrutura de pastas do seu projeto
+        // Se estivermos em uma subpasta profunda (ex: /coordenador/administrativo/)
         if (path.includes('/notas/') || path.includes('/pedagogico/') || path.includes('/administrativo/') || path.includes('/principal/')) {
             return '../../';
         }
-        if (path.includes('/professor/') || path.includes('/coordenador/')) {
+        // Se estivermos em uma subpasta rasa (ex: /professor/ ou /coordenador/ na raiz se houver)
+        if (path.includes('/professor/') || (path.includes('/coordenador/') && !path.includes('/', path.indexOf('/coordenador/') + 13))) {
             return '../';
         }
+        // Raiz
         return './';
     },
 
@@ -65,12 +70,19 @@ const SidebarComponent = {
             if (window.supabaseClient) {
                 const { data: { user } } = await window.supabaseClient.auth.getUser();
                 if (user) {
-                    const { data: profile } = await window.supabaseClient
+                    // Tenta pegar o perfil. Se falhar (ex: RLS bloqueando), assume professor ou carrega do cache se tiver
+                    const { data: profile, error } = await window.supabaseClient
                         .from('perfis')
                         .select('cargo')
                         .eq('id', user.id)
                         .maybeSingle();
-                    userRole = profile?.cargo?.toLowerCase() || 'professor';
+                    
+                    if (!error && profile) {
+                         userRole = profile.cargo?.toLowerCase() || 'professor';
+                    } else {
+                        console.warn("Perfil não carregado, usando role padrão ou cache.", error);
+                        // Aqui poderia ter uma lógica de fallback de cache se necessário
+                    }
                 }
             }
         } catch (e) { 
@@ -92,7 +104,7 @@ const SidebarComponent = {
         container.innerHTML = `
             <div class="flex flex-col h-full overflow-hidden bg-[#003c5b]">
                 <div class="p-6 h-24 border-b border-white/5 flex items-center justify-center relative flex-shrink-0">
-                    <img src="${prefix}assets/logo-fmm-white.png" alt="FMM" class="logo-full h-10 object-contain">
+                    <img src="${prefix}assets/logo-fmm-white.png" alt="FMM" class="logo-full h-10 object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
                     <div class="logo-short font-black text-2xl text-[#c8d400] hidden">M</div>
                     <button onclick="SidebarComponent.toggleSidebar()" class="absolute -right-3 top-20 bg-[#c8d400] text-[#003c5b] rounded-full p-1 shadow-lg hover:scale-110 transition-transform z-[60]">
                         <i id="sidebar-toggle-icon" data-lucide="chevron-left" class="w-4 h-4"></i>
@@ -115,9 +127,13 @@ const SidebarComponent = {
         } else {
             console.error("Lucide não carregado corretamente.");
         }
+
+        // Restaurar estado do menu (categorias abertas)
+        this.restoreSidebarState();
     },
 
     buildSimpleCategory: function(title, items, activePage, prefix) {
+        // Filtra itens baseados em roles se necessário (aqui assumimos que a lista já é filtrada pelo userRole macro)
         return `
             <div class="mb-6">
                 <p class="sidebar-category px-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">${title}</p>
@@ -127,16 +143,17 @@ const SidebarComponent = {
     },
 
     buildAccordion: function(title, id, iconName, items, activePage, prefix) {
+        // Verifica se algum item dentro desta categoria está ativo para abrir o accordion por padrão
         const isOpen = items.some(i => i.link.includes(activePage));
         const contentClass = isOpen ? 'category-content open' : 'category-content';
         const iconRotate = isOpen ? 'rotate-180' : '';
 
         return `
             <div class="category-group">
-                <button onclick="SidebarComponent.toggleCategory('${id}')" class="sidebar-category-header w-full flex items-center justify-between px-6 py-4 hover:bg-white/5 transition-all border-b border-white/5 text-left">
+                <button onclick="SidebarComponent.toggleCategory('${id}')" class="sidebar-category-header w-full flex items-center justify-between px-6 py-4 hover:bg-white/5 transition-all border-b border-white/5 text-left group">
                     <div class="flex items-center gap-3">
-                        <i data-lucide="${iconName}" class="w-4 h-4 text-slate-400"></i>
-                        <span class="sidebar-text text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">${title}</span>
+                        <i data-lucide="${iconName}" class="w-4 h-4 text-slate-400 group-hover:text-white transition-colors"></i>
+                        <span class="sidebar-text text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] group-hover:text-white transition-colors">${title}</span>
                     </div>
                     <i data-lucide="chevron-down" class="chevron-icon w-3.5 h-3.5 text-slate-500 transition-transform ${iconRotate}" id="icon-${id}"></i>
                 </button>
@@ -149,12 +166,13 @@ const SidebarComponent = {
 
     buildLink: function(item, activePage, prefix) {
         const isActive = item.link.includes(activePage);
-        const activeClass = isActive ? 'sidebar-item-active text-white' : 'text-slate-400 hover:text-white hover:bg-white/5';
+        const activeClass = isActive ? 'sidebar-item-active text-white bg-white/5 border-r-4 border-[#c8d400]' : 'text-slate-400 hover:text-white hover:bg-white/5';
         
         return `
-            <a href="${prefix}${item.link}" class="sidebar-item flex items-center px-8 py-3 text-[13px] ${activeClass} transition-all">
-                <i data-lucide="${item.icon}" class="w-4 h-4 flex-shrink-0"></i>
+            <a href="${prefix}${item.link}" class="sidebar-item flex items-center px-8 py-3 text-[13px] ${activeClass} transition-all relative">
+                <i data-lucide="${item.icon}" class="w-4 h-4 flex-shrink-0 ${isActive ? 'text-[#c8d400]' : ''}"></i>
                 <span class="sidebar-text ml-3 font-medium">${item.label}</span>
+                ${item.badge ? `<span class="absolute right-4 w-2 h-2 rounded-full bg-red-500 sidebar-text"></span>` : ''}
             </a>
         `;
     },
@@ -162,15 +180,34 @@ const SidebarComponent = {
     toggleCategory: function(id) {
         const target = document.getElementById(id);
         const icon = document.getElementById(`icon-${id}`);
+        
+        // Se estiver colapsado, expande a sidebar primeiro para melhor UX
+        const body = document.body;
+        if (body.classList.contains('sidebar-collapsed')) {
+            this.toggleSidebar();
+        }
+
         if (!target) return;
-        target.classList.toggle('open');
-        if (icon) icon.classList.toggle('rotate-180');
+        
+        // Toggle classe para animação CSS
+        if (target.classList.contains('open')) {
+            target.classList.remove('open');
+            target.style.maxHeight = null; // Para transição funcionar
+            if (icon) icon.classList.remove('rotate-180');
+            this.saveCategoryState(id, false);
+        } else {
+            target.classList.add('open');
+            target.style.maxHeight = target.scrollHeight + "px"; // Define altura explícita para animação
+            if (icon) icon.classList.add('rotate-180');
+            this.saveCategoryState(id, true);
+        }
     },
 
     toggleSidebar: function() {
         const body = document.body;
         const icon = document.getElementById('sidebar-toggle-icon');
         body.classList.toggle('sidebar-collapsed');
+        
         if (icon && window.lucide) {
             const isCollapsed = body.classList.contains('sidebar-collapsed');
             icon.setAttribute('data-lucide', isCollapsed ? 'chevron-right' : 'chevron-left');
@@ -185,6 +222,27 @@ const SidebarComponent = {
             sessionStorage.clear();
             window.location.href = prefix + "index.html";
         }
+    },
+
+    saveCategoryState: function(id, isOpen) {
+        const state = JSON.parse(localStorage.getItem('sidebarState') || '{}');
+        state[id] = isOpen;
+        localStorage.setItem('sidebarState', JSON.stringify(state));
+    },
+
+    restoreSidebarState: function() {
+        const state = JSON.parse(localStorage.getItem('sidebarState') || '{}');
+        Object.keys(state).forEach(id => {
+            if (state[id]) {
+                const content = document.getElementById(id);
+                const icon = document.getElementById(`icon-${id}`);
+                if (content) {
+                    content.classList.add('open');
+                    content.style.maxHeight = "none"; // Deixa fluir, ou use scrollHeight se preferir animar no load
+                    if (icon) icon.classList.add('rotate-180');
+                }
+            }
+        });
     }
 };
 
@@ -197,12 +255,16 @@ if (!document.getElementById('sidebar-core-styles')) {
     style.id = 'sidebar-core-styles';
     style.innerHTML = `
         .category-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
-        .category-content.open { max-height: 500px; }
-        .sidebar-item-active { background-color: rgba(200, 212, 0, 0.1); border-left: 3px solid #c8d400; }
+        .category-content.open { max-height: 1000px; /* Valor alto seguro */ }
+        .sidebar-item-active { background-color: rgba(255, 255, 255, 0.05); }
         .sidebar-collapsed #sidebar-container { width: 80px !important; }
         .sidebar-collapsed .sidebar-text, .sidebar-collapsed .chevron-icon { display: none !important; }
         .sidebar-collapsed .logo-full { display: none; }
         .sidebar-collapsed .logo-short { display: block !important; }
+        /* Ajuste fino para os ícones quando colapsado */
+        .sidebar-collapsed .sidebar-item { justify-content: center; padding-left: 0; padding-right: 0; }
+        .sidebar-collapsed .sidebar-category-header { justify-content: center; padding-left: 0; padding-right: 0; }
+        .sidebar-collapsed .sidebar-category-header i:first-child { margin: 0; }
     `;
     document.head.appendChild(style);
 }
