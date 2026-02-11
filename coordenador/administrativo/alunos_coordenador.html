@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Alunos | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Infraestrutura Sprint 3 -->
+    <script src="../../assets/js/supabase_client.js"></script>
+    <script src="../../assets/js/constants.js"></script>
+    <script src="../../sidebar.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-collapsed .sidebar-text, .sidebar-collapsed .sidebar-category-header, .sidebar-collapsed .chevron-icon { display: none; }
+        .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
+        .sidebar-collapsed .logo-full { display: none; }
+        .sidebar-collapsed .logo-short { display: block; }
+        .logo-short { display: none; }
+        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+        .category-content.open { max-height: 1000px; }
+        .rotate-180 { transform: rotate(180deg); }
+        .modal-content::-webkit-scrollbar { width: 6px; }
+        .modal-content::-webkit-scrollbar-track { background: transparent; }
+        .modal-content::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
+        .avatar-frame { width: 40px; height: 40px; border-radius: 12px; object-fit: cover; background: #f1f5f9; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: transform 0.2s; cursor: pointer; }
+        .avatar-frame:hover { transform: scale(1.1); }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden">
+
+    <!-- SIDEBAR CONTAINER -->
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0">
+            <div class="flex flex-col">
+                <h1 class="text-xl font-bold text-fmm-dark">Gestão de Alunos</h1>
+                <p class="text-xs text-slate-400">Total: <span id="student-count" class="font-bold text-fmm-blue">0</span> alunos registrados</p>
+            </div>
+            <button onclick="window.openModal()" class="bg-fmm-blue hover:bg-fmm-dark text-white px-6 py-2.5 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all shadow-lg">
+                <i data-lucide="plus" class="w-4 h-4"></i> Novo Aluno
+            </button>
+        </header>
+
+        <div class="px-8 pt-8 flex-shrink-0">
+            <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4">
+                <div class="flex-1 relative group">
+                    <i data-lucide="search" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
+                    <input type="text" id="searchInput" onkeyup="fetchAlunos()" placeholder="Procurar por nome, RA ou e-mail..." 
+                           class="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
+                </div>
+                
+                <div class="flex gap-2">
+                    <select id="filterOrigem" onchange="fetchAlunos()" class="px-6 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-slate-600 font-bold text-sm">
+                        <option value="">Todas as Origens</option>
+                        <option value="FMM">FMM</option>
+                        <option value="Seduc">Seduc</option>
+                        <option value="Semed">Semed</option>
+                    </select>
+
+                    <select id="filterStatus" onchange="fetchAlunos()" class="px-6 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-slate-600 font-bold text-sm">
+                        <option value="">Todos os Status</option>
+                        <option value="Cursando">Cursando</option>
+                        <option value="Transferido">Transferido</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            <div class="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50/50 border-b border-slate-100 text-[11px] uppercase tracking-widest text-slate-400 font-bold">
+                            <th class="px-8 py-5">Identificação</th>
+                            <th class="px-6 py-5">Turma</th>
+                            <th class="px-6 py-5 text-center">Origem</th>
+                            <th class="px-6 py-5 text-center">Status</th>
+                            <th class="px-8 py-5 text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody" class="divide-y divide-slate-50"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL DE CADASTRO / EDIÇÃO -->
+    <div id="studentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-4xl rounded-[32px] shadow-2xl flex flex-col max-h-[90vh] animate-fade-in-up">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-fmm-dark" id="modalTitle">Novo Aluno</h2>
+                <button onclick="window.closeModal()" class="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-slate-100 transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <div class="modal-content overflow-y-auto p-8 space-y-8 custom-scrollbar">
+                <div class="space-y-6">
+                    <h3 class="text-xs font-black text-fmm-blue uppercase tracking-widest flex items-center gap-2">
+                        <span class="w-1.5 h-4 bg-fmm-lime rounded-full"></span>
+                        Informações Académicas
+                    </h3>
+                    
+                    <div class="flex flex-col md:flex-row gap-8 items-start">
+                        <div class="flex flex-col items-center gap-3">
+                            <div class="w-32 h-32 bg-slate-100 rounded-[32px] border-4 border-white shadow-xl overflow-hidden flex items-center justify-center group relative">
+                                <img id="photoPreview" src="" class="w-full h-full object-cover hidden">
+                                <div id="photoPlaceholder" class="flex flex-col items-center text-slate-300">
+                                    <i data-lucide="user" class="w-10 h-10"></i>
+                                    <span class="text-[9px] font-bold uppercase mt-1">Sem Foto</span>
+                                </div>
+                            </div>
+                            <div class="w-full">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Link da Foto</label>
+                                <input type="text" id="inPhoto" oninput="updatePhotoPreview()" placeholder="URL..." class="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs outline-none">
+                            </div>
+                        </div>
+
+                        <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-5 w-full">
+                            <div class="space-y-1.5 md:col-span-2">
+                                <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Nome Completo</label>
+                                <input type="text" id="inName" placeholder="Nome do aluno" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue">
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">RA</label>
+                                <input type="text" id="inRA" placeholder="Ex: 260001" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue">
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">E-mail Institucional</label>
+                                <input type="email" id="inEmailInst" placeholder="aluno@fmm.org.br" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue">
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Origem</label>
+                                <select id="inOrigem" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-slate-600">
+                                    <option value="FMM">FMM</option>
+                                    <option value="Seduc">Seduc</option>
+                                    <option value="Semed">Semed</option>
+                                </select>
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Status</label>
+                                <select id="inStatus" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-slate-600">
+                                    <option value="Cursando">Cursando</option>
+                                    <option value="Transferido">Transferido</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <h3 class="text-xs font-black text-fmm-blue uppercase tracking-widest flex items-center gap-2">
+                        <span class="w-1.5 h-4 bg-fmm-lime rounded-full"></span>
+                        Informações dos Responsáveis
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="p-6 bg-slate-50/50 rounded-3xl border border-slate-100 space-y-4">
+                            <h4 class="text-[10px] font-black text-slate-400 uppercase">Responsável Primário</h4>
+                            <div class="space-y-3">
+                                <input type="text" id="resp1Name" placeholder="Nome" class="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm">
+                                <input type="email" id="resp1Email" placeholder="E-mail" class="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm">
+                                <input type="tel" id="resp1Tel" placeholder="Telefone" class="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm">
+                            </div>
+                        </div>
+
+                        <div class="p-6 bg-slate-50/50 rounded-3xl border border-slate-100 space-y-4">
+                            <h4 class="text-[10px] font-black text-slate-400 uppercase">Responsável Secundário</h4>
+                            <div class="space-y-3">
+                                <input type="text" id="resp2Name" placeholder="Nome" class="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm">
+                                <input type="email" id="resp2Email" placeholder="E-mail" class="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm">
+                                <input type="tel" id="resp2Tel" placeholder="Telefone" class="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-8 border-t bg-slate-50/50 rounded-b-[32px] flex justify-end gap-4">
+                <button onclick="window.closeModal()" class="px-6 py-3 text-sm font-bold text-slate-500">Cancelar</button>
+                <button id="btnSave" onclick="saveStudent()" class="px-10 py-3.5 bg-fmm-lime text-fmm-dark font-bold text-sm rounded-2xl shadow-xl">
+                    Guardar Registo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ZOOM FOTO -->
+    <div id="photoZoomModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onclick="closePhotoZoom()">
+        <div class="relative animate-fade-in-up" onclick="event.stopPropagation()">
+            <button onclick="closePhotoZoom()" class="absolute -top-12 -right-4 text-white hover:text-fmm-lime transition-colors">
+                <i data-lucide="x" class="w-8 h-8"></i>
+            </button>
+            <img id="enlargedPhoto" src="" class="max-w-[90vw] max-h-[80vh] rounded-[40px] shadow-2xl border-4 border-white/10 object-contain">
+            <div id="enlargedName" class="mt-4 text-center text-white font-bold text-lg tracking-tight"></div>
+        </div>
+    </div>
+
+    <script>
+        let cachedAlunos = [];
+        let userLevels = []; // Níveis permitidos ao coordenador
+
+        function formatDriveUrl(url) {
+            if (!url) return null;
+            if (url.includes('drive.google.com') && url.includes('/file/d/')) {
+                const idMatch = url.match(/\/d\/(.*?)\//);
+                if (idMatch && idMatch[1]) return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
+            }
+            return url;
+        }
+
+        async function init() {
+            if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if (!user) return window.location.href = '../../index.html'; 
+
+            // --- LÓGICA DE CAPTURA DE CONTEXTO ---
+            const { data: profile } = await window.supabaseClient
+                .from('perfis')
+                .select('cargo, niveis_acesso')
+                .eq('id', user.id)
+                .single();
+
+            if (profile) {
+                if (profile.cargo === 'diretor') {
+                    userLevels = ['EF1', 'EF2', 'EMT'];
+                } else {
+                    userLevels = profile.niveis_acesso || [];
+                }
+            }
+
+            await fetchAlunos();
+            lucide.createIcons();
+        }
+
+        async function fetchAlunos() {
+            const termo = document.getElementById('searchInput').value;
+            const filtroOrigem = document.getElementById('filterOrigem').value;
+            const filtroStatus = document.getElementById('filterStatus').value;
+            const body = document.getElementById('studentTableBody');
+            
+            // --- LÓGICA DE FILTRAGEM POR NÍVEL (PLANO DE SEGMENTAÇÃO) ---
+            // Usamos !inner(nivel) para forçar o filtro na relação com turmas
+            let query = window.supabaseClient.from('alunos').select('*, turmas!inner(nome, nivel)');
+            
+            // Aplica restrição de nível se o usuário não for visão global (ex: coordenador de nível específico)
+            if (userLevels.length > 0) {
+                query = query.in('turmas.nivel', userLevels);
+            }
+
+            if (termo) query = query.or(`nome_completo.ilike.%${termo}%,ra.ilike.%${termo}%`);
+            if (filtroOrigem) query = query.eq('origem', filtroOrigem);
+            if (filtroStatus) query = query.eq('status', filtroStatus);
+
+            const { data, error } = await query.order('nome_completo');
+            if (error) {
+                console.error("Erro na busca filtrada:", error);
+                return;
+            }
+            
+            cachedAlunos = data || [];
+            document.getElementById('student-count').innerText = cachedAlunos.length;
+            
+            body.innerHTML = cachedAlunos.map(aluno => {
+                const formattedUrl = formatDriveUrl(aluno.url_foto);
+                const avatar = aluno.url_foto 
+                    ? `<img src="${formattedUrl}" class="avatar-frame cursor-pointer" onclick="openPhotoZoom('${formattedUrl}', '${aluno.nome_completo.replace(/'/g, "\\'")}')" onerror="this.outerHTML='<div class=&quot;avatar-frame flex items-center justify-center text-slate-400 font-bold text-xs bg-slate-100&quot;>${aluno.nome_completo.charAt(0)}</div>'">` 
+                    : `<div class="avatar-frame flex items-center justify-center text-slate-400 font-bold text-xs bg-slate-100">${aluno.nome_completo.charAt(0)}</div>`;
+
+                return `
+                <tr class="hover:bg-slate-50/80 transition-all">
+                    <td class="px-8 py-5">
+                        <div class="flex items-center gap-4">
+                            <div class="flex-shrink-0 relative">${avatar}</div>
+                            <div class="flex flex-col">
+                                <span class="font-bold text-fmm-dark text-sm">${aluno.nome_completo}</span>
+                                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">RA: ${aluno.ra}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-5">
+                        <span class="px-3 py-1 ${!aluno.id_turma ? 'bg-red-50 text-red-600' : 'bg-fmm-lime/20 text-fmm-dark'} text-[10px] font-bold rounded-xl uppercase">
+                            ${aluno.turmas ? aluno.turmas.nome : 'SEM TURMA'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-5 text-center text-xs font-bold text-fmm-blue">${aluno.origem}</td>
+                    <td class="px-6 py-5 text-center">
+                        <span class="px-3 py-1 text-[9px] font-bold rounded-full uppercase border ${aluno.status === 'Cursando' ? 'border-green-200 text-green-600 bg-green-50' : 'border-red-200 text-red-600 bg-red-50'}">
+                            ${aluno.status}
+                        </span>
+                    </td>
+                    <td class="px-8 py-5">
+                        <div class="flex items-center justify-center gap-2">
+                            <button onclick="handleEditClick('${aluno.ra}')" class="p-2.5 text-slate-400 hover:text-fmm-blue hover:bg-fmm-blue/10 rounded-xl transition-all shadow-sm"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                            <button onclick="deleteStudent('${aluno.ra}')" class="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all shadow-sm"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </div>
+                    </td>
+                </tr>`}).join('');
+            lucide.createIcons();
+        }
+
+        window.handleEditClick = function(ra) {
+            const aluno = cachedAlunos.find(a => a.ra === ra);
+            if(aluno) prepEdit(aluno);
+        }
+
+        function updatePhotoPreview() {
+            const url = document.getElementById('inPhoto').value;
+            const preview = document.getElementById('photoPreview');
+            const placeholder = document.getElementById('photoPlaceholder');
+            if (url) {
+                const formatted = formatDriveUrl(url);
+                preview.src = formatted; preview.classList.remove('hidden'); placeholder.classList.add('hidden');
+                preview.onerror = () => { preview.classList.add('hidden'); placeholder.classList.remove('hidden'); };
+            } else { preview.src = ''; preview.classList.add('hidden'); placeholder.classList.remove('hidden'); }
+        }
+
+        async function saveStudent() {
+            const ra = document.getElementById('inRA').value;
+            const nome = document.getElementById('inName').value;
+            const email = document.getElementById('inEmailInst').value;
+            if (!ra || !nome || !email) return alert("Preencha RA, Nome e E-mail.");
+
+            const respData = {
+                resp1: { nome: document.getElementById('resp1Name').value, email: document.getElementById('resp1Email').value, tel: document.getElementById('resp1Tel').value },
+                resp2: { nome: document.getElementById('resp2Name').value, email: document.getElementById('resp2Email').value, tel: document.getElementById('resp2Tel').value }
+            };
+
+            const btn = document.getElementById('btnSave');
+            btn.disabled = true; btn.innerText = "Salvando...";
+
+            const { error } = await window.supabaseClient.from('alunos').upsert({
+                ra, nome_completo: nome, email_institucional: email,
+                origem: document.getElementById('inOrigem').value,
+                status: document.getElementById('inStatus').value,
+                url_foto: document.getElementById('inPhoto').value,
+                informacoes_responsaveis: respData
+            });
+
+            if (error) alert("Erro: " + error.message);
+            else { closeModal(); fetchAlunos(); }
+            btn.disabled = false; btn.innerText = "Guardar Registo";
+        }
+
+        function prepEdit(aluno) {
+            document.getElementById('modalTitle').innerText = "Editar Aluno";
+            document.getElementById('inRA').value = aluno.ra;
+            document.getElementById('inRA').disabled = true;
+            document.getElementById('inName').value = aluno.nome_completo;
+            document.getElementById('inEmailInst').value = aluno.email_institucional;
+            document.getElementById('inOrigem').value = aluno.origem || 'FMM';
+            document.getElementById('inStatus').value = aluno.status || 'Cursando';
+            document.getElementById('inPhoto').value = aluno.url_foto || '';
+            updatePhotoPreview();
+            const resp = aluno.informacoes_responsaveis || {};
+            document.getElementById('resp1Name').value = resp.resp1?.nome || '';
+            document.getElementById('resp1Email').value = resp.resp1?.email || '';
+            document.getElementById('resp1Tel').value = resp.resp1?.tel || '';
+            document.getElementById('resp2Name').value = resp.resp2?.nome || '';
+            document.getElementById('resp2Email').value = resp.resp2?.email || '';
+            document.getElementById('resp2Tel').value = resp.resp2?.tel || '';
+            openModal();
+        }
+
+        async function deleteStudent(ra) {
+            if(!confirm("Deseja excluir este aluno?")) return;
+            const { error } = await window.supabaseClient.from('alunos').delete().eq('ra', ra);
+            if(error) alert(error.message); else fetchAlunos();
+        }
+
+        window.openModal = function() {
+            document.getElementById('studentModal').classList.remove('hidden');
+        }
+
+        window.closeModal = function() { 
+            document.getElementById('studentModal').classList.add('hidden'); 
+            document.getElementById('inRA').disabled = false;
+            document.querySelectorAll('#studentModal input').forEach(i => i.value = '');
+            document.getElementById('modalTitle').innerText = "Novo Aluno";
+            updatePhotoPreview();
+        }
+
+        function openPhotoZoom(url, name) {
+            document.getElementById('enlargedPhoto').src = url;
+            document.getElementById('enlargedName').innerText = name;
+            document.getElementById('photoZoomModal').classList.remove('hidden');
+        }
+        function closePhotoZoom() { document.getElementById('photoZoomModal').classList.add('hidden'); }
+        
+        function toggleSidebar() { if(window.SidebarComponent) SidebarComponent.toggleSidebar(); }
+        async function logout() { if(confirm("Sair?")) { await window.supabaseClient.auth.signOut(); window.location.href = "../../index.html"; } }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saídas Antecipadas | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Importação do Componente de Sidebar -->
+    <script src="../../sidebar.js"></script>
+    <script src="../../assets/js/supabase_client.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+        .category-content.open { max-height: 1000px; }
+        .rotate-180 { transform: rotate(180deg); }
+        .sidebar-item-active { background-color: rgba(200, 212, 0, 0.15); border-left: 4px solid #c8d400; color: #ffffff !important; }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .record-card {
+            background: white; border: 1px solid #e2e8f0; border-radius: 20px;
+            padding: 20px; transition: all 0.2s; position: relative; overflow: hidden;
+        }
+        .record-card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px -5px rgba(0,0,0,0.05); border-color: #cbd5e1; }
+        
+        .student-item {
+            transition: all 0.2s; border: 1px solid transparent;
+        }
+        .student-item:hover { background-color: #f8fafc; border-color: #e2e8f0; }
+        .student-item.active { background-color: #00638f10; border-color: #00638f30; }
+
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        .animate-slide { animation: slideIn 0.3s ease-out forwards; }
+        
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fadeInUp 0.4s ease-out forwards; }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden">
+
+    <!-- SIDEBAR CONTAINER -->
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20">
+        <!-- Carregado via sidebar.js -->
+    </aside>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden relative">
+        
+        <!-- HEADER -->
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0">
+            <div class="flex flex-col">
+                <h1 class="text-xl font-bold text-fmm-dark flex items-center gap-2">
+                    <i data-lucide="log-out" class="w-5 h-5 text-fmm-lime"></i>
+                    Saídas Antecipadas
+                </h1>
+                <p class="text-xs text-slate-400 font-medium">Registo de liberações e autorizações</p>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <!-- Botão de Alertas GLOBAL -->
+                <button onclick="checkGlobalExitAlerts(true)" id="btnAlerts" class="hidden bg-orange-50 border border-orange-100 px-4 py-2 rounded-2xl flex items-center gap-2 hover:bg-orange-100 transition-colors group animate-fade-in-up">
+                    <div class="relative">
+                        <i data-lucide="bell" class="w-5 h-5 text-orange-500"></i>
+                        <span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-orange-600 rounded-full border-2 border-white animate-pulse"></span>
+                    </div>
+                    <span class="text-[10px] font-black text-orange-600 uppercase tracking-widest group-hover:text-orange-700">Excessos (<span id="alertCount">0</span>)</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- LAYOUT DE COLUNAS -->
+        <div class="flex-1 flex overflow-hidden">
+            
+            <!-- ESQUERDA: BUSCA E LISTA -->
+            <div class="w-96 bg-white border-r border-slate-100 flex flex-col z-10">
+                <div class="p-6 border-b border-slate-50">
+                    <div class="relative group">
+                        <i data-lucide="search" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
+                        <input type="text" id="studentSearch" onkeyup="renderStudentList(this.value)" 
+                               placeholder="Buscar aluno ou RA..." 
+                               class="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all font-medium text-sm">
+                    </div>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-2" id="studentList">
+                    <!-- Lista de Alunos (Injetado via JS) -->
+                    <div class="flex flex-col items-center justify-center h-full text-slate-300">
+                        <i data-lucide="users" class="w-8 h-8 mb-2 opacity-20"></i>
+                        <p class="text-xs italic">Carregando lista...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DIREITA: HISTÓRICO E DETALHES -->
+            <div class="flex-1 flex flex-col bg-slate-50/50 relative overflow-hidden">
+                
+                <!-- ESTADO VAZIO (DEFAULT) -->
+                <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center text-slate-300 z-0">
+                    <div class="w-24 h-24 bg-white rounded-full shadow-lg flex items-center justify-center mb-6">
+                        <i data-lucide="door-open" class="w-10 h-10 text-slate-200"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-400">Nenhum aluno selecionado</h3>
+                    <p class="text-sm italic mt-2">Selecione um aluno para visualizar o histórico de saídas.</p>
+                </div>
+
+                <!-- CONTEÚDO DO HISTÓRICO (HIDDEN) -->
+                <div id="historyView" class="hidden flex-1 flex flex-col h-full animate-slide z-10">
+                    
+                    <!-- Perfil Rápido -->
+                    <div class="bg-white px-8 py-6 border-b border-slate-100 flex justify-between items-center shadow-sm">
+                        <div class="flex items-center gap-5">
+                            <img id="profileAvatar" src="" class="w-16 h-16 rounded-2xl object-cover border-4 border-slate-50 shadow-md">
+                            <div>
+                                <h2 id="profileName" class="text-2xl font-black text-fmm-dark leading-none">Nome do Aluno</h2>
+                                <div class="flex items-center gap-3 mt-2">
+                                    <span id="profileRA" class="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">RA: 0000</span>
+                                    <span id="profileTurma" class="text-xs font-bold text-fmm-blue">Turma --</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="openRecordModal()" class="bg-fmm-dark hover:bg-slate-800 text-white px-6 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 shadow-xl shadow-fmm-dark/20 transition-all transform hover:scale-105">
+                            <i data-lucide="plus-circle" class="w-5 h-5"></i> Registar Saída
+                        </button>
+                    </div>
+
+                    <!-- Timeline de Saídas -->
+                    <div class="flex-1 overflow-y-auto p-8 custom-scrollbar relative">
+                        <div id="timelineContainer" class="space-y-4 max-w-4xl mx-auto">
+                            <!-- Items da Timeline injetados via JS -->
+                        </div>
+                        <div class="h-20"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL DE ALERTAS GLOBAIS (>= 10 SAÍDAS) -->
+    <div id="alertsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl flex flex-col animate-fade-in-up max-h-[85vh]">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-[32px]">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-orange-100 rounded-xl text-orange-600">
+                        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-black text-fmm-dark uppercase tracking-wide">Excesso de Saídas Antecipadas</h2>
+                        <p class="text-xs text-slate-500 font-medium">Alunos com 10 ou mais saídas no mês corrente</p>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('alertsModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 bg-white p-2 rounded-full border border-slate-100 hover:bg-slate-50 shadow-sm transition-all"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto custom-scrollbar bg-slate-50/30 flex-1">
+                <div id="alertsList" class="space-y-3">
+                    <!-- Lista de alertas injetada via JS -->
+                    <div class="flex flex-col items-center justify-center py-10 text-slate-300">
+                        <i data-lucide="loader-2" class="w-8 h-8 animate-spin mb-2 opacity-50"></i>
+                        <p class="text-xs italic">Verificando registos...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-4 border-t border-slate-100 bg-white rounded-b-[32px] text-center">
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Ação Necessária: Avaliação Pedagógica</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NOVO REGISTO -->
+    <div id="recordModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-lg rounded-[32px] shadow-2xl flex flex-col animate-fade-in-up max-h-[90vh]">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white rounded-t-[32px]">
+                <h2 class="text-xl font-bold text-fmm-dark flex items-center gap-3">
+                    <span class="w-10 h-10 rounded-xl bg-fmm-blue/10 flex items-center justify-center text-fmm-blue">
+                        <i data-lucide="log-out" class="w-5 h-5"></i>
+                    </span>
+                    Registar Saída
+                </h2>
+                <button onclick="closeRecordModal()" class="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-slate-100 transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <div class="p-8 space-y-6 overflow-y-auto custom-scrollbar bg-slate-50/30">
+                <input type="hidden" id="recordId">
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Data</label>
+                        <input type="date" id="recDate" class="w-full px-5 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue font-medium text-slate-700 text-sm">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Horário</label>
+                        <input type="time" id="recTime" class="w-full px-5 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue font-medium text-slate-700 text-sm">
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Autorizado Por</label>
+                    <input type="text" id="recAuth" placeholder="Nome do pai/responsável..." class="w-full px-5 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue font-bold text-fmm-dark text-sm">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Motivo</label>
+                        <select id="recReason" onchange="toggleOther('recReason', 'recReasonOther')" class="w-full px-5 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm font-medium text-slate-600">
+                            <!-- Populated via JS -->
+                        </select>
+                        <input type="text" id="recReasonOther" class="hidden w-full mt-2 px-5 py-3 bg-white border border-slate-200 rounded-2xl outline-none text-sm" placeholder="Especifique...">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Transporte</label>
+                        <select id="recTransport" onchange="toggleOther('recTransport', 'recTransportOther')" class="w-full px-5 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm font-medium text-slate-600">
+                            <!-- Populated via JS -->
+                        </select>
+                        <input type="text" id="recTransportOther" class="hidden w-full mt-2 px-5 py-3 bg-white border border-slate-200 rounded-2xl outline-none text-sm" placeholder="Especifique...">
+                    </div>
+                </div>
+
+                <div class="flex gap-4 pt-2">
+                    <label class="flex items-center gap-2 cursor-pointer p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 w-full justify-center transition-all has-[:checked]:border-fmm-blue has-[:checked]:bg-fmm-blue/5">
+                        <input type="radio" name="retorno" value="true" class="w-4 h-4 text-fmm-blue border-slate-300 focus:ring-fmm-blue">
+                        <span class="text-xs font-bold text-slate-600">Vai Retornar</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 w-full justify-center transition-all has-[:checked]:border-red-500 has-[:checked]:bg-red-50">
+                        <input type="radio" name="retorno" value="false" class="w-4 h-4 text-red-500 border-slate-300 focus:ring-red-500" checked>
+                        <span class="text-xs font-bold text-slate-600">Não Retorna</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-slate-100 bg-white rounded-b-[32px] flex justify-between gap-3">
+                 <button id="btnDelete" onclick="deleteRecord()" class="hidden px-6 py-3 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-black uppercase rounded-xl transition-all flex items-center gap-2">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i> Excluir
+                </button>
+                <div class="flex gap-3 ml-auto">
+                    <button onclick="closeRecordModal()" class="px-6 py-3 text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors">Cancelar</button>
+                    <button onclick="saveRecord()" id="btnSave" class="px-8 py-3 bg-fmm-lime text-fmm-dark text-xs font-black uppercase tracking-wider rounded-xl shadow-lg shadow-fmm-lime/20 hover:scale-105 transition-all flex items-center gap-2">
+                        <i data-lucide="check" class="w-4 h-4"></i> Salvar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL FOTO -->
+    <div id="photoModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onclick="closePhotoModal()">
+        <div class="relative animate-fade-in-up" onclick="event.stopPropagation()">
+            <button onclick="closePhotoModal()" class="absolute -top-12 -right-4 text-white hover:text-fmm-lime transition-colors">
+                <i data-lucide="x" class="w-8 h-8"></i>
+            </button>
+            <img id="enlargedPhoto" src="" class="max-w-[90vw] max-h-[80vh] rounded-[40px] shadow-2xl border-4 border-white/10 object-contain">
+            <div id="enlargedName" class="mt-4 text-center text-white font-bold text-lg tracking-tight"></div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="fixed bottom-8 right-8 z-50 translate-y-20 opacity-0 transition-all duration-500">
+        <div class="bg-slate-900 text-white px-8 py-5 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/5">
+            <div class="w-10 h-10 bg-fmm-lime/20 rounded-full flex items-center justify-center">
+                <i data-lucide="check" class="w-5 h-5 text-fmm-lime"></i>
+            </div>
+            <span class="text-sm font-bold tracking-tight" id="toast-msg">Sucesso</span>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURAÇÃO SUPABASE
+        
+
+        const EXIT_REASONS = ["Particular", "Médico", "Dentista", "Mal Estar", "Cursinho", "Sinetram", "Fisioterapia", "Psicólogo", "Exército", "Outro"];
+        const TRANSPORT_OPTIONS = ["Ônibus", "Lotação", "Condução", "Uber", "Andando", "Com os pais", "Sozinho", "Outro"];
+
+        let currentUser = null;
+        let allStudents = [];
+        let selectedStudent = null;
+        let currentRecords = [];
+        let globalAlertsList = []; 
+        let userLevels = []; // Níveis permitidos ao coordenador
+
+        function formatDriveUrl(url) {
+            if (!url) return null;
+            if (url.includes('drive.google.com') && url.includes('/file/d/')) {
+                const idMatch = url.match(/\/d\/(.*?)\//);
+                if (idMatch && idMatch[1]) {
+                    return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
+                }
+            }
+            return url;
+        }
+
+        async function init() {
+            if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if(user) {
+                const { data: profile } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).single();
+                currentUser = profile;
+
+                // --- CAPTURA DE CONTEXTO DO USUÁRIO ---
+                if (profile.cargo === 'diretor') {
+                    userLevels = ['EF1', 'EF2', 'EMT'];
+                } else {
+                    userLevels = profile.niveis_acesso || [];
+                }
+            }
+
+            populateSelects();
+            document.getElementById('recDate').valueAsDate = new Date();
+            await fetchAllStudents();
+            checkGlobalExitAlerts(false); // Verifica em background
+            lucide.createIcons();
+        }
+
+        function populateSelects() {
+            const reasonSel = document.getElementById('recReason');
+            const transSel = document.getElementById('recTransport');
+            
+            reasonSel.innerHTML = '<option value="">Selecione...</option>' + EXIT_REASONS.map(o => `<option value="${o}">${o}</option>`).join('');
+            transSel.innerHTML = '<option value="">Selecione...</option>' + TRANSPORT_OPTIONS.map(o => `<option value="${o}">${o}</option>`).join('');
+        }
+
+        function toggleOther(selectId, inputId) {
+            const sel = document.getElementById(selectId);
+            const inp = document.getElementById(inputId);
+            if (sel.value === 'Outro') inp.classList.remove('hidden');
+            else inp.classList.add('hidden');
+        }
+
+        async function fetchAllStudents() {
+            // --- LÓGICA DE FILTRAGEM POR NÍVEL AUTORIZADO ---
+            let query = window.supabaseClient
+                .from('alunos')
+                .select('ra, nome_completo, url_foto, turmas!inner(nome, nivel)')
+                .order('nome_completo');
+            
+            if (userLevels.length > 0) {
+                query = query.in('turmas.nivel', userLevels);
+            }
+
+            const { data, error } = await query;
+            
+            if (error) return console.error(error);
+            allStudents = data || [];
+            renderStudentList();
+        }
+
+        function renderStudentList(filterVal = '') {
+            const list = document.getElementById('studentList');
+            list.innerHTML = '';
+
+            const filtered = allStudents.filter(s => 
+                s.nome_completo.toLowerCase().includes(filterVal.toLowerCase()) || 
+                s.ra.includes(filterVal)
+            );
+
+            if(filtered.length === 0) {
+                list.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-300 py-10"><i data-lucide="search-x" class="w-8 h-8 mb-2 opacity-50"></i><p class="text-xs italic">Nenhum aluno encontrado.</p></div>`;
+                lucide.createIcons();
+                return;
+            }
+
+            filtered.slice(0, 50).forEach(s => {
+                const isActive = selectedStudent && selectedStudent.ra === s.ra;
+                const avatar = formatDriveUrl(s.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=random`;
+
+                const item = document.createElement('div');
+                item.className = `student-item p-3 rounded-2xl cursor-pointer flex items-center gap-3 ${isActive ? 'active' : ''}`;
+                item.onclick = () => selectStudent(s.ra);
+                
+                item.innerHTML = `
+                    <img src="${avatar}" class="w-10 h-10 rounded-xl object-cover bg-slate-200 border border-slate-100">
+                    <div class="overflow-hidden">
+                        <h4 class="text-xs font-bold text-fmm-dark truncate">${s.nome_completo}</h4>
+                        <p class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">${s.turmas?.nome || 'Sem Turma'}</p>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        async function selectStudent(ra) {
+            const { data: student } = await window.supabaseClient.from('alunos').select('*, turmas(*)').eq('ra', ra).single();
+            selectedStudent = student;
+            
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('historyView').classList.remove('hidden');
+
+            document.getElementById('profileName').innerText = student.nome_completo;
+            document.getElementById('profileRA').innerText = `RA: ${student.ra}`;
+            document.getElementById('profileTurma').innerText = student.turmas?.nome || 'Sem Turma';
+            document.getElementById('profileAvatar').src = formatDriveUrl(student.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.nome_completo)}`;
+
+            renderStudentList(document.getElementById('studentSearch').value); 
+            await fetchHistory();
+        }
+
+        async function fetchHistory() {
+            const container = document.getElementById('timelineContainer');
+            container.innerHTML = '<div class="text-center py-10"><i data-lucide="loader-2" class="w-8 h-8 animate-spin mx-auto text-slate-300"></i></div>';
+            lucide.createIcons();
+            
+            const { data, error } = await window.supabaseClient
+                .from('saidas')
+                .select('*, perfis(nome_completo)')
+                .eq('aluno_ra', selectedStudent.ra)
+                .order('data_saida', { ascending: false })
+                .order('hora_saida', { ascending: false });
+
+            container.innerHTML = '';
+            currentRecords = data || [];
+
+            if (currentRecords.length === 0) {
+                container.innerHTML = `<div class="text-center py-10 text-slate-400 text-sm italic">Nenhuma saída registrada.</div>`;
+                return;
+            }
+
+            currentRecords.forEach(rec => {
+                const dateParts = rec.data_saida.split('-');
+                const displayDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+                const time = rec.hora_saida.substring(0, 5);
+                const author = rec.perfis?.nome_completo || 'Sistema';
+
+                const item = document.createElement('div');
+                item.className = "record-card animate-slide group";
+                item.onclick = () => openRecordModal(rec);
+                
+                item.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex flex-col">
+                            <span class="text-lg font-black text-fmm-dark">${displayDate}</span>
+                            <span class="text-xs font-bold text-fmm-blue">${time}</span>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase ${rec.retorno ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}">
+                            ${rec.retorno ? 'Retornou' : 'Saída Definitiva'}
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mt-4 border-t border-slate-100 pt-4">
+                        <div>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase block">Motivo</span>
+                            <span class="text-sm font-bold text-slate-700">${rec.motivo}</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase block">Transporte</span>
+                            <span class="text-sm font-bold text-slate-700">${rec.transporte}</span>
+                        </div>
+                        <div class="col-span-2">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase block">Autorizado Por</span>
+                            <span class="text-sm font-medium text-slate-600">${rec.autorizado_por}</span>
+                        </div>
+                    </div>
+                    <div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button class="p-2 bg-slate-100 rounded-full hover:bg-slate-200 text-slate-500">
+                            <i data-lucide="edit-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <p class="text-[9px] font-bold text-slate-300 mt-2 text-right">Reg. por: ${author.split(' ')[0]}</p>
+                `;
+                container.appendChild(item);
+            });
+            lucide.createIcons();
+        }
+
+        async function checkGlobalExitAlerts(showModal = false) {
+            const btnAlerts = document.getElementById('btnAlerts');
+            const alertCount = document.getElementById('alertCount');
+            const listContainer = document.getElementById('alertsList');
+            
+            // --- LÓGICA DE FILTRAGEM POR NÍVEL AUTORIZADO ---
+            let query = window.supabaseClient
+                .from('saidas')
+                .select('aluno_ra, data_saida, alunos!inner(nome_completo, turmas!inner(nome, nivel))');
+
+            if (userLevels.length > 0) {
+                query = query.in('alunos.turmas.nivel', userLevels);
+            }
+
+            const { data: allExits, error } = await query;
+
+            if (error || !allExits) return;
+
+            const alertsMap = {}; 
+            allExits.forEach(ex => {
+                const datePart = ex.data_saida.split('T')[0];
+                const [year, month] = datePart.split('-');
+                const key = `${ex.aluno_ra}|${year}-${month}`;
+                
+                if (!alertsMap[key]) {
+                    alertsMap[key] = {
+                        ra: ex.aluno_ra,
+                        nome: ex.alunos?.nome_completo || 'Aluno Desconhecido',
+                        turma: ex.alunos?.turmas?.nome || 'Sem Turma',
+                        month: `${month}/${year}`,
+                        count: 0
+                    };
+                }
+                alertsMap[key].count++;
+            });
+
+            globalAlertsList = Object.values(alertsMap).filter(item => item.count >= 10);
+
+            if (globalAlertsList.length > 0) {
+                btnAlerts.classList.remove('hidden');
+                alertCount.innerText = globalAlertsList.length;
+            } else {
+                btnAlerts.classList.add('hidden');
+            }
+
+            if (showModal) {
+                listContainer.innerHTML = '';
+                if (globalAlertsList.length === 0) {
+                    listContainer.innerHTML = '<p class="text-center text-slate-400 text-sm py-4">Nenhum alerta pendente.</p>';
+                } else {
+                    globalAlertsList.forEach(alert => {
+                        const html = `
+                        <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-2 hover:border-orange-200 transition-colors cursor-pointer" onclick="selectStudent('${alert.ra}'); document.getElementById('alertsModal').classList.add('hidden')">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h4 class="text-sm font-black text-fmm-dark">${alert.nome}</h4>
+                                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">${alert.turma} • RA: ${alert.ra}</p>
+                                </div>
+                                <div class="bg-orange-50 text-orange-600 px-3 py-1 rounded-lg text-xs font-black">
+                                    ${alert.count} Saídas
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 pt-2 border-t border-slate-50">
+                                <i data-lucide="calendar" class="w-3 h-3 text-slate-400"></i>
+                                <span class="text-[10px] font-bold text-slate-500 uppercase">Mês: ${alert.month}</span>
+                            </div>
+                        </div>`;
+                        listContainer.innerHTML += html;
+                    });
+                    lucide.createIcons();
+                }
+                document.getElementById('alertsModal').classList.remove('hidden');
+            }
+        }
+
+        function openNewRecordModal() { openRecordModal(null); }
+
+        function openRecordModal(record) {
+            const modal = document.getElementById('recordModal');
+            const btnDelete = document.getElementById('btnDelete');
+            const title = modal.querySelector('h2');
+            
+            document.getElementById('recDate').valueAsDate = new Date();
+            document.getElementById('recTime').value = new Date().toTimeString().substring(0, 5);
+            document.getElementById('recAuth').value = '';
+            document.getElementById('recReason').value = '';
+            document.getElementById('recReasonOther').value = '';
+            document.getElementById('recReasonOther').classList.add('hidden');
+            document.getElementById('recTransport').value = '';
+            document.getElementById('recTransportOther').value = '';
+            document.getElementById('recTransportOther').classList.add('hidden');
+            document.querySelector('input[name="retorno"][value="false"]').checked = true;
+
+            if (record) {
+                document.getElementById('recordId').value = record.id;
+                document.getElementById('recDate').value = record.data_saida;
+                document.getElementById('recTime').value = record.hora_saida;
+                document.getElementById('recAuth').value = record.autorizado_por;
+                
+                if (EXIT_REASONS.includes(record.motivo)) {
+                    document.getElementById('recReason').value = record.motivo;
+                } else {
+                    document.getElementById('recReason').value = 'Outro';
+                    document.getElementById('recReasonOther').value = record.motivo;
+                    document.getElementById('recReasonOther').classList.remove('hidden');
+                }
+
+                if (TRANSPORT_OPTIONS.includes(record.transporte)) {
+                    document.getElementById('recTransport').value = record.transporte;
+                } else {
+                    document.getElementById('recTransport').value = 'Outro';
+                    document.getElementById('recTransportOther').value = record.transporte;
+                    document.getElementById('recTransportOther').classList.remove('hidden');
+                }
+
+                document.querySelector(`input[name="retorno"][value="${record.retorno}"]`).checked = true;
+                
+                title.innerHTML = `<i data-lucide="edit" class="w-5 h-5 text-fmm-blue mr-2"></i> Editar Saída`;
+                btnDelete.classList.remove('hidden');
+            } else {
+                document.getElementById('recordId').value = '';
+                title.innerHTML = `<span class="w-8 h-8 rounded-lg bg-fmm-blue/10 flex items-center justify-center text-fmm-blue mr-2"><i data-lucide="log-out" class="w-4 h-4"></i></span> Registar Saída`;
+                btnDelete.classList.add('hidden');
+            }
+
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeRecordModal() { document.getElementById('recordModal').classList.add('hidden'); }
+
+        async function saveRecord() {
+            const id = document.getElementById('recordId').value;
+            const data_saida = document.getElementById('recDate').value;
+            const hora_saida = document.getElementById('recTime').value;
+            const autorizado_por = document.getElementById('recAuth').value;
+            
+            let motivo = document.getElementById('recReason').value;
+            if(motivo === 'Outro') motivo = document.getElementById('recReasonOther').value;
+
+            let transporte = document.getElementById('recTransport').value;
+            if(transporte === 'Outro') transporte = document.getElementById('recTransportOther').value;
+
+            const retorno = document.querySelector('input[name="retorno"]:checked').value === 'true';
+
+            if (!data_saida || !hora_saida || !autorizado_por || !motivo || !transporte) {
+                return alert("Preencha todos os campos obrigatórios.");
+            }
+
+            const payload = {
+                aluno_ra: selectedStudent.ra,
+                usuario_id: currentUser.id,
+                data_saida, hora_saida, autorizado_por, motivo, transporte, retorno
+            };
+
+            const btn = document.getElementById('btnSave');
+            btn.disabled = true;
+            btn.innerText = "Salvando...";
+
+            try {
+                let error;
+                if (id) {
+                    ({ error } = await window.supabaseClient.from('saidas').update(payload).eq('id', id));
+                } else {
+                    ({ error } = await window.supabaseClient.from('saidas').insert(payload));
+                }
+
+                if (error) throw error;
+                
+                showToast("Saída registada com sucesso!");
+                closeRecordModal();
+                fetchHistory();
+                checkGlobalExitAlerts(false); 
+            } catch (err) {
+                console.error(err);
+                alert("Erro ao salvar: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> Salvar`;
+                lucide.createIcons();
+            }
+        }
+
+        async function deleteRecord() {
+            const id = document.getElementById('recordId').value;
+            if (!id || !confirm("Tem certeza que deseja excluir este registo?")) return;
+
+            const { error } = await window.supabaseClient.from('saidas').delete().eq('id', id);
+            if (error) return alert(error.message);
+
+            showToast("Registo removido");
+            closeRecordModal();
+            fetchHistory();
+            checkGlobalExitAlerts(false);
+        }
+
+        function openPhotoZoom() {
+            if(!selectedStudent) return;
+            const modal = document.getElementById('photoModal');
+            document.getElementById('enlargedPhoto').src = document.getElementById('profileAvatar').src;
+            document.getElementById('enlargedName').innerText = selectedStudent.nome_completo;
+            modal.classList.remove('hidden');
+        }
+        function closePhotoModal() { document.getElementById('photoModal').classList.add('hidden'); }
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            t.classList.replace('opacity-0', 'opacity-100'); t.classList.replace('translate-y-20', 'translate-y-0');
+            setTimeout(() => { t.classList.replace('opacity-100', 'opacity-0'); t.classList.replace('translate-y-0', 'translate-y-20'); }, 2500);
+        }
+        function toggleSidebar() { if(window.SidebarComponent) SidebarComponent.toggleSidebar(); }
+        function toggleCategory(id) { if(window.SidebarComponent) SidebarComponent.toggleCategory(id); }
+        async function logout() { if(window.SidebarComponent) SidebarComponent.logout(); }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

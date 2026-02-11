@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grade Horária | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Importação do Componente de Sidebar -->
+    <script src="../../sidebar.js"></script>
+    <script src="../../assets/js/supabase_client.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        
+        /* Estilos da Sidebar (necessários para o container e animações do JS) */
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-collapsed .sidebar-text, .sidebar-collapsed .sidebar-category-header, .sidebar-collapsed .chevron-icon, .sidebar-collapsed .sidebar-category-title { display: none; }
+        .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
+        .sidebar-collapsed .logo-full { display: none; }
+        .sidebar-collapsed .logo-short { display: block; }
+        .logo-short { display: none; }
+
+        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.05); }
+        .category-content.open { max-height: 1000px; }
+        .rotate-180 { transform: rotate(180deg); }
+
+        /* Estilos da Grade com Colunas Iguais */
+        .grid-container {
+            display: grid;
+            grid-template-columns: 100px repeat(5, minmax(0, 1fr)); /* Força colunas de tamanho idêntico */
+            border: 1px solid #e2e8f0;
+            background: white;
+            border-radius: 1.5rem;
+            overflow: hidden;
+            table-layout: fixed;
+        }
+        .grid-header {
+            background: #f1f5f9;
+            padding: 0.75rem;
+            text-align: center;
+            font-weight: 800;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: #64748b;
+            border-bottom: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+            letter-spacing: 0.05em;
+        }
+        .time-cell {
+            padding: 0.5rem;
+            background: #f8fafc;
+            font-weight: 700;
+            font-size: 0.65rem;
+            color: #003c5b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+        }
+        .slot-cell {
+            min-height: 70px; /* Reduzido para evitar scroll excessivo */
+            padding: 0.35rem;
+            border-bottom: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+            transition: background 0.2s;
+            cursor: pointer;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .slot-cell:hover { background: #f0f9ff; }
+        
+        .break-row {
+            grid-column: span 6;
+            background: #fffbeb;
+            padding: 0.4rem;
+            text-align: center;
+            font-size: 0.6rem;
+            font-weight: 800;
+            color: #b45309;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            border-bottom: 1px solid #fde68a;
+        }
+        .lunch-row {
+            grid-column: span 6;
+            background: #f0fdf4;
+            padding: 0.6rem;
+            text-align: center;
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: #15803d;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            border-bottom: 1px solid #bbf7d0;
+        }
+        .class-card {
+            padding: 0.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            border-left-width: 4px;
+            overflow: hidden;
+        }
+
+        .mode-switch { display: flex; background: #f1f5f9; padding: 4px; border-radius: 12px; gap: 4px; }
+        .mode-btn { padding: 6px 12px; border-radius: 8px; font-size: 0.7rem; font-weight: 700; color: #64748b; transition: all 0.2s; }
+        .mode-btn.active { background: white; color: #003c5b; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+
+        /* Estilos do Buscador de Professor */
+        .finder-result-item {
+            transition: all 0.2s;
+            border: 1px solid #f1f5f9;
+        }
+        .finder-result-item:hover {
+            border-color: #c8d400;
+            background: #fdfdea;
+            transform: translateX(4px);
+        }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden">
+
+    <!-- SIDEBAR CONTAINER -->
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20">
+        <!-- Carregando... -->
+    </aside>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0">
+            <div class="flex flex-col">
+                <h1 class="text-xl font-bold text-fmm-dark tracking-tight">Grade Horária Académica</h1>
+                <p class="text-xs text-slate-400">Atribuições e tempos de aula</p>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <!-- Buscador de Professor -->
+                <button onclick="openFinderModal()" class="bg-white border-2 border-fmm-lime text-fmm-dark px-5 py-2.5 rounded-xl font-black text-xs flex items-center gap-2 transition-all hover:bg-fmm-lime/10 shadow-sm">
+                    <i data-lucide="search" class="w-4 h-4 text-fmm-lime"></i> Localizar Professor
+                </button>
+
+                <div class="mode-switch">
+                    <button onclick="setMode('turma')" id="btn-mode-turma" class="mode-btn active">Por Turma</button>
+                    <button onclick="setMode('professor')" id="btn-mode-professor" class="mode-btn">Por Professor</button>
+                </div>
+
+                <select id="selectPrincipal" onchange="handleSelectionChange()" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-fmm-dark min-w-[220px]">
+                    <option value="">Selecionar...</option>
+                </select>
+                
+                <button onclick="handleSelectionChange()" class="p-2.5 bg-slate-100 text-slate-400 hover:text-fmm-blue rounded-xl transition-all" title="Recarregar dados">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            <div class="grid-container shadow-xl">
+                <div class="grid-header">Horário</div>
+                <div class="grid-header">Segunda</div>
+                <div class="grid-header">Terça</div>
+                <div class="grid-header">Quarta</div>
+                <div class="grid-header">Quinta</div>
+                <div class="grid-header">Sexta</div>
+
+                <div id="grade-rows-container" class="contents"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL DE ATRIBUIÇÃO (CONTÉM EXCLUSÃO) -->
+    <div id="assignModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-md rounded-[32px] shadow-2xl flex flex-col animate-fade-in-up">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
+                <h2 class="text-xl font-bold text-fmm-dark" id="assignModalTitle">Atribuir Aula</h2>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-slate-100">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="p-8 space-y-5">
+                <div class="space-y-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Disciplina</label>
+                    <select id="modalDisc" onchange="handleModalDiscChange()" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm font-medium">
+                        <option value="">Selecionar Disciplina...</option>
+                    </select>
+                </div>
+
+                <!-- CAMPO NORMAL -->
+                <div id="divStandard" class="space-y-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1" id="labelSecondary">Responsável</label>
+                    <select id="modalSecondary" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm font-medium">
+                        <option value="">Selecione primeiro a disciplina...</option>
+                    </select>
+                </div>
+
+                <!-- CAMPO INGLÊS DIVIDIDO -->
+                <div id="divEnglish" class="hidden space-y-4 p-4 bg-fmm-blue/5 rounded-2xl border border-fmm-blue/10">
+                    <div class="flex items-center gap-2 mb-1">
+                        <i data-lucide="split" class="w-3.5 h-3.5 text-fmm-blue"></i>
+                        <span class="text-[10px] font-black text-fmm-blue uppercase tracking-widest">Subturmas Detectadas</span>
+                    </div>
+                    <div class="space-y-3">
+                        <div class="space-y-1">
+                            <label id="lblSubA" class="text-[9px] font-bold text-slate-400 uppercase ml-1">Grupo A</label>
+                            <input type="text" id="readProfA" class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-500" disabled>
+                        </div>
+                        <div class="space-y-1">
+                            <label id="lblSubB" class="text-[9px] font-bold text-slate-400 uppercase ml-1">Grupo B</label>
+                            <input type="text" id="readProfB" class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-500" disabled>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-8 border-t bg-slate-50/50 rounded-b-[32px] flex justify-between items-center gap-3">
+                <button id="btnRemoveAssignment" onclick="confirmRemoval()" class="hidden px-6 py-3 text-sm font-bold text-red-500 hover:text-red-700 transition-all flex items-center gap-2">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i> Remover
+                </button>
+                <div class="flex gap-3 ml-auto">
+                    <button onclick="closeModal()" class="px-6 py-3 text-sm font-bold text-slate-500 hover:text-slate-700">Cancelar</button>
+                    <button id="btnConfirmAtomic" onclick="confirmAssignment()" class="bg-fmm-lime text-fmm-dark font-bold text-sm px-8 py-3 rounded-2xl shadow-xl shadow-fmm-lime/20 hover:scale-105 active:scale-95 transition-all">
+                        Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL BUSCADOR DE PROFESSOR -->
+    <div id="finderModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-lg rounded-[32px] shadow-2xl flex flex-col animate-fade-in-up overflow-hidden max-h-[85vh]">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
+                <div class="flex flex-col">
+                    <h2 class="text-xl font-bold text-fmm-dark">Localizar Professor</h2>
+                    <p class="text-[10px] text-fmm-blue font-black uppercase tracking-widest mt-1" id="finderClock">Agora: --:--</p>
+                </div>
+                <button onclick="document.getElementById('finderModal').classList.add('hidden')" class="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-slate-100">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 bg-slate-50 border-b border-slate-100">
+                <div class="relative group">
+                    <i data-lucide="search" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
+                    <input type="text" id="finderSearchInput" oninput="filterFinderResults(this.value)" placeholder="Nome do professor..." class="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-fmm-blue/5 focus:border-fmm-blue transition-all font-medium">
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar bg-white" id="finderResults">
+                <!-- Resultados injetados via JS -->
+            </div>
+
+            <div class="p-6 border-t bg-slate-50 flex justify-between items-center">
+                <span id="finderStatusLabel" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">A aguardar pesquisa...</span>
+                <button onclick="document.getElementById('finderModal').classList.add('hidden')" class="px-6 py-2 text-xs font-bold text-slate-500">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'turma'; 
+        let currentTargetCell = null, currentDay = null, currentPeriod = null;
+        let localScheduleState = []; 
+        let listProfessores = [], listTurmas = [], listVinculos = [], listDisciplinasRegular = [], listSubturmas = [];
+        let userLevels = [];
+        let finderCurrentData = []; // Cache do snapshot atual para o buscador
+
+        // Mapeamento de Séries por Nível
+        const seriesByLevel = {
+            'EF1': ['5º Ano'],
+            'EF2': ['6º Ano', '7º Ano', '8º Ano', '9º Ano'],
+            'EMT': ['1ª Série', '2ª Série', '3ª Série']
+        };
+
+        async function initGrade() {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) return window.location.href = '../../index.html'; 
+            
+            // --- CAPTURA DE CONTEXTO DO USUÁRIO ---
+            const { data: profile } = await supabaseClient.from('perfis').select('cargo, niveis_acesso').eq('id', user.id).single();
+            
+            if (profile) {
+                if (profile.cargo === 'diretor') {
+                    userLevels = ['EF1', 'EF2', 'EMT'];
+                } else {
+                    userLevels = profile.niveis_acesso || [];
+                }
+            } else {
+                userLevels = ['EF1', 'EF2', 'EMT'];
+            }
+
+            await SidebarComponent.render('sidebar-container');
+            renderGradeSkeleton();
+
+            try {
+                // Filtra turmas pelo nível autorizado
+                const { data: turmas } = await supabaseClient.from('turmas').select('*').order('nome');
+                listTurmas = turmas ? turmas.filter(t => userLevels.includes(t.nivel)) : [];
+
+                const { data: discs } = await supabaseClient.from('disciplinas').select('*').order('nome');
+                listDisciplinasRegular = discs || [];
+
+                const { data: profs } = await supabaseClient.from('perfis').select('id, nome_completo').eq('cargo', 'professor').order('nome_completo');
+                listProfessores = profs || [];
+                
+                const { data: vinculos } = await supabaseClient.from('professor_disciplinas').select('*');
+                listVinculos = vinculos || [];
+
+                const { data: subs } = await supabaseClient.from('subturmas').select('*');
+                listSubturmas = subs || [];
+
+                populateModalDisciplines();
+                updatePrincipalSelector();
+            } catch (err) { console.error(err); }
+            lucide.createIcons();
+        }
+
+        function populateModalDisciplines() {
+             let optionsHTML = '<option value="">Selecionar Disciplina...</option>';
+             optionsHTML += listDisciplinasRegular.map(d => `<option value="${d.sigla}">${d.nome} (${d.sigla})</option>`).join('');
+             document.getElementById('modalDisc').innerHTML = optionsHTML;
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('btn-mode-turma').classList.toggle('active', mode === 'turma');
+            document.getElementById('btn-mode-professor').classList.toggle('active', mode === 'professor');
+            updatePrincipalSelector();
+            clearGridUI();
+            localScheduleState = [];
+        }
+
+        function updatePrincipalSelector() {
+            const select = document.getElementById('selectPrincipal');
+            select.innerHTML = '<option value="">Selecionar...</option>';
+            
+            if (currentMode === 'turma') {
+                listTurmas.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id;
+                    opt.innerText = `${t.nome} (${t.serie})`;
+                    select.appendChild(opt);
+                });
+            } else {
+                // --- LÓGICA DE FILTRAGEM DE PROFESSORES POR NÍVEL ---
+                
+                // 1. Identifica quais séries são permitidas
+                let allowedSeries = [];
+                userLevels.forEach(lvl => {
+                    if (seriesByLevel[lvl]) allowedSeries = allowedSeries.concat(seriesByLevel[lvl]);
+                });
+
+                // 2. Identifica quais disciplinas pertencem aos níveis permitidos
+                const allowedDisciplinasSiglas = listDisciplinasRegular
+                    .filter(d => d.series && d.series.some(s => allowedSeries.includes(s)))
+                    .map(d => d.sigla);
+
+                // 3. Identifica quais professores estão vinculados a essas disciplinas permitidas
+                const allowedProfIds = listVinculos
+                    .filter(v => allowedDisciplinasSiglas.includes(v.sigla_disciplina))
+                    .map(v => v.id_professor);
+
+                // 4. Filtra a lista mestre de professores
+                const filteredProfs = listProfessores.filter(p => allowedProfIds.includes(p.id));
+
+                filteredProfs.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.innerText = p.nome_completo;
+                    select.appendChild(opt);
+                });
+            }
+        }
+
+        function checkIsIngles(sigla, nome) {
+            const normalizedNome = nome ? nome.toUpperCase() : "";
+            return sigla === 'L.ING' || normalizedNome === 'LÍNGUA INGLESA' || normalizedNome.includes('INGLÊS');
+        }
+
+        function handleModalDiscChange() {
+            const sigla = document.getElementById('modalDisc').value;
+            const principalId = document.getElementById('selectPrincipal').value;
+            const disc = listDisciplinasRegular.find(d => d.sigla === sigla);
+            const isIngles = checkIsIngles(sigla, disc?.nome);
+
+            const divStd = document.getElementById('divStandard');
+            const divEng = document.getElementById('divEnglish');
+
+            if (currentMode === 'turma' && isIngles) {
+                const subs = listSubturmas.filter(s => s.id_turma_origem === principalId);
+                if (subs.length >= 2) {
+                    divStd.classList.add('hidden');
+                    divEng.classList.remove('hidden');
+                    document.getElementById('lblSubA').innerText = subs[0].nome;
+                    document.getElementById('lblSubB').innerText = subs[1].nome;
+                    document.getElementById('readProfA').value = listProfessores.find(p => p.id === subs[0].id_professor)?.nome_completo || "Sem Professor";
+                    document.getElementById('readProfB').value = listProfessores.find(p => p.id === subs[1].id_professor)?.nome_completo || "Sem Professor";
+                    lucide.createIcons();
+                    return;
+                }
+            }
+            divStd.classList.remove('hidden');
+            divEng.classList.add('hidden');
+            filterSecondaryOptions();
+        }
+
+        function filterSecondaryOptions() {
+            const sigla = document.getElementById('modalDisc').value;
+            const selectSec = document.getElementById('modalSecondary');
+            const labelSec = document.getElementById('labelSecondary');
+            if (!sigla) { selectSec.innerHTML = '<option value="">Selecione a disciplina...</option>'; selectSec.disabled = true; return; }
+            if (currentMode === 'turma') {
+                labelSec.innerText = "Professor Responsável"; selectSec.disabled = false;
+                const idsPermitidos = listVinculos.filter(v => v.sigla_disciplina === sigla).map(v => v.id_professor);
+                const profsFiltrados = listProfessores.filter(p => idsPermitidos.includes(p.id));
+                selectSec.innerHTML = profsFiltrados.length === 0 ? '<option value="">Sem vínculos</option>' : '<option value="">Selecionar Professor...</option>' + profsFiltrados.map(p => `<option value="${p.id}">${p.nome_completo}</option>`).join('');
+            } else {
+                labelSec.innerText = "Turma"; selectSec.disabled = false;
+                selectSec.innerHTML = '<option value="">Selecionar Turma...</option>' + listTurmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
+            }
+        }
+
+        function renderGradeSkeleton() {
+            const container = document.getElementById('grade-rows-container');
+            const times = [
+                { start: "07:00", end: "07:50", p: 1 },
+                { start: "07:50", end: "08:40", p: 2 },
+                { start: "08:40", end: "09:30", p: 3 },
+                { break: "09:30 às 09:50 - Lanche da Manhã" },
+                { start: "09:50", end: "10:40", p: 4 },
+                { start: "10:40", end: "11:30", p: 5 },
+                { lunch: "11:30 às 13:00 - Almoço" },
+                { start: "13:00", end: "13:50", p: 6 },
+                { start: "13:50", end: "14:40", p: 7 },
+                { start: "14:40", end: "15:30", p: 8 },
+                { break: "15:30 às 15:50 - Lanche da tarde" },
+                { start: "15:50", end: "16:40", p: 9 },
+                { start: "16:40", end: "17:30", p: 10}
+            ];
+            const days = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
+            let html = '';
+            times.forEach(item => {
+                if (item.break) html += `<div class="break-row">${item.break}</div>`;
+                else if (item.lunch) html += `<div class="lunch-row">${item.lunch}</div>`;
+                else {
+                    html += `<div class="time-cell"><span>${item.start}</span></div>`;
+                    days.forEach(day => html += `<div class="slot-cell" id="${day}-${item.p}" onclick="assignClass(this, '${day}', ${item.p})"></div>`);
+                }
+            });
+            container.innerHTML = html;
+        }
+
+        async function handleSelectionChange() {
+            const principalId = document.getElementById('selectPrincipal').value;
+            clearGridUI(); localScheduleState = []; 
+            if (!principalId) return;
+            let query = supabaseClient.from('grade_horaria').select('*, perfis(nome_completo), disciplinas(nome, cor, tipo, sigla), turmas(nome), subturmas(nome)');
+            if (currentMode === 'turma') query = query.eq('id_turma', principalId);
+            else query = query.eq('id_professor', principalId);
+            const { data, error } = await query;
+            if (error) return console.error(error);
+            
+            localScheduleState = data.map(item => ({ 
+                id_turma: item.id_turma, 
+                dia_semana: item.dia_semana, 
+                numero_tempo: item.numero_tempo, 
+                sigla_disciplina: item.sigla_disciplina, 
+                id_professor: item.id_professor,
+                id_subturma: item.id_subturma
+            }));
+
+            const grouped = {};
+            data.forEach(item => {
+                const key = `${item.dia_semana}-${item.numero_tempo}`;
+                if(!grouped[key]) grouped[key] = [];
+                grouped[key].push(item);
+            });
+
+            Object.keys(grouped).forEach(key => {
+                const cell = document.getElementById(key);
+                if (cell) {
+                    grouped[key].forEach(item => {
+                        const d = item.disciplinas;
+                        const discDisplayName = d ? (d.tipo === 'BCC' ? d.nome : d.sigla) : item.sigla_disciplina;
+                        const subInfo = item.subturmas ? `[${item.subturmas.nome}] ` : "";
+                        const title = currentMode === 'turma' ? discDisplayName : (item.turmas ? item.turmas.nome : 'Extra');
+                        const subtitle = currentMode === 'turma' ? `${subInfo}${item.perfis ? item.perfis.nome_completo : 'N/A'}` : discDisplayName;
+                        updateCellUI(cell, title, subtitle, d?.cor || '#334155');
+                    });
+                }
+            });
+        }
+
+        function updateCellUI(cell, line1, line2, cor) {
+            const card = document.createElement('div');
+            card.className = "class-card animate-fade-in-up";
+            card.style.borderLeftColor = cor;
+            card.style.backgroundColor = cor + '10';
+            card.innerHTML = `
+                <span class="text-[9px] font-black uppercase truncate leading-tight" style="color: ${cor}">${line1}</span>
+                <span class="text-[8px] text-slate-400 font-bold truncate mt-0.5">${line2}</span>
+            `;
+            cell.appendChild(card);
+        }
+
+        function clearGridUI() { document.querySelectorAll('.slot-cell').forEach(c => c.innerHTML = ''); }
+
+        function assignClass(cell, day, period) {
+            if (!document.getElementById('selectPrincipal').value) return alert("Selecione primeiro uma opção no topo.");
+            currentTargetCell = cell; currentDay = day; currentPeriod = period;
+            
+            const existing = localScheduleState.filter(x => x.dia_semana === day && x.numero_tempo === period);
+            const btnRemove = document.getElementById('btnRemoveAssignment');
+
+            document.getElementById('modalDisc').value = '';
+            document.getElementById('modalSecondary').innerHTML = '<option value="">Selecione a disciplina...</option>';
+            document.getElementById('divEnglish').classList.add('hidden');
+            document.getElementById('divStandard').classList.remove('hidden');
+            
+            if (currentMode === 'turma') {
+                document.getElementById('labelSecondary').innerText = "Professor Responsável";
+                populateModalDisciplines();
+            } else {
+                document.getElementById('labelSecondary').innerText = "Turma";
+                const professorId = document.getElementById('selectPrincipal').value;
+                const minhasDisciplinasSiglas = listVinculos.filter(v => v.id_professor === professorId).map(v => v.sigla_disciplina);
+                const minhasDisciplinas = listDisciplinasRegular.filter(d => minhasDisciplinasSiglas.includes(d.sigla));
+                document.getElementById('modalDisc').innerHTML = '<option value="">Selecionar Disciplina...</option>' + minhasDisciplinas.map(d => `<option value="${d.sigla}">${d.nome} (${d.sigla})</option>`).join('');
+            }
+            
+            if (existing.length > 0) {
+                document.getElementById('modalDisc').value = existing[0].sigla_disciplina;
+                handleModalDiscChange();
+                if (existing.length < 2) {
+                    document.getElementById('modalSecondary').value = currentMode === 'turma' ? existing[0].id_professor : existing[0].id_turma;
+                }
+                btnRemove.classList.remove('hidden');
+            } else {
+                btnRemove.classList.add('hidden');
+            }
+            
+            document.getElementById('assignModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeModal() { document.getElementById('assignModal').classList.add('hidden'); }
+
+        async function confirmAssignment() {
+            const sigla = document.getElementById('modalDisc').value;
+            const principalId = document.getElementById('selectPrincipal').value;
+            if (!sigla) return alert("Selecione a disciplina.");
+
+            const btn = document.getElementById('btnConfirmAtomic');
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = "Salvando...";
+
+            try {
+                let deleteQuery = supabaseClient.from('grade_horaria')
+                    .delete()
+                    .eq('dia_semana', currentDay)
+                    .eq('numero_tempo', currentPeriod);
+
+                if (currentMode === 'turma') deleteQuery = deleteQuery.eq('id_turma', principalId);
+                else deleteQuery = deleteQuery.eq('id_professor', principalId);
+
+                const { error: delError } = await deleteQuery;
+                if (delError) throw delError;
+
+                let payload = [];
+                const disc = listDisciplinasRegular.find(d => d.sigla === sigla);
+                const isIngles = checkIsIngles(sigla, disc?.nome);
+
+                if (currentMode === 'turma' && isIngles) {
+                    const subs = listSubturmas.filter(s => s.id_turma_origem === principalId);
+                    if (subs.length >= 2) {
+                        subs.forEach(s => {
+                            payload.push({ 
+                                id_turma: principalId, 
+                                dia_semana: currentDay, 
+                                numero_tempo: currentPeriod, 
+                                sigla_disciplina: sigla, 
+                                id_professor: s.id_professor,
+                                id_subturma: s.id
+                            });
+                        });
+                    } else {
+                        throw new Error("Subturmas não configuradas para esta turma.");
+                    }
+                } else {
+                    const secondaryId = document.getElementById('modalSecondary').value;
+                    if (!secondaryId) throw new Error("Selecione o responsável.");
+                    let profId, turmaId;
+                    if (currentMode === 'turma') { turmaId = principalId; profId = secondaryId; } 
+                    else { profId = principalId; turmaId = secondaryId; }
+                    payload.push({ id_turma: turmaId, dia_semana: currentDay, numero_tempo: currentPeriod, sigla_disciplina: sigla, id_professor: profId, id_subturma: null });
+                }
+
+                const { error: insError } = await supabaseClient.from('grade_horaria').insert(payload);
+                if (insError) throw insError;
+
+                await handleSelectionChange();
+                closeModal();
+
+            } catch (err) {
+                console.error(err);
+                alert("Erro ao salvar: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+        }
+
+        async function clearSlot() {
+            if (!confirm("Remover esta aula da grade?")) return;
+            const principalId = document.getElementById('selectPrincipal').value;
+            
+            try {
+                let deleteQuery = supabaseClient.from('grade_horaria')
+                    .delete()
+                    .eq('dia_semana', currentDay)
+                    .eq('numero_tempo', currentPeriod);
+
+                if (currentMode === 'turma') deleteQuery = deleteQuery.eq('id_turma', principalId);
+                else deleteQuery = deleteQuery.eq('id_professor', principalId);
+
+                const { error } = await deleteQuery;
+                if(error) throw error;
+                
+                await handleSelectionChange();
+                closeModal();
+            } catch (err) {
+                alert("Erro ao remover: " + err.message);
+            }
+        }
+
+        function confirmRemoval() {
+            clearSlot();
+        }
+
+        function getCurrentPeriod() {
+            const now = new Date();
+            const timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+            
+            const schedule = [
+                { p: 1, start: "07:00", end: "07:50" },
+                { p: 2, start: "07:50", end: "08:40" },
+                { p: 3, start: "08:40", end: "09:30" },
+                { break: "Lanche Manhã", start: "09:30", end: "09:50" },
+                { p: 4, start: "09:50", end: "10:40" },
+                { p: 5, start: "10:40", end: "11:30" },
+                { break: "Almoço", start: "11:30", end: "13:00" },
+                { p: 6, start: "13:00", end: "13:50" },
+                { p: 7, start: "13:50", end: "14:40" },
+                { p: 8, start: "14:40", end: "15:30" },
+                { break: "Lanche Tarde", start: "15:30", end: "15:50" },
+                { p: 9, start: "15:50", end: "16:40" },
+                { p:10, start: "16:40", end: "17:30"}
+            ];
+
+            const current = schedule.find(s => timeStr >= s.start && timeStr < s.end);
+            return current || { break: "Fora de Horário" };
+        }
+
+        async function openFinderModal() {
+            const modal = document.getElementById('finderModal');
+            const results = document.getElementById('finderResults');
+            const status = document.getElementById('finderStatusLabel');
+            const clock = document.getElementById('finderClock');
+            
+            document.getElementById('finderSearchInput').value = '';
+            results.innerHTML = '<div class="flex flex-col items-center py-10 opacity-30"><i data-lucide="loader-2" class="w-8 h-8 animate-spin mb-2"></i><span>Localizando...</span></div>';
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+
+            const now = new Date();
+            const dayMap = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+            const currentDay = dayMap[now.getDay()];
+            const timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+            clock.innerText = `Agora: ${currentDay}, ${timeStr}`;
+
+            if (currentDay === 'DOM' || currentDay === 'SAB') {
+                results.innerHTML = '<div class="py-10 text-center text-slate-400 italic">Fim de semana. Nenhuma aula ativa.</div>';
+                status.innerText = "Instituição Fechada";
+                return;
+            }
+
+            const period = getCurrentPeriod();
+            if (period.break) {
+                results.innerHTML = `<div class="py-10 text-center text-amber-500 font-bold uppercase tracking-widest flex flex-col items-center gap-2"><i data-lucide="coffee" class="w-10 h-10"></i><span>${period.break}</span></div>`;
+                status.innerText = "Período de Intervalo";
+                lucide.createIcons();
+                return;
+            }
+
+            // --- LÓGICA DE FILTRAGEM POR NÍVEL NO FINDER ---
+            // Buscamos apenas aulas em turmas que pertençam ao nível autorizado
+            const { data, error } = await supabaseClient
+                .from('grade_horaria')
+                .select('*, perfis(nome_completo), turmas!inner(nome, nivel), disciplinas(nome, sigla, tipo)')
+                .eq('dia_semana', currentDay)
+                .eq('numero_tempo', period.p)
+                .in('turmas.nivel', userLevels);
+
+            if (error) {
+                results.innerHTML = '<p class="text-red-500">Erro ao consultar base.</p>';
+                return;
+            }
+
+            finderCurrentData = data || [];
+            renderFinderResults(finderCurrentData);
+            status.innerText = `${finderCurrentData.length} Professores em sala agora`;
+        }
+
+        function renderFinderResults(data) {
+            const results = document.getElementById('finderResults');
+            if (data.length === 0) {
+                results.innerHTML = '<p class="text-center text-slate-400 py-10 italic">Nenhuma aula registrada para este tempo.</p>';
+                return;
+            }
+
+            results.innerHTML = data.map(item => {
+                const discName = item.disciplinas ? (item.disciplinas.tipo === 'BCC' ? item.disciplinas.nome : item.disciplinas.sigla) : item.sigla_disciplina;
+                return `
+                <div class="finder-result-item p-4 rounded-2xl flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center font-bold text-slate-500">${item.perfis.nome_completo.charAt(0)}</div>
+                        <div class="flex flex-col">
+                            <span class="text-sm font-black text-fmm-dark">${item.perfis.nome_completo}</span>
+                            <span class="text-[9px] text-fmm-blue font-black uppercase tracking-widest">${discName}</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase">Sala / Turma</span>
+                        <span class="text-sm font-black text-fmm-lime bg-fmm-dark px-3 py-1 rounded-lg">${item.turmas.nome}</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function filterFinderResults(val) {
+            const filtered = finderCurrentData.filter(i => i.perfis.nome_completo.toLowerCase().includes(val.toLowerCase()));
+            renderFinderResults(filtered);
+        }
+
+        window.onload = () => { initGrade(); };
+    </script>
+</body>
+</html>

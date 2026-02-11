@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notas | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- TASK 3.2.1: Importação do Cliente Global Supabase -->
+    <script src="../assets/js/supabase_client.js"></script>
+    <!-- TASK 2.3.1: Importação do Componente de Sidebar -->
+    <script src="../sidebar.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f1f5f9'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; overflow: hidden; }
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-collapsed .sidebar-text, .sidebar-collapsed .sidebar-category-header, .sidebar-collapsed .chevron-icon, .sidebar-collapsed .sidebar-category-title { display: none; }
+        .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
+        .sidebar-collapsed .logo-full { display: none; }
+        .sidebar-collapsed .logo-short { display: block; }
+        .logo-short { display: none; }
+        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.05); }
+        .category-content.open { max-height: 1000px; }
+        .rotate-180 { transform: rotate(180deg); }
+
+        .grade-input { 
+            width: 54px; text-align: center; border-radius: 10px; border: 2px solid #e2e8f0; 
+            padding: 6px 2px; font-weight: 800; font-size: 13px; transition: all 0.2s; background: white;
+        }
+        .grade-input:focus { border-color: #00638f; outline: none; background: #fff; transform: scale(1.05); z-index: 10; box-shadow: 0 0 0 3px rgba(0, 99, 143, 0.1); }
+        .grade-input:disabled { background: #f8fafc; color: #cbd5e1; cursor: not-allowed; border-color: #f1f5f9; border-style: dashed; }
+        .grade-low { color: #ef4444; border-color: #fecaca; background: #fef2f2; }
+        .grade-ok { color: #00638f; border-color: #e2e8f0; }
+
+        .sticky-header { position: sticky; top: 0; z-index: 30; background: #0f172a; }
+        .sticky-col { position: sticky; left: 0; background: white; z-index: 20; border-right: 2px solid #cbd5e1; }
+        .sticky-intersect { position: sticky; top: 0; left: 0; z-index: 40; background: #0f172a; border-right: 2px solid rgba(255,255,255,0.1); }
+        .group:hover .sticky-col { background: #f8fafc; }
+
+        .tab-btn { padding: 8px 16px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; border-radius: 12px; transition: all 0.2s; display: flex; align-items: center; gap: 6px; color: #64748b; white-space: nowrap; }
+        .tab-btn.active { background: #003c5b; color: white; box-shadow: 0 4px 10px rgba(0, 60, 91, 0.15); }
+
+        .custom-scrollbar::-webkit-scrollbar { height: 10px; width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; border: 3px solid #f1f5f9; }
+
+        .student-photo { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; cursor: pointer; transition: transform 0.2s; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .student-photo:hover { transform: scale(1.1); }
+
+        .top-bar-select { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; color: #003c5b; outline: none; transition: all 0.2s; min-width: 140px; }
+        .top-bar-select:focus { border-color: #00638f; background: white; box-shadow: 0 0 0 4px rgba(0, 99, 143, 0.05); }
+
+        .intervention-wrapper { position: relative; display: inline-block; }
+        .intervention-badge { 
+            position: absolute; top: -6px; right: -6px; background: #003c5b; color: #c8d400; border-radius: 5px; 
+            padding: 2.5px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 25; border: 1.5px solid white;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        .animate-slide { animation: slideInRight 0.4s ease-out forwards; }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden">
+
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-30 shadow-sm flex-shrink-0">
+            <div class="flex items-center gap-6">
+                <div class="flex flex-col">
+                    <h1 class="text-base font-black text-fmm-dark tracking-tight flex items-center gap-2">
+                        <span class="w-1.5 h-4 bg-fmm-lime rounded-full"></span>
+                        Diário
+                    </h1>
+                </div>
+
+                <div class="h-8 w-px bg-slate-100 hidden md:block"></div>
+
+                <div class="flex items-center gap-3">
+                    <select id="selectTurma" onchange="loadGradeTable()" class="top-bar-select">
+                        <option value="">Turma...</option>
+                    </select>
+                    <select id="selectDisc" onchange="loadGradeTable()" class="top-bar-select w-48">
+                        <option value="">Disciplina...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="period-tabs" class="hidden lg:flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200">
+                <button onclick="switchView('anual')" class="tab-btn active" id="tab-anual">Anual</button>
+                <button onclick="switchView('1_TRIMESTRE')" class="tab-btn" id="tab-1_TRIMESTRE">1º Trim</button>
+                <button onclick="switchView('2_TRIMESTRE')" class="tab-btn" id="tab-2_TRIMESTRE">2º Trim</button>
+                <button onclick="switchView('3_TRIMESTRE')" class="tab-btn" id="tab-3_TRIMESTRE">3º Trim</button>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div id="sync-status" class="hidden items-center gap-2 px-3 py-1.5 bg-fmm-blue/5 rounded-full border border-fmm-blue/10 animate-pulse">
+                    <i data-lucide="refresh-ccw" class="w-3.5 h-3.5 text-fmm-blue"></i>
+                    <span class="text-[9px] font-black text-fmm-blue uppercase">Sinc...</span>
+                </div>
+
+                <div class="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
+                    <i data-lucide="users" class="w-4 h-4 text-slate-400"></i>
+                    <span id="student-count" class="text-sm font-black text-fmm-dark">00</span>
+                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Alunos</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-auto custom-scrollbar bg-slate-50" id="table-scroll-container">
+            <div id="loading-overlay" class="hidden h-full flex flex-col items-center justify-center text-slate-300 gap-4">
+                <i data-lucide="loader-2" class="w-12 h-12 animate-spin text-fmm-blue"></i>
+                <p class="text-sm font-bold uppercase tracking-widest">A carregar matriz...</p>
+            </div>
+            <div id="empty-view" class="h-full flex flex-col items-center justify-center p-20 text-center">
+                <div class="w-20 h-20 bg-white rounded-full shadow-xl flex items-center justify-center mb-6 border border-slate-100">
+                    <i data-lucide="layers" class="w-10 h-10 text-slate-200"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-400">Selecione os filtros</h3>
+                <p class="text-sm text-slate-300 italic">O diário de notas será exibido aqui.</p>
+            </div>
+            <div id="table-wrapper" class="hidden inline-block align-middle min-w-full">
+                <table class="min-w-full border-separate border-spacing-0 text-left" id="notasTable">
+                    <thead id="tableHeader"></thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-100 bg-white"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL FOTO -->
+    <div id="photoModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onclick="closePhotoModal()">
+        <div class="relative animate-fade-in-up" onclick="event.stopPropagation()">
+            <button onclick="closePhotoModal()" class="absolute -top-12 -right-4 text-white hover:text-fmm-lime transition-colors">
+                <i data-lucide="x" class="w-8 h-8"></i>
+            </button>
+            <img id="enlargedPhoto" src="" class="max-w-[90vw] max-h-[80vh] rounded-[40px] shadow-2xl border-4 border-white/10 object-contain">
+            <div id="enlargedName" class="mt-4 text-center text-white font-bold text-lg tracking-tight"></div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="fixed bottom-8 right-8 z-50 translate-y-20 opacity-0 transition-all duration-500">
+        <div class="bg-slate-900 text-white px-8 py-5 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/5">
+            <div class="w-8 h-8 bg-fmm-lime/20 rounded-full flex items-center justify-center" id="toast-icon-container">
+                <i data-lucide="check" class="w-4 h-4 text-fmm-lime" id="toast-icon"></i>
+            </div>
+            <span class="text-xs font-bold tracking-tight" id="toast-msg">Sincronizado</span>
+        </div>
+    </div>
+
+    <script>
+        // TASK 3.2.1: supabaseClient agora é global vindo de ../assets/js/supabase_client.js
+
+        let currentUser = null;
+        let saveTimers = {};
+        let currentView = 'anual'; 
+        let globalMatriculas = [];
+        let globalNotas = [];
+        let globalAnual = [];
+        let currentDiscType = 'BCC';
+        let currentDiscSigla = '';
+
+        function formatDriveUrl(url) {
+            if (!url) return null;
+            if (url.includes('drive.google.com') && url.includes('/file/d/')) {
+                const idMatch = url.match(/\/d\/(.*?)\//);
+                if (idMatch && idMatch[1]) return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
+            }
+            return url;
+        }
+
+        async function init() {
+            if(window.SidebarComponent) await window.SidebarComponent.render('sidebar-container');
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if (!user) return window.location.href = '../index.html';
+            const { data: profile } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).single();
+            currentUser = profile;
+            await populateSelectors();
+            lucide.createIcons();
+        }
+
+        async function populateSelectors() {
+            const selectT = document.getElementById('selectTurma');
+            const selectD = document.getElementById('selectDisc');
+            let turmas = [], disciplinas = [];
+            if (currentUser.cargo === 'coordenador' || currentUser.cargo === 'diretor') {
+                const { data: t } = await window.supabaseClient.from('turmas').select('*').order('nome');
+                const { data: d } = await window.supabaseClient.from('disciplinas').select('*').order('nome');
+                turmas = t || []; disciplinas = d || [];
+            } else {
+                const { data: grade } = await window.supabaseClient.from('grade_horaria').select('id_turma, turmas(*)').eq('id_professor', currentUser.id);
+                turmas = Array.from(new Map(grade.map(g => [g.id_turma, g.turmas])).values())
+                             .filter(t => t !== null)
+                             .sort((a, b) => a.nome.localeCompare(b.nome, undefined, { numeric: true, sensitivity: 'base' }));
+
+                const { data: vinculos = [] } = await window.supabaseClient.from('professor_disciplinas').select('sigla_disciplina, disciplinas(*)').eq('id_professor', currentUser.id);
+                disciplinas = vinculos.map(v => v.disciplinas).filter(d => d !== null);
+                disciplinas.sort((a, b) => a.nome.localeCompare(b.nome));
+            }
+            selectT.innerHTML = '<option value="">Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
+            selectD.innerHTML = '<option value="">Disciplina...</option>' + disciplinas.map(d => `<option value="${d.sigla}" data-tipo="${d.tipo}">${d.nome} (${d.sigla})</option>`).join('');
+        }
+
+        function switchView(view) {
+            currentView = view;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            const tab = document.getElementById(`tab-${view}`);
+            if(tab) tab.classList.add('active');
+            renderTable();
+        }
+
+        async function loadGradeTable() {
+            const turmaId = document.getElementById('selectTurma').value;
+            const discSelect = document.getElementById('selectDisc');
+            currentDiscSigla = discSelect.value;
+            currentDiscType = discSelect.options[discSelect.selectedIndex]?.dataset.tipo;
+
+            if (!turmaId || !currentDiscSigla) {
+                document.getElementById('table-wrapper').classList.add('hidden');
+                document.getElementById('empty-view').classList.remove('hidden');
+                document.getElementById('period-tabs').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('empty-view').classList.add('hidden');
+            document.getElementById('loading-overlay').classList.remove('hidden');
+            document.getElementById('table-wrapper').classList.add('hidden');
+            
+            if (document.getElementById('period-tabs')) document.getElementById('period-tabs').classList.toggle('hidden', currentDiscType !== 'BCC');
+
+            try {
+                // --- LÓGICA DE SUBTURMA (INGLÊS) ---
+                const { data: discInfo } = await window.supabaseClient.from('disciplinas').select('nome').eq('sigla', currentDiscSigla).maybeSingle();
+                const isIngles = currentDiscSigla === 'L.ING' || discInfo?.nome?.toUpperCase().includes('INGLÊS');
+
+                let matriculasQuery = window.supabaseClient.from('matriculas')
+                    .select('id, ra_aluno, alunos:ra_aluno(nome_completo, url_foto, id_subturma_ingles)')
+                    .eq('id_turma', turmaId)
+                    .eq('status', 'CURSANDO')
+                    .eq('ano_letivo', 2026);
+
+                if (isIngles && currentUser.cargo === 'professor') {
+                    const { data: subturma } = await window.supabaseClient.from('subturmas')
+                        .select('id')
+                        .eq('id_turma_origem', turmaId)
+                        .eq('id_professor', currentUser.id)
+                        .maybeSingle();
+
+                    if (subturma) {
+                        matriculasQuery = matriculasQuery.eq('alunos.id_subturma_ingles', subturma.id);
+                    } else {
+                        globalMatriculas = [];
+                        renderTable();
+                        document.getElementById('table-wrapper').classList.remove('hidden');
+                        document.getElementById('loading-overlay').classList.add('hidden');
+                        return;
+                    }
+                }
+
+                const { data: matriculas } = await matriculasQuery;
+                
+                // --- CORREÇÃO DE SEGURANÇA: Filtrar matrículas que não possuem dados de aluno vinculados ---
+                globalMatriculas = (matriculas || []).filter(m => m.alunos !== null);
+                
+                if (currentDiscType === 'BCC') {
+                    const { data: nb } = await window.supabaseClient.from('notas_basica').select('*').eq('sigla_disciplina', currentDiscSigla);
+                    const { data: ab } = await window.supabaseClient.from('anual_basica').select('*').eq('sigla_disciplina', currentDiscSigla);
+                    globalNotas = nb || []; globalAnual = ab || [];
+                } else {
+                    const { data: nt } = await window.supabaseClient.from('notas_tecnica').select('*').eq('sigla_disciplina', currentDiscSigla);
+                    globalNotas = nt || [];
+                }
+
+                // --- ORDENAÇÃO ROBUSTA: Verifica a existência do objeto antes de comparar ---
+                globalMatriculas.sort((a, b) => {
+                    const nomeA = a.alunos?.nome_completo || "";
+                    const nomeB = b.alunos?.nome_completo || "";
+                    return nomeA.localeCompare(nomeB);
+                });
+
+                const countEl = document.getElementById('student-count');
+                if(countEl) countEl.innerText = globalMatriculas.length.toString().padStart(2, '0');
+
+                renderTable();
+                document.getElementById('table-wrapper').classList.remove('hidden');
+            } catch (err) { console.error(err); } finally { document.getElementById('loading-overlay').classList.add('hidden'); lucide.createIcons(); }
+        }
+
+        function renderTable() {
+            const header = document.getElementById('tableHeader');
+            const body = document.getElementById('tableBody');
+            if (!header || !body) return;
+            if (currentDiscType === 'BCC') renderBCC(header, body);
+            else renderTecnica(header, body);
+            lucide.createIcons(); 
+        }
+
+        function renderInterventionIndicator(isChanged) {
+            if (!isChanged) return '';
+            return `<div class="intervention-badge" title="Nota alterada administrativamente pela Coordenação"><i data-lucide="shield-check" class="w-3 h-3"></i></div>`;
+        }
+
+        function renderBCC(header, body) {
+            let headHTML = `<tr><th class="px-8 py-6 sticky-intersect border-r border-white/5 min-w-[300px] text-white text-[10px] font-black uppercase tracking-widest">Aluno</th>`;
+            if (currentView === 'anual') {
+                headHTML += `<th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">1º Trim</th>
+                             <th class="text-center py-6 sticky-header bg-slate-700 text-white text-[10px] font-black uppercase">2º Trim</th>
+                             <th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">3º Trim</th>
+                             <th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase">M. Anual</th>
+                             <th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase">R. Final</th>
+                             <th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase border-r border-white/10">Conselho</th>
+                             <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">M. Final</th></tr>`;
+            } else {
+                headHTML += `<th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 1 (P1)</th>
+                             <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 2 (P2)</th>
+                             <th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">M. Parcial</th>
+                             <th class="text-center py-6 sticky-header bg-orange-600 text-white text-[10px] font-black uppercase">Recup (RT)</th>
+                             <th class="text-center py-6 sticky-header bg-fmm-lime text-fmm-dark text-[10px] font-black uppercase tracking-widest">Trimestral</th></tr>`;
+            }
+            header.innerHTML = headHTML;
+
+            if (globalMatriculas.length === 0) {
+                body.innerHTML = `<tr><td colspan="${currentView === 'anual' ? 8 : 6}" class="px-8 py-20 text-center text-slate-300 italic">Nenhum aluno encontrado neste grupo.</td></tr>`;
+                return;
+            }
+
+            body.innerHTML = globalMatriculas.map(m => {
+                const n = globalNotas.find(x => x.id_matricula === m.id && x.periodo === currentView) || { p1: 0, p2: 0, rt: 0, nt: 0, alterado_pela_coordenacao: false };
+                const a = globalAnual.find(x => x.id_matricula === m.id) || { media_anual: 0, recup_final: 0, conselho_classe: 0, media_final: 0, alterado_pela_coordenacao: false };
+                const n1 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '1_TRIMESTRE')?.nt || 0;
+                const n2 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '2_TRIMESTRE')?.nt || 0;
+                const n3 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '3_TRIMESTRE')?.nt || 0;
+
+                const urlFoto = formatDriveUrl(m.alunos?.url_foto);
+                const avatar = urlFoto 
+                    ? `<img src="${urlFoto}" class="student-photo" onclick="openPhotoModal('${urlFoto}', '${m.alunos?.nome_completo}')" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(m.alunos?.nome_completo)}&background=random&color=fff'">`
+                    : `<div class="student-photo flex items-center justify-center bg-slate-100 text-slate-400 font-bold text-xs border-2 border-white shadow-sm">${m.alunos?.nome_completo.charAt(0)}</div>`;
+
+                let rows = `<tr class="group transition-colors hover:bg-slate-50/50"><td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100"><div class="flex items-center gap-4">${avatar}<div class="flex flex-col"><span class="text-sm font-extrabold truncate max-w-[180px]">${m.alunos?.nome_completo || 'N/A'}</span><span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span></div></div></td>`;
+
+                if (currentView === 'anual') {
+                    rows += `<td class="px-4 text-center font-bold ${n1 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n1).toFixed(1)}</td>
+                             <td class="px-4 text-center font-bold ${n2 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n2).toFixed(1)}</td>
+                             <td class="px-4 text-center font-bold ${n3 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n3).toFixed(1)}</td>
+                             <td class="px-4 text-center font-black text-fmm-blue bg-blue-50/30" id="media-anual-display-${m.id}">${Number(a.media_anual).toFixed(1)}</td>
+                             <td class="px-4 text-center">${renderAnualInput(m.id, 'recup_final', a.recup_final, a.media_anual >= 6, a.alterado_pela_coordenacao)}</td>
+                             <td class="px-4 text-center border-r border-slate-100">${renderAnualInput(m.id, 'conselho_classe', a.conselho_classe, false, a.alterado_pela_coordenacao)}</td>
+                             <td class="px-6 text-center"><span id="media-final-display-${m.id}" class="font-black text-base ${a.media_final < 6 ? 'text-red-600' : 'text-fmm-green'}">${Number(a.media_final).toFixed(1)}</span></td>`;
+                } else {
+                    const mp = (Number(n.p1 || 0) + Number(n.p2 || 0)) / 2;
+                    rows += `<td class="px-4 text-center">${renderInput(m.id, currentView, 'p1', n.p1, false, n.alterado_pela_coordenacao)}</td>
+                             <td class="px-4 text-center">${renderInput(m.id, currentView, 'p2', n.p2, false, n.alterado_pela_coordenacao)}</td>
+                             <td class="px-4 text-center font-bold bg-slate-50 text-slate-400" id="mp-display-${m.id}-${currentView}">${mp.toFixed(1)}</td>
+                             <td class="px-4 text-center">${renderInput(m.id, currentView, 'rt', n.rt, mp >= 6, n.alterado_pela_coordenacao)}</td>
+                             <td class="px-6 text-center"><span id="nt-display-${m.id}-${currentView}" class="font-black text-base ${n.nt < 6 ? 'text-red-600' : 'text-fmm-blue'}">${Number(n.nt || 0).toFixed(1)}</span></td>`;
+                }
+                return rows + '</tr>';
+            }).join('');
+        }
+
+        function renderTecnica(header, body) {
+            header.innerHTML = `<tr><th class="px-8 py-6 sticky-intersect border-r border-white/5 min-w-[300px] text-white text-[10px] font-black uppercase tracking-widest">Aluno</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">P1</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">P2</th><th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">M1</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Rec. P.</th><th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">Cons.</th><th class="text-center py-6 sticky-header bg-slate-700 text-white text-[10px] font-black uppercase">M2</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Rec. F.</th><th class="text-center py-6 sticky-header bg-fmm-green text-white text-[10px] font-black uppercase tracking-widest">N.F.P</th></tr>`;
+            
+            if (globalMatriculas.length === 0) {
+                body.innerHTML = `<tr><td colspan="9" class="px-8 py-20 text-center text-slate-300 italic">Nenhum aluno encontrado neste grupo.</td></tr>`;
+                return;
+            }
+
+            body.innerHTML = globalMatriculas.map(m => {
+                const n = globalNotas.find(x => x.id_matricula === m.id) || { p1: 0, p2: 0, media_1: 0, recup_parcial: 0, conselho_semestral: 0, media_2: 0, recup_final_semestral: 0, nota_final_periodo: 0, alterado_pela_coordenacao: false };
+                const formattedUrl = formatDriveUrl(m.alunos?.url_foto);
+                const avatar = m.alunos?.url_foto ? `<img src="${formattedUrl}" class="student-photo" onclick="openPhotoModal('${formattedUrl}', '${m.alunos?.nome_completo}')" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(m.alunos?.nome_completo)}&background=random&color=fff'">` : `<div class="student-photo flex items-center justify-center bg-slate-100 text-slate-400 font-bold text-xs border-2 border-white shadow-sm">${m.alunos?.nome_completo.charAt(0)}</div>`;
+                return `<tr class="group transition-colors hover:bg-slate-50/50"><td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100"><div class="flex items-center gap-4">${avatar}<div class="flex flex-col"><span class="text-sm font-extrabold truncate max-w-[180px]">${m.alunos?.nome_completo || 'N/A'}</span><span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span></div></div></td><td class="px-2 text-center">${renderTecInput(m.id, 'p1', n.p1, false, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'p2', n.p2, false, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center font-bold bg-slate-50 text-slate-400" id="m1-display-${m.id}">${Number(n.media_1).toFixed(1)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'recup_parcial', n.recup_parcial, n.media_1 >= 6, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'conselho_semestral', n.conselho_semestral, false, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center font-bold bg-slate-50 text-slate-400" id="m2-display-${m.id}">${Number(n.media_2).toFixed(1)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'recup_final_semestral', n.recup_final_semestral, n.media_2 >= 6, n.alterado_pela_coordenacao)}</td><td class="px-4 text-center"><span id="nfp-display-${m.id}" class="font-black text-base text-fmm-green">${Number(n.nota_final_periodo).toFixed(1)}</span></td></tr>`;
+            }).join('');
+        }
+
+        function renderInput(matId, periodo, field, val, disabled = false, isChanged = false) {
+            const isLow = val < 6 && val !== '' && val !== 0;
+            const inputId = `in-${matId}-${field}-${periodo}`;
+            return `
+                <div class="intervention-wrapper">
+                    ${renderInterventionIndicator(isChanged)}
+                    <input type="text" id="${inputId}" name="${inputId}" value="${val === 0 ? '0' : (val || '')}" ${disabled ? 'disabled' : ''} oninput="handleInput(this, 'BCC', '${matId}', '${currentDiscSigla}', '${periodo}', '${field}')" class="grade-input ${isLow ? 'grade-low' : 'grade-ok'}" placeholder="-">
+                </div>`;
+        }
+
+        function renderAnualInput(matId, field, val, disabled = false, isChanged = false) {
+            const inputId = `in-${matId}-${field}-anual`;
+            return `
+                <div class="intervention-wrapper">
+                    ${renderInterventionIndicator(isChanged)}
+                    <input type="text" id="${inputId}" name="${inputId}" value="${val === 0 ? '0' : (val || '')}" ${disabled ? 'disabled' : ''} oninput="handleInput(this, 'ANUAL', '${matId}', '${currentDiscSigla}', null, '${field}')" class="grade-input bg-blue-50/40" placeholder="-">
+                </div>`;
+        }
+
+        function renderTecInput(matId, field, val, disabled = false, isChanged = false) {
+            const isLow = val < 6 && val !== '' && val !== 0;
+            const inputId = `in-${matId}-${field}-tec`;
+            return `
+                <div class="intervention-wrapper">
+                    ${renderInterventionIndicator(isChanged)}
+                    <input type="text" id="${inputId}" name="${inputId}" value="${val === 0 ? '0' : (val || '')}" ${disabled ? 'disabled' : ''} oninput="handleInput(this, 'TEC', '${matId}', '${currentDiscSigla}', '1_SEMESTRE', '${field}')" class="grade-input ${isLow ? 'grade-low' : 'grade-ok'}" placeholder="-">
+                </div>`;
+        }
+
+        function handleInput(el, type, matId, sigla, periodo, field) {
+            const valStr = el.value.replace(',', '.');
+            if (valStr !== '' && (isNaN(valStr) || valStr < 0 || valStr > 10)) { el.classList.add('ring-2', 'ring-red-500'); return; }
+            el.classList.remove('ring-2', 'ring-red-500');
+            const val = valStr === '' ? 0 : parseFloat(valStr);
+            const timerKey = `${matId}-${field}-${periodo}`;
+            if (saveTimers[timerKey]) clearTimeout(saveTimers[timerKey]);
+            const syncStatus = document.getElementById('sync-status');
+            if(syncStatus) syncStatus.classList.remove('hidden');
+            
+            saveTimers[timerKey] = setTimeout(() => { saveData(type, matId, sigla, periodo, field, val); }, 700);
+        }
+
+        async function saveData(type, matId, sigla, periodo, field, val) {
+            try {
+                let error, data;
+                const conflict = type === 'ANUAL' ? 'id_matricula,sigla_disciplina' : 'id_matricula,sigla_disciplina,periodo';
+                const table = type === 'BCC' ? 'notas_basica' : (type === 'ANUAL' ? 'anual_basica' : 'notas_tecnica');
+                const payload = { id_matricula: matId, sigla_disciplina: sigla, [field]: val };
+                if (periodo && type !== 'ANUAL') payload.periodo = periodo;
+
+                ({ data, error } = await window.supabaseClient.from(table).upsert(payload, { onConflict: conflict }).select().single());
+                if (error) throw error;
+
+                if (type === 'BCC') {
+                    const ntDisplay = document.getElementById(`nt-display-${matId}-${periodo}`);
+                    if (ntDisplay && data.nt !== undefined) {
+                        ntDisplay.innerText = Number(data.nt).toFixed(1);
+                        ntDisplay.className = `font-black text-base ${data.nt < 6 ? 'text-red-600' : 'text-fmm-blue'}`;
+                    }
+                } else if (type === 'ANUAL') {
+                    const mfDisplay = document.getElementById(`media-final-display-${matId}`);
+                    if (mfDisplay && data.media_final !== undefined) {
+                        mfDisplay.innerText = Number(data.media_final).toFixed(1);
+                        mfDisplay.className = `font-black text-base ${data.media_final < 6 ? 'text-red-600' : 'text-fmm-green'}`;
+                    }
+                    const maDisplay = document.getElementById(`media-anual-display-${matId}`);
+                    if(maDisplay && data.media_anual !== undefined) maDisplay.innerText = Number(data.media_anual).toFixed(1);
+                } else if (type === 'TEC') {
+                    const m1Display = document.getElementById(`m1-display-${matId}`);
+                    if(m1Display && data.media_1 !== undefined) m1Display.innerText = Number(data.media_1).toFixed(1);
+                    const m2Display = document.getElementById(`m2-display-${matId}`);
+                    if(m2Display && data.media_2 !== undefined) m2Display.innerText = Number(data.media_2).toFixed(1);
+                    const nfpDisplay = document.getElementById(`nfp-display-${matId}`);
+                    if (nfpDisplay && data.nota_final_periodo !== undefined) {
+                        nfpDisplay.innerText = Number(data.nota_final_periodo).toFixed(1);
+                        nfpDisplay.className = `font-black text-base ${data.nota_final_periodo < 6 ? 'text-red-600' : 'text-fmm-green'}`;
+                    }
+                }
+                showToast("Sincronizado");
+            } catch (err) { console.error(err); } 
+            finally { const syncStatus = document.getElementById('sync-status'); if(syncStatus) syncStatus.classList.add('hidden'); }
+        }
+
+        function showToast(msg) { const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = msg; t.classList.replace('opacity-0', 'opacity-100'); t.classList.replace('translate-y-20', 'translate-y-0'); setTimeout(() => { t.classList.replace('opacity-100', 'opacity-0'); t.classList.replace('translate-y-0', 'translate-y-20'); }, 2500); }
+        function openPhotoModal(url, name) { const modal = document.getElementById('photoModal'); document.getElementById('enlargedPhoto').src = url; document.getElementById('enlargedName').innerText = name; modal.classList.remove('hidden'); }
+        function closePhotoModal() { document.getElementById('photoModal').classList.add('hidden'); }
+        async function logout() { if(confirm("Deseja sair?")) { await window.supabaseClient.auth.signOut(); window.location.href = "../index.html"; } }
+        window.onload = init;
+    </script>
+</body>
+</html>

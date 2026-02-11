@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Requerimentos | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Configurações SME -->
+    <script src="../../assets/js/constants.js"></script>
+    <script src="../../assets/js/supabase_client.js"></script>
+    <script src="../../sidebar.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        .request-card { transition: all 0.2s; border-left: 4px solid transparent; }
+        .request-card.active { background-color: #f0f9ff; border-left-color: #00638f; }
+        
+        .status-badge { font-size: 10px; font-weight: 800; padding: 2px 10px; border-radius: 99px; text-transform: uppercase; }
+        .status-pending { background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
+        .status-approved { background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7; }
+        .status-rejected { background: #fef2f2; color: #b91c1c; border: 1px solid #fee2e2; }
+
+        .view-tab.active { color: #00638f; border-bottom: 3px solid #00638f; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden">
+
+    <aside id="sidebar-container" class="w-72 flex-shrink-0 bg-fmm-dark text-white z-20 shadow-2xl"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
+        <!-- Header Principal -->
+        <header class="bg-white border-b border-slate-200 flex flex-col shrink-0 z-10 shadow-sm">
+            <div class="h-20 px-8 flex items-center justify-between">
+                <div>
+                    <h1 class="text-xl font-black text-fmm-dark uppercase tracking-tight">Gestão de Requerimentos</h1>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Controle administrativo e logístico de 2ª chamada</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="openCalendarModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all">
+                        <i data-lucide="calendar-plus" class="w-4 h-4"></i> Calendário de Provas
+                    </button>
+                    <div class="h-10 w-px bg-slate-200 mx-2"></div>
+                    <select id="filterStatus" onchange="loadRequests()" class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-fmm-blue cursor-pointer">
+                        <option value="all">Todos os Processos</option>
+                        <option value="Pendente">Apenas Pendentes</option>
+                        <option value="Deferido">Apenas Deferidos</option>
+                        <option value="Indeferido">Apenas Indeferidos</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="px-8 border-t border-slate-100 flex gap-8">
+                <button onclick="switchView('student')" id="tab-student" class="view-tab active py-3 text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all">
+                    <i data-lucide="users" class="w-4 h-4"></i> Visão por Aluno
+                </button>
+                <button onclick="switchView('exam')" id="tab-exam" class="view-tab py-3 text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all text-slate-400 hover:text-slate-600">
+                    <i data-lucide="clipboard-list" class="w-4 h-4"></i> Visão por Prova
+                </button>
+            </div>
+        </header>
+
+        <!-- Visão Aluno (Inbox) -->
+        <div id="view-student-container" class="flex flex-1 overflow-hidden">
+            <aside class="w-96 bg-white border-r border-slate-200 flex flex-col shrink-0">
+                <div class="p-4 border-b border-slate-100">
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
+                        <input type="text" id="searchBox" onkeyup="filterList()" placeholder="Buscar aluno ou RA..." class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none">
+                    </div>
+                </div>
+                <div id="requestList" class="flex-1 overflow-y-auto custom-scrollbar">
+                    <div class="p-8 text-center"><i class="animate-spin text-slate-300" data-lucide="loader-2"></i></div>
+                </div>
+            </aside>
+
+            <section id="detailView" class="flex-1 bg-slate-50/50 flex flex-col relative">
+                <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center text-slate-300">
+                    <i data-lucide="inbox" class="w-16 h-16 mb-4 opacity-20"></i>
+                    <p class="text-sm font-black uppercase tracking-widest opacity-40">Selecione uma solicitação para analisar</p>
+                </div>
+
+                <div id="reqDetail" class="hidden flex-1 flex flex-col overflow-hidden animate-fade">
+                    <div class="bg-white p-8 border-b border-slate-200 shrink-0 flex justify-between items-start">
+                        <div class="flex gap-6">
+                            <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center overflow-hidden text-3xl shadow-sm border border-slate-200" id="detAvatar">🎓</div>
+                            <div>
+                                <h2 id="detName" class="text-xl font-black text-fmm-dark uppercase tracking-tight">Nome</h2>
+                                <p class="text-xs font-bold text-slate-500 mt-1">RA: <span id="detRA" class="text-fmm-blue">---</span> • Turma: <span id="detTurma">---</span></p>
+                                <div class="flex gap-2 mt-4">
+                                    <span id="detDocType" class="bg-fmm-blue text-white text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider">Atestado</span>
+                                    <span id="detLevel" class="bg-slate-100 text-slate-500 text-[9px] font-black px-2 py-1 rounded uppercase tracking-tighter">Nível</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-end gap-3">
+                            <div class="flex gap-2">
+                                <button onclick="openEditModal()" class="w-8 h-8 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-fmm-blue transition-all" title="Editar Solicitação">
+                                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="deleteRequest()" class="w-8 h-8 flex items-center justify-center bg-slate-50 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-500 transition-all" title="Excluir Registro">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                            <span id="detStatus" class="status-badge status-pending text-xs px-4 py-1.5">Pendente</span>
+                            <div class="flex gap-2">
+                                <button onclick="updateEntireRequestStatus('Indeferido')" class="px-3 py-1.5 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-lg text-[10px] font-black uppercase transition-all">Indeferir Tudo</button>
+                                <button onclick="updateEntireRequestStatus('Deferido')" class="px-3 py-1.5 bg-fmm-green/10 hover:bg-fmm-green/20 text-fmm-green rounded-lg text-[10px] font-black uppercase transition-all">Deferir Tudo</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                            <div class="space-y-6">
+                                <div class="bg-white p-6 rounded-[24px] shadow-sm border border-slate-100">
+                                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Informações do Documento</h3>
+                                    <div class="grid grid-cols-2 gap-6">
+                                        <div><p class="text-[10px] font-bold text-slate-400 uppercase">Data Início</p><p id="detStart" class="text-sm font-bold text-slate-700">--/--/----</p></div>
+                                        <div><p class="text-[10px] font-bold text-slate-400 uppercase">Data Fim</p><p id="detEnd" class="text-sm font-bold text-slate-700">--/--/----</p></div>
+                                        <div><p class="text-[10px] font-bold text-slate-400 uppercase">Duração</p><p id="detDays" class="text-sm font-bold text-slate-700">-- dias</p></div>
+                                        <div id="cidRow"><p class="text-[10px] font-bold text-slate-400 uppercase">CID / Motivo</p><p id="detExtraInfo" class="text-sm font-bold text-slate-700">---</p></div>
+                                    </div>
+                                </div>
+
+                                <div class="bg-white p-6 rounded-[24px] shadow-sm border border-slate-100">
+                                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Provas (Lançamento Granular)</h3>
+                                    <div id="detExams" class="space-y-3"></div>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-col h-full min-h-[500px]">
+                                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Comprovante</h3>
+                                <div class="flex-1 bg-white border-2 border-dashed border-slate-200 rounded-[32px] overflow-hidden relative group shadow-inner">
+                                    <img id="imgPreview" src="" class="hidden w-full h-full object-contain">
+                                    <div id="pdfPlaceholder" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
+                                        <i data-lucide="file-text" class="w-12 h-12 text-slate-300 mb-2"></i>
+                                        <p class="text-xs font-bold text-slate-400 uppercase">Ver PDF anexado</p>
+                                    </div>
+                                    <div id="noFilePlaceholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
+                                        <i data-lucide="image-off" class="w-12 h-12 text-slate-200 mb-2"></i>
+                                        <p class="text-xs font-bold text-slate-300 uppercase">Nenhum anexo</p>
+                                    </div>
+                                    <div id="hoverControls" class="absolute bottom-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <a id="btnDownload" href="#" target="_blank" class="bg-fmm-dark text-white px-6 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-xl">
+                                            <i data-lucide="external-link" class="w-4 h-4"></i> Abrir Anexo
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Visão Prova (Tabela Geral) -->
+        <div id="view-exam-container" class="hidden flex-1 overflow-hidden p-8 flex flex-col">
+            <div class="bg-white rounded-[32px] shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <h2 class="text-sm font-black text-fmm-dark uppercase tracking-widest">Listagem Unificada de Segundas Chamadas</h2>
+                    <button onclick="loadRequests()" class="p-2 hover:bg-slate-200 rounded-lg text-slate-400 transition-colors"><i data-lucide="rotate-cw" class="w-4 h-4"></i></button>
+                </div>
+                <div class="flex-1 overflow-y-auto custom-scrollbar">
+                    <table class="w-full text-left">
+                        <thead class="bg-white sticky top-0 z-10 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                            <tr>
+                                <th class="p-5">Status</th>
+                                <th class="p-5">Aluno / RA</th>
+                                <th class="p-5">Turma</th>
+                                <th class="p-5">Disciplina</th>
+                                <th class="p-5">Data Original</th>
+                                <th class="p-5 text-right">Ação Rápida</th>
+                            </tr>
+                        </thead>
+                        <tbody id="examTableBody" class="divide-y divide-slate-50 text-xs font-bold text-slate-600"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL: EDITAR SOLICITAÇÃO -->
+    <div id="editModal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4 bg-fmm-dark/80 backdrop-blur-md">
+        <div class="bg-white w-full max-w-xl rounded-[40px] shadow-2xl overflow-hidden animate-fade">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center">
+                <div>
+                    <h2 class="text-xl font-black text-fmm-dark uppercase">Editar Solicitação</h2>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Ajuste manual de informações administrativas</p>
+                </div>
+                <button onclick="closeEditModal()" class="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+            <div class="p-8 space-y-5">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block mb-1">RA do Aluno</label>
+                        <input type="text" id="editRA" class="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block mb-1">Tipo Documento</label>
+                        <select id="editDocType" class="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold">
+                            <option value="MEDICO">Atestado Médico / Odonto</option>
+                            <option value="OBITO">Atestado de Óbito</option>
+                            <option value="MILITAR">Alistamento Militar</option>
+                            <option value="COMPARECIMENTO">Comparecimento</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block mb-1">Data Início</label>
+                        <input type="date" id="editStart" class="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block mb-1">Qtd Dias</label>
+                        <input type="number" id="editDays" class="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block mb-1">CID / Parentesco / Info Adicional</label>
+                    <input type="text" id="editExtra" class="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue">
+                </div>
+                <div class="pt-4 flex gap-3">
+                    <button onclick="closeEditModal()" class="flex-1 py-4 bg-slate-100 text-slate-500 text-xs font-black uppercase rounded-2xl">Cancelar</button>
+                    <button onclick="saveEdit()" class="flex-1 py-4 bg-fmm-blue text-white text-xs font-black uppercase rounded-2xl shadow-lg hover:shadow-fmm-blue/20">Salvar Alterações</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CALENDÁRIO -->
+    <div id="calendarModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-fmm-dark/60 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-6xl h-[85vh] rounded-[40px] shadow-2xl overflow-hidden flex flex-col animate-fade">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                <h2 class="text-xl font-black text-fmm-dark uppercase">Calendário de Provas Realizadas</h2>
+                <button onclick="closeCalendarModal()" class="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+            <div class="flex flex-1 overflow-hidden">
+                <div class="w-80 bg-slate-50 p-6 border-r border-slate-100 overflow-y-auto custom-scrollbar">
+                    <h3 class="text-[10px] font-black text-fmm-blue uppercase tracking-widest mb-6">Novo Registro</h3>
+                    <div class="space-y-4">
+                        <select id="calMatriz" onchange="updateCalEtapa()" class="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-bold">
+                            <option value="Fundamental">Fundamental</option>
+                            <option value="Básica">Média (Básica)</option>
+                            <option value="Técnica">Média (Técnica)</option>
+                        </select>
+                        <select id="calEtapa" class="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-bold"></select>
+                        <select id="calDisc" class="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-bold"></select>
+                        <select id="calTipo" class="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-bold">
+                            <option value="P1">P1</option>
+                            <option value="P2">P2</option>
+                            <option value="REC">REC</option>
+                        </select>
+                        <input type="date" id="calDate" class="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-bold">
+                        <button onclick="addExamRef()" id="btnSaveCal" class="w-full py-4 bg-fmm-blue text-white text-xs font-black uppercase rounded-2xl shadow-lg hover:bg-fmm-dark transition-all">Salvar no Calendário</button>
+                    </div>
+                </div>
+                
+                <div class="flex-1 p-8 bg-white flex flex-col overflow-hidden">
+                    <!-- ÁREA DE FILTROS DA TABELA -->
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest">Registros de Datas 2026</h3>
+                        <div class="flex gap-3">
+                            <div class="relative w-48">
+                                <select id="calFilterMatriz" onchange="renderCalendar()" class="w-full p-2.5 pl-4 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none focus:ring-2 focus:ring-fmm-blue">
+                                    <option value="all">Todas as Matrizes</option>
+                                    <option value="Fundamental">Fundamental</option>
+                                    <option value="Básica">Básica</option>
+                                    <option value="Técnica">Técnica</option>
+                                </select>
+                            </div>
+                            <div class="relative w-64">
+                                <i data-lucide="search" class="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400"></i>
+                                <input type="text" id="calSearch" onkeyup="renderCalendar()" placeholder="Filtrar disciplina..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto custom-scrollbar border border-slate-100 rounded-3xl">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50 sticky top-0 z-10 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b">
+                                <tr><th class="p-4">Data</th><th class="p-4">Disciplina</th><th class="p-4">Segmento / Etapa</th><th class="p-4">Tipo</th><th class="p-4 text-right">Ação</th></tr>
+                            </thead>
+                            <tbody id="calTableBody" class="divide-y divide-slate-50 text-xs font-bold text-slate-600"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allRequests = [];
+        let selectedRequest = null;
+        let calendarData = [];
+        let currentView = 'student';
+        let userLevels = []; // Níveis permitidos ao coordenador
+
+        // --- INIT ---
+        async function init() {
+            if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if (!user) return window.location.href = '../../index.html';
+
+            // --- CAPTURA DE CONTEXTO DO USUÁRIO ---
+            const { data: profile } = await window.supabaseClient.from('perfis').select('cargo, niveis_acesso').eq('id', user.id).single();
+            if (profile) {
+                if (profile.cargo === 'diretor') {
+                    userLevels = ['EF1', 'EF2', 'EMT'];
+                } else {
+                    userLevels = profile.niveis_acesso || [];
+                }
+            }
+
+            lucide.createIcons();
+            await loadDisciplinas();
+            await loadRequests();
+            updateCalEtapa();
+        }
+
+        // --- HELPERS ---
+        function getDriveDirect(url) {
+            if (!url) return null;
+            if (url.includes('drive.google.com')) {
+                const id = url.split('/d/')[1]?.split('/')[0];
+                return id ? `https://lh3.googleusercontent.com/u/0/d/${id}` : url;
+            }
+            return url;
+        }
+
+        async function loadDisciplinas() {
+            const { data } = await window.supabaseClient.from('disciplinas').select('sigla, nome').order('nome');
+            const select = document.getElementById('calDisc');
+            if(data) select.innerHTML = data.map(d => `<option value="${d.sigla}">${d.nome}</option>`).join('');
+        }
+
+        // --- LÓGICA DE REQUERIMENTOS ---
+        async function loadRequests() {
+            const statusFilter = document.getElementById('filterStatus').value;
+            
+            // --- LÓGICA DE FILTRAGEM POR NÍVEL AUTORIZADO ---
+            // Usamos inner join com turmas para filtrar pelo nível autorizado
+            let query = window.supabaseClient
+                .from('justificativas_ausencia')
+                .select(`*, alunos!inner(nome_completo, url_foto, turmas!inner(nome, nivel))`)
+                .order('criado_em', { ascending: false });
+
+            if (statusFilter !== 'all') query = query.eq('status', statusFilter);
+            
+            if (userLevels.length > 0) {
+                query = query.in('nivel_aluno', userLevels);
+            }
+
+            const { data, error } = await query;
+            if (error) return console.error(error);
+
+            allRequests = data.filter(req => req.provas_solicitadas && req.provas_solicitadas.length > 0).map(req => {
+                req.provas_solicitadas = req.provas_solicitadas.map(p => ({
+                    ...p, status: p.status || 'Pendente'
+                }));
+                return req;
+            });
+            
+            renderList();
+            if (currentView === 'exam') renderExamView();
+        }
+
+        function renderList() {
+            const list = document.getElementById('requestList');
+            const search = document.getElementById('searchBox').value.toLowerCase();
+            const filtered = allRequests.filter(r => r.alunos.nome_completo.toLowerCase().includes(search) || r.aluno_ra.includes(search));
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs font-medium italic">Nenhum processo relevante.</div>';
+                return;
+            }
+
+            list.innerHTML = filtered.map(req => {
+                const statusClasses = { 'Pendente': 'status-pending', 'Deferido': 'status-approved', 'Indeferido': 'status-rejected' };
+                return `
+                <div onclick="showDetail('${req.id}')" id="card-${req.id}" class="request-card p-5 border-b border-slate-50 cursor-pointer hover:bg-slate-50">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="status-badge ${statusClasses[req.status]}">${req.status}</span>
+                        <span class="text-[9px] font-black text-slate-300 uppercase">${new Date(req.criado_em).toLocaleDateString('pt-BR')}</span>
+                    </div>
+                    <h4 class="text-xs font-black text-fmm-dark uppercase leading-tight truncate">${req.alunos.nome_completo}</h4>
+                    <p class="text-[10px] text-slate-400 font-bold mt-1 uppercase truncate">${req.tipo_documento.replace('MEDICO', 'ATESTADO')}</p>
+                </div>`;
+            }).join('');
+        }
+
+        function filterList() { renderList(); }
+
+        async function showDetail(id) {
+            const req = allRequests.find(r => r.id === id);
+            selectedRequest = req;
+
+            document.querySelectorAll('.request-card').forEach(c => c.classList.remove('active'));
+            document.getElementById(`card-${id}`).classList.add('active');
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('reqDetail').classList.remove('hidden');
+
+            document.getElementById('detName').innerText = req.alunos.nome_completo;
+            document.getElementById('detRA').innerText = req.aluno_ra;
+            document.getElementById('detTurma').innerText = req.alunos.turmas?.nome || 'Não informada';
+            document.getElementById('detDocType').innerText = req.tipo_documento.replace('MEDICO', 'ATESTADO MÉDICO');
+            document.getElementById('detLevel').innerText = req.nivel_aluno;
+            
+            const avatarImg = getDriveDirect(req.alunos.url_foto);
+            document.getElementById('detAvatar').innerHTML = avatarImg ? `<img src="${avatarImg}" class="w-full h-full object-cover">` : '🎓';
+
+            const statusClasses = { 'Pendente': 'status-pending', 'Deferido': 'status-approved', 'Indeferido': 'status-rejected' };
+            const stEl = document.getElementById('detStatus');
+            stEl.className = `status-badge ${statusClasses[req.status]} text-xs px-4 py-1.5`;
+            stEl.innerText = req.status;
+
+            document.getElementById('detStart').innerText = new Date(req.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR');
+            document.getElementById('detEnd').innerText = new Date(req.data_fim + 'T00:00:00').toLocaleDateString('pt-BR');
+            document.getElementById('detDays').innerText = `${req.quantidade_dias} dias`;
+            document.getElementById('detExtraInfo').innerText = req.cid || req.parentesco || 'N/A';
+
+            const examsList = document.getElementById('detExams');
+            examsList.innerHTML = req.provas_solicitadas.map((p, idx) => `
+                <div class="flex justify-between items-center p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-[9px] font-black text-fmm-blue shadow-sm">2ª CH</div>
+                        <div>
+                            <p class="text-xs font-bold text-slate-700 uppercase">${p.disciplina}</p>
+                            <p class="text-[9px] text-slate-400 font-black uppercase tracking-tighter">Realizada em: ${p.data}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="status-badge ${statusClasses[p.status]}">${p.status}</span>
+                        <div class="flex gap-1">
+                            <button onclick="updateExamStatus('${req.id}', ${idx}, 'Indeferido')" class="p-1.5 hover:bg-red-100 text-slate-300 hover:text-red-500 rounded-lg transition-all"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                            <button onclick="updateExamStatus('${req.id}', ${idx}, 'Deferido')" class="p-1.5 hover:bg-green-100 text-slate-300 hover:text-fmm-green rounded-lg transition-all"><i data-lucide="check" class="w-3.5 h-3.5"></i></button>
+                        </div>
+                    </div>
+                </div>`).join('');
+
+            const imgEl = document.getElementById('imgPreview');
+            const pdfPl = document.getElementById('pdfPlaceholder');
+            const noPl = document.getElementById('noFilePlaceholder');
+            imgEl.classList.add('hidden'); pdfPl.classList.add('hidden'); noPl.classList.add('hidden');
+
+            if (req.anexo_url) {
+                document.getElementById('btnDownload').href = req.anexo_url;
+                if (req.anexo_url.match(/\.(jpeg|jpg|gif|png)$/i)) {
+                    imgEl.src = req.anexo_url; imgEl.classList.remove('hidden');
+                } else { pdfPl.classList.remove('hidden'); }
+            } else { noPl.classList.remove('hidden'); }
+
+            lucide.createIcons();
+        }
+
+        // --- CRUD REQUERIMENTOS ---
+        function openEditModal() {
+            if(!selectedRequest) return;
+            document.getElementById('editRA').value = selectedRequest.aluno_ra;
+            document.getElementById('editDocType').value = selectedRequest.tipo_documento;
+            document.getElementById('editStart').value = selectedRequest.data_inicio;
+            document.getElementById('editDays').value = selectedRequest.quantidade_dias;
+            document.getElementById('editExtra').value = selectedRequest.cid || selectedRequest.parentesco || '';
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+        function closeEditModal() { document.getElementById('editModal').classList.add('hidden'); }
+
+        async function saveEdit() {
+            const updated = {
+                aluno_ra: document.getElementById('editRA').value,
+                tipo_documento: document.getElementById('editDocType').value,
+                data_inicio: document.getElementById('editStart').value,
+                quantidade_dias: parseInt(document.getElementById('editDays').value),
+                cid: document.getElementById('editExtra').value
+            };
+            const { error } = await window.supabaseClient.from('justificativas_ausencia').update(updated).eq('id', selectedRequest.id);
+            if(!error) { closeEditModal(); await loadRequests(); showDetail(selectedRequest.id); }
+        }
+
+        async function deleteRequest() {
+            if(!confirm("Excluir permanentemente?")) return;
+            const { error } = await window.supabaseClient.from('justificativas_ausencia').delete().eq('id', selectedRequest.id);
+            if(!error) { selectedRequest = null; document.getElementById('reqDetail').classList.add('hidden'); document.getElementById('emptyState').classList.remove('hidden'); await loadRequests(); }
+        }
+
+        async function updateExamStatus(reqId, examIndex, newStatus) {
+            const req = allRequests.find(r => r.id === reqId);
+            const provas = [...req.provas_solicitadas];
+            provas[examIndex].status = newStatus;
+            let finalStatus = 'Pendente';
+            if (provas.every(p => p.status === 'Deferido')) finalStatus = 'Deferido';
+            const { error } = await window.supabaseClient.from('justificativas_ausencia').update({ status: finalStatus, provas_solicitadas: provas }).eq('id', reqId);
+            if (!error) { await loadRequests(); if (currentView === 'student' && selectedRequest?.id === reqId) showDetail(reqId); else if (currentView === 'exam') renderExamView(); }
+        }
+
+        async function updateEntireRequestStatus(newStatus) {
+            if (!selectedRequest) return;
+            const provas = selectedRequest.provas_solicitadas.map(p => ({ ...p, status: newStatus }));
+            const { error } = await window.supabaseClient.from('justificativas_ausencia').update({ status: newStatus, provas_solicitadas: provas }).eq('id', selectedRequest.id);
+            if (!error) { await loadRequests(); showDetail(selectedRequest.id); }
+        }
+
+        // --- VISÃO GERAL ---
+        function switchView(view) {
+            currentView = view;
+            document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active', 'text-slate-400'));
+            document.getElementById(`tab-${view}`).classList.add('active');
+            document.getElementById('view-student-container').classList.toggle('hidden', view !== 'student');
+            document.getElementById('view-exam-container').classList.toggle('hidden', view !== 'exam');
+            if (view === 'exam') renderExamView();
+        }
+
+        function renderExamView() {
+            const body = document.getElementById('examTableBody');
+            const statusClasses = { 'Pendente': 'status-pending', 'Deferido': 'status-approved', 'Indeferido': 'status-rejected' };
+            let flattened = [];
+            allRequests.forEach(req => {
+                req.provas_solicitadas.forEach((p, idx) => {
+                    flattened.push({ ...p, reqId: req.id, aluno: req.alunos.nome_completo, ra: req.aluno_ra, turma: req.alunos.turmas?.nome, examIndex: idx });
+                });
+            });
+            if (flattened.length === 0) { body.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-slate-400 italic">Nenhum registro.</td></tr>`; return; }
+            body.innerHTML = flattened.map(p => `
+                <tr class="hover:bg-slate-50 transition-colors border-b border-slate-50">
+                    <td class="p-5"><span class="status-badge ${statusClasses[p.status]}">${p.status}</span></td>
+                    <td class="p-5"><p class="font-black text-fmm-dark uppercase">${p.aluno}</p><p class="text-[9px] text-slate-400 font-bold uppercase">RA: ${p.ra}</p></td>
+                    <td class="p-5 text-[11px] uppercase">${p.turma || '---'}</td>
+                    <td class="p-5 text-fmm-blue font-black uppercase">${p.disciplina}</td>
+                    <td class="p-5 text-slate-400">${p.data}</td>
+                    <td class="p-5 text-right"><div class="flex justify-end gap-1"><button onclick="updateExamStatus('${p.reqId}', ${p.examIndex}, 'Indeferido')" class="w-8 h-8 flex items-center justify-center hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg transition-all"><i data-lucide="x" class="w-4 h-4"></i></button><button onclick="updateExamStatus('${p.reqId}', ${p.examIndex}, 'Deferido')" class="w-8 h-8 flex items-center justify-center hover:bg-green-50 text-slate-300 hover:text-fmm-green rounded-lg transition-all"><i data-lucide="check" class="w-4 h-4"></i></button></div></td>
+                </tr>`).join('');
+            lucide.createIcons();
+        }
+
+        // --- CALENDÁRIO ---
+        async function openCalendarModal() { document.getElementById('calendarModal').classList.remove('hidden'); await loadCalendar(); renderCalendar(); }
+        function closeCalendarModal() { document.getElementById('calendarModal').classList.add('hidden'); }
+        async function loadCalendar() { 
+            // Filtra o calendário pelas matrizes permitidas
+            let allowedMatrices = [];
+            if (userLevels.includes('EF1') || userLevels.includes('EF2')) allowedMatrices.push('Fundamental');
+            if (userLevels.includes('EMT')) { allowedMatrices.push('Básica'); allowedMatrices.push('Técnica'); }
+
+            let query = window.supabaseClient.from('calendario_referencia_provas').select('*, disciplinas(nome)').order('data_prova', { ascending: false });
+            
+            if (allowedMatrices.length > 0) {
+                query = query.in('matriz', allowedMatrices);
+            }
+
+            const { data } = await query;
+            calendarData = data || []; 
+        }
+        
+        function updateCalEtapa() {
+            const m = document.getElementById('calMatriz').value;
+            const e = document.getElementById('calEtapa');
+            if(m === 'Fundamental') e.innerHTML = `<option value="1_BIMESTRE">1º Bimestre</option><option value="2_BIMESTRE">2º Bimestre</option><option value="3_BIMESTRE">3º Bimestre</option><option value="4_BIMESTRE">4º Bimestre</option>`;
+            else e.innerHTML = `<option value="1_TRIMESTRE">1º Trimestre</option><option value="2_TRIMESTRE">2º Trimestre</option><option value="3_TRIMESTRE">3º Trimestre</option>`;
+        }
+
+        async function addExamRef() {
+            const data = document.getElementById('calDate').value;
+            if(!data) return alert("Data obrigatória.");
+            const { error } = await window.supabaseClient.from('calendario_referencia_provas').insert([{ matriz: document.getElementById('calMatriz').value, periodo_ref: document.getElementById('calEtapa').value, sigla_disciplina: document.getElementById('calDisc').value, tipo_prova: document.getElementById('calTipo').value, data_prova: data }]);
+            if(!error) { await loadCalendar(); renderCalendar(); }
+        }
+
+        async function deleteCal(id) { if(confirm("Remover?")) { const { error } = await window.supabaseClient.from('calendario_referencia_provas').delete().eq('id', id); if(!error) { await loadCalendar(); renderCalendar(); } } }
+
+        // --- RENDERIZAÇÃO E FILTRAGEM DO CALENDÁRIO ---
+        function renderCalendar() {
+            const body = document.getElementById('calTableBody');
+            const filterMatriz = document.getElementById('calFilterMatriz').value;
+            const searchTerm = document.getElementById('calSearch').value.toLowerCase();
+
+            // Lógica de filtragem unificada
+            const filtered = calendarData.filter(c => {
+                const matchesMatriz = filterMatriz === 'all' || c.matriz === filterMatriz;
+                const matchesText = (c.disciplinas?.nome || c.sigla_disciplina).toLowerCase().includes(searchTerm);
+                return matchesMatriz && matchesText;
+            });
+
+            if (filtered.length === 0) {
+                body.innerHTML = `<tr><td colspan="5" class="p-10 text-center text-slate-300 italic uppercase font-black text-[10px]">Nenhum registro encontrado para estes filtros</td></tr>`;
+                return;
+            }
+
+            body.innerHTML = filtered.map(c => `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="p-4 font-bold text-slate-500">${new Date(c.data_prova + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                    <td class="p-4 text-fmm-blue uppercase font-black tracking-tight">${c.disciplinas?.nome || c.sigla_disciplina}</td>
+                    <td class="p-4">
+                        <span class="text-[9px] uppercase font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded">${c.matriz}</span>
+                        <p class="mt-1 text-slate-400">${c.periodo_ref.replace('_', ' ')}</p>
+                    </td>
+                    <td class="p-4"><span class="bg-fmm-blue/10 text-fmm-blue px-2 py-0.5 rounded text-[10px] font-black">${c.tipo_prova}</span></td>
+                    <td class="p-4 text-right">
+                        <button onclick="deleteCal('${c.id}')" class="text-slate-200 hover:text-red-500 transition-all p-2 rounded-lg hover:bg-red-50">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

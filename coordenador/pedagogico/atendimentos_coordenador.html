@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atendimentos Pedagógicos | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Importação do Componente de Sidebar -->
+    <script src="../../sidebar.js"></script>
+    <script src="../../assets/js/supabase_client.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+        .category-content.open { max-height: 1000px; }
+        .rotate-180 { transform: rotate(180deg); }
+        .sidebar-item-active { background-color: rgba(200, 212, 0, 0.15); border-left: 4px solid #c8d400; color: #ffffff !important; }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .timeline-line {
+            position: absolute; left: 24px; top: 24px; bottom: 0; width: 2px; background: #e2e8f0; z-index: 0;
+        }
+
+        .chat-bubble {
+            position: relative;
+            background: white;
+            border-radius: 24px;
+            border-top-left-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            border: 1px solid #f1f5f9;
+            padding: 24px;
+            transition: all 0.2s;
+        }
+        .chat-bubble:hover { border-color: #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+
+        .tag-badge {
+            font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 4px 10px; border-radius: 8px; letter-spacing: 0.05em;
+        }
+        .tag-comportamental { background: #fef2f2; color: #ef4444; border: 1px solid #fee2e2; }
+        .tag-academico { background: #eff6ff; color: #3b82f6; border: 1px solid #dbeafe; }
+        .tag-familiar { background: #f0fdf4; color: #22c55e; border: 1px solid #dcfce7; }
+        .tag-saude { background: #faf5ff; color: #a855f7; border: 1px solid #f3e8ff; }
+
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        .animate-slide { animation: slideIn 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden">
+
+    <!-- SIDEBAR CONTAINER -->
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20">
+        <!-- Carregado via sidebar.js -->
+    </aside>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden relative">
+        
+        <!-- HEADER -->
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0">
+            <div class="flex flex-col">
+                <h1 class="text-xl font-bold text-fmm-dark flex items-center gap-2">
+                    <i data-lucide="message-square" class="w-5 h-5 text-fmm-lime"></i>
+                    Prontuário Pedagógico
+                </h1>
+                <p class="text-xs text-slate-400 font-medium">Histórico de atendimentos e ocorrências</p>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <div class="bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100 flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Sistema Ativo</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- LAYOUT DE COLUNAS -->
+        <div class="flex-1 flex overflow-hidden">
+            
+            <!-- ESQUERDA: BUSCA E LISTA -->
+            <div class="w-96 bg-white border-r border-slate-100 flex flex-col z-10">
+                <div class="p-6 border-b border-slate-50">
+                    <div class="relative group">
+                        <i data-lucide="search" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
+                        <input type="text" id="studentSearch" onkeyup="renderStudentList(this.value)" 
+                               placeholder="Buscar aluno..." 
+                               class="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all font-medium text-sm">
+                    </div>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-2" id="studentList">
+                    <!-- Lista de Alunos (Injetado via JS) -->
+                    <div class="flex flex-col items-center justify-center h-full text-slate-300">
+                        <i data-lucide="users" class="w-8 h-8 mb-2 opacity-20"></i>
+                        <p class="text-xs italic">Carregando lista...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DIREITA: PRONTUÁRIO E NOVO ATENDIMENTO -->
+            <div class="flex-1 flex flex-col bg-slate-50/50 relative overflow-hidden">
+                
+                <!-- ESTADO VAZIO (DEFAULT) -->
+                <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center text-slate-300 z-0">
+                    <i data-lucide="folder-open" class="w-24 h-24 mb-4 opacity-20"></i>
+                    <h3 class="text-xl font-bold text-slate-400">Nenhum prontuário aberto</h3>
+                    <p class="text-sm italic mt-2">Selecione um aluno ao lado para visualizar ou registar atendimentos.</p>
+                </div>
+
+                <!-- CONTEÚDO DO PRONTUÁRIO (HIDDEN) -->
+                <div id="prontuarioView" class="hidden flex-1 flex flex-col h-full animate-slide z-10">
+                    
+                    <!-- Perfil Rápido -->
+                    <div class="bg-white px-8 py-6 border-b border-slate-100 flex justify-between items-center shadow-sm">
+                        <div class="flex items-center gap-5">
+                            <img id="profileAvatar" src="" class="w-16 h-16 rounded-2xl object-cover border-4 border-slate-50 shadow-md">
+                            <div>
+                                <h2 id="profileName" class="text-2xl font-black text-fmm-dark leading-none">Nome do Aluno</h2>
+                                <div class="flex items-center gap-3 mt-2">
+                                    <span id="profileRA" class="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">RA: 0000</span>
+                                    <span id="profileTurma" class="text-xs font-bold text-fmm-blue">Turma --</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="openNewRecordModal()" class="bg-fmm-dark hover:bg-slate-800 text-white px-6 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 shadow-xl shadow-fmm-dark/20 transition-all transform hover:scale-105">
+                            <i data-lucide="plus-circle" class="w-5 h-5"></i> Novo Registo
+                        </button>
+                    </div>
+
+                    <!-- Timeline de Atendimentos -->
+                    <div class="flex-1 overflow-y-auto p-8 custom-scrollbar relative">
+                        <div id="timelineContainer" class="space-y-8 relative pl-4 max-w-4xl mx-auto">
+                            <!-- Linha vertical contínua -->
+                            <div class="timeline-line"></div>
+                            
+                            <!-- Items da Timeline injetados via JS -->
+                        </div>
+                        
+                        <!-- Espaçador final -->
+                        <div class="h-20"></div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL NOVO ATENDIMENTO -->
+    <div id="recordModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl flex flex-col animate-fade-in-up max-h-[90vh]">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white rounded-t-[32px]">
+                <h2 class="text-2xl font-bold text-fmm-dark flex items-center gap-3">
+                    <span class="w-10 h-10 rounded-xl bg-fmm-blue/10 flex items-center justify-center text-fmm-blue">
+                        <i data-lucide="pen-tool" class="w-5 h-5"></i>
+                    </span>
+                    Registar Atendimento
+                </h2>
+                <button onclick="closeRecordModal()" class="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-slate-100 transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <div class="p-8 space-y-6 overflow-y-auto custom-scrollbar bg-slate-50/30">
+                
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Tipo de Atendimento</label>
+                        <select id="recType" class="w-full px-5 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue font-bold text-slate-700 text-sm">
+                            <option value="Comportamental">Comportamental</option>
+                            <option value="Acadêmico">Acadêmico</option>
+                            <option value="Familiar">Familiar</option>
+                            <option value="Saúde">Saúde / Bem-estar</option>
+                            <option value="Outro">Outro</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Data do Ocorrido</label>
+                        <input type="date" id="recDate" class="w-full px-5 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue font-medium text-slate-700 text-sm">
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Assunto / Título</label>
+                    <input type="text" id="recSubject" placeholder="Ex: Conversa sobre rendimento baixo em Matemática" class="w-full px-5 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue font-bold text-fmm-dark text-sm">
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Descrição Detalhada</label>
+                    <textarea id="recDescription" rows="6" class="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm text-slate-700 leading-relaxed resize-none" placeholder="Relate o que foi conversado, as observações feitas e o comportamento do aluno durante o atendimento..."></textarea>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Encaminhamentos / Ações</label>
+                    <textarea id="recAction" rows="3" class="w-full px-5 py-4 bg-blue-50 border border-blue-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm text-slate-700 leading-relaxed resize-none" placeholder="Ex: Encaminhado para orientação educacional; Pais convocados..."></textarea>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="recPrivate" class="w-5 h-5 text-fmm-blue rounded-lg border-slate-300 focus:ring-fmm-blue">
+                    <label for="recPrivate" class="text-xs font-bold text-slate-500 select-none">Marcar como confidencial (Apenas Direção/Coordenação)</label>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-slate-100 bg-white rounded-b-[32px] flex justify-end gap-3">
+                <button onclick="closeRecordModal()" class="px-6 py-3 text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors">Cancelar</button>
+                <button onclick="saveRecord()" id="btnSave" class="px-8 py-3 bg-fmm-lime text-fmm-dark text-xs font-black uppercase tracking-wider rounded-xl shadow-lg shadow-fmm-lime/20 hover:scale-105 transition-all flex items-center gap-2">
+                    <i data-lucide="save" class="w-4 h-4"></i> Salvar Registo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL FOTO ZOOM -->
+    <div id="photoModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onclick="closePhotoZoom()">
+        <div class="relative animate-fade-in-up" onclick="event.stopPropagation()">
+            <button onclick="closePhotoZoom()" class="absolute -top-12 -right-4 text-white hover:text-fmm-lime transition-colors">
+                <i data-lucide="x" class="w-8 h-8"></i>
+            </button>
+            <img id="enlargedPhoto" src="" class="max-w-[90vw] max-h-[80vh] rounded-[40px] shadow-2xl border-4 border-white/10 object-contain">
+            <div id="enlargedName" class="mt-4 text-center text-white font-bold text-lg tracking-tight"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let allStudents = [];
+        let selectedStudent = null;
+        let currentRecords = [];
+        let userLevels = []; // Níveis permitidos ao coordenador
+
+        function formatDriveUrl(url) {
+            if (!url) return null;
+            if (url.includes('drive.google.com') && url.includes('/file/d/')) {
+                const idMatch = url.match(/\/d\/(.*?)\//);
+                if (idMatch && idMatch[1]) {
+                    return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
+                }
+            }
+            return url;
+        }
+
+        async function init() {
+            if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if(user) {
+                const { data: profile } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).single();
+                currentUser = profile;
+
+                // --- CAPTURA DE CONTEXTO DO USUÁRIO ---
+                if (profile.cargo === 'diretor') {
+                    userLevels = ['EF1', 'EF2', 'EMT'];
+                } else {
+                    userLevels = profile.niveis_acesso || [];
+                }
+            }
+
+            document.getElementById('recDate').valueAsDate = new Date();
+            await fetchAllStudents();
+            lucide.createIcons();
+        }
+
+        async function fetchAllStudents() {
+            // --- LÓGICA DE FILTRAGEM POR NÍVEL AUTORIZADO ---
+            // Usamos inner join com turmas para filtrar pelo nível autorizado
+            let query = window.supabaseClient
+                .from('alunos')
+                .select('ra, nome_completo, url_foto, turmas!inner(nome, nivel)')
+                .order('nome_completo');
+            
+            if (userLevels.length > 0) {
+                query = query.in('turmas.nivel', userLevels);
+            }
+
+            const { data, error } = await query;
+            
+            if (error) return console.error(error);
+            allStudents = data || [];
+            renderStudentList();
+        }
+
+        // --- LISTA LATERAL DE ALUNOS ---
+        function renderStudentList(filterVal = '') {
+            const list = document.getElementById('studentList');
+            list.innerHTML = '';
+
+            const filtered = allStudents.filter(s => 
+                s.nome_completo.toLowerCase().includes(filterVal.toLowerCase()) || 
+                s.ra.includes(filterVal)
+            );
+
+            if(filtered.length === 0) {
+                list.innerHTML = `<p class="text-center text-xs text-slate-400 py-4 italic">Nenhum aluno encontrado.</p>`;
+                return;
+            }
+
+            filtered.slice(0, 50).forEach(s => {
+                const isActive = selectedStudent && selectedStudent.ra === s.ra;
+                const avatar = formatDriveUrl(s.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=random`;
+
+                const item = document.createElement('div');
+                item.className = `p-3 rounded-2xl cursor-pointer flex items-center gap-3 transition-all border ${isActive ? 'bg-fmm-blue/10 border-fmm-blue' : 'bg-white border-slate-100 hover:border-fmm-blue/30'}`;
+                item.onclick = () => selectStudent(s.ra);
+                
+                item.innerHTML = `
+                    <img src="${avatar}" class="w-10 h-10 rounded-xl object-cover bg-slate-200">
+                    <div class="overflow-hidden">
+                        <h4 class="text-xs font-bold text-fmm-dark truncate">${s.nome_completo}</h4>
+                        <p class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">${s.turmas?.nome || 'Sem Turma'}</p>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        async function selectStudent(ra) {
+            const { data: student } = await window.supabaseClient.from('alunos').select('*, turmas(*)').eq('ra', ra).single();
+            if(!student) return;
+            selectedStudent = student;
+            
+            // Atualizar UI Perfil
+            document.getElementById('profileName').innerText = student.nome_completo;
+            document.getElementById('profileRA').innerText = `RA: ${student.ra}`;
+            document.getElementById('profileTurma').innerText = student.turmas?.nome || 'Sem Turma';
+            document.getElementById('profileAvatar').src = formatDriveUrl(student.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.nome_completo)}`;
+
+            // Mostrar Views
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('prontuarioView').classList.remove('hidden');
+
+            renderStudentList(document.getElementById('studentSearch').value); // Atualiza active state
+            await fetchTimeline();
+        }
+
+        // --- TIMELINE DE PRONTUÁRIO ---
+        async function fetchTimeline() {
+            const container = document.getElementById('timelineContainer');
+            // Limpa tudo exceto a linha vertical
+            container.innerHTML = '<div class="timeline-line"></div><div class="text-center py-4"><i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto text-slate-300"></i></div>';
+            lucide.createIcons();
+
+            const { data: records, error } = await window.supabaseClient
+                .from('atendimentos')
+                .select('*, perfis(nome_completo)') 
+                .eq('aluno_ra', selectedStudent.ra)
+                .order('data_atendimento', { ascending: false });
+
+            container.innerHTML = '<div class="timeline-line"></div>';
+
+            if(error || !records || records.length === 0) {
+                container.innerHTML += `
+                    <div class="relative pl-12 py-8 text-center">
+                        <div class="absolute left-[15px] top-10 w-4 h-4 bg-slate-200 rounded-full border-4 border-white shadow-sm z-10"></div>
+                        <p class="text-slate-400 italic text-sm">Nenhum registo neste prontuário ainda.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            records.forEach(rec => {
+                const typeClass = getTagClass(rec.tipo);
+                const authorName = rec.perfis?.nome_completo || 'Sistema';
+                const formattedDate = rec.data_atendimento.split('-').reverse().join('/');
+                
+                const item = document.createElement('div');
+                item.className = "relative pl-12 animate-slide";
+                item.innerHTML = `
+                    <!-- Bolinha da Timeline -->
+                    <div class="absolute left-[15px] top-8 w-5 h-5 bg-white rounded-full border-4 border-slate-200 z-10 shadow-sm transition-colors group-hover:border-fmm-blue"></div>
+                    
+                    <!-- Balão de Conteúdo -->
+                    <div class="chat-bubble group">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex gap-2 items-center">
+                                <span class="tag-badge ${typeClass}">${rec.tipo}</span>
+                                <span class="text-xs font-bold text-slate-400">${formattedDate}</span>
+                            </div>
+                            <span class="text-[10px] font-bold text-slate-300 uppercase tracking-widest flex items-center gap-1">
+                                <i data-lucide="user" class="w-3 h-3"></i> ${authorName.split(' ')[0]}
+                            </span>
+                        </div>
+                        
+                        <h3 class="text-lg font-bold text-fmm-dark mb-2">${rec.assunto}</h3>
+                        <p class="text-sm text-slate-600 leading-relaxed mb-4 whitespace-pre-line">${rec.descricao}</p>
+                        
+                        ${rec.encaminhamento ? `
+                        <div class="bg-blue-50/50 p-3 rounded-xl border border-blue-50 flex gap-3 items-start">
+                            <i data-lucide="corner-down-right" class="w-4 h-4 text-fmm-blue mt-0.5 flex-shrink-0"></i>
+                            <div>
+                                <h5 class="text-[10px] font-black text-fmm-blue uppercase tracking-widest mb-1">Encaminhamento</h5>
+                                <p class="text-xs text-slate-600 font-medium">${rec.encaminhamento}</p>
+                            </div>
+                        </div>` : ''}
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+            lucide.createIcons();
+        }
+
+        function getTagClass(type) {
+            switch(type) {
+                case 'Comportamental': return 'tag-comportamental';
+                case 'Acadêmico': return 'tag-academico';
+                case 'Familiar': return 'tag-familiar';
+                case 'Saúde': return 'tag-saude';
+                default: return 'bg-slate-100 text-slate-500 border-slate-200';
+            }
+        }
+
+        // --- MODAL LÓGICA ---
+        function openNewRecordModal() {
+            // Resetar form
+            document.getElementById('recType').value = 'Acadêmico';
+            document.getElementById('recDate').valueAsDate = new Date();
+            document.getElementById('recSubject').value = '';
+            document.getElementById('recDescription').value = '';
+            document.getElementById('recAction').value = '';
+            document.getElementById('recPrivate').checked = false;
+            document.getElementById('recordModal').classList.remove('hidden');
+        }
+
+        function closeRecordModal() {
+            document.getElementById('recordModal').classList.add('hidden');
+        }
+
+        async function saveRecord() {
+            const type = document.getElementById('recType').value;
+            const date = document.getElementById('recDate').value;
+            const subject = document.getElementById('recSubject').value;
+            const description = document.getElementById('recDescription').value;
+            const action = document.getElementById('recAction').value;
+            const isPrivate = document.getElementById('recPrivate').checked;
+
+            if(!subject || !description) return alert("Preencha o assunto e a descrição.");
+
+            const btn = document.getElementById('btnSave');
+            btn.disabled = true;
+            btn.innerText = 'A guardar...';
+
+            try {
+                const { error } = await window.supabaseClient.from('atendimentos').insert({
+                    aluno_ra: selectedStudent.ra,
+                    autor_id: currentUser.id,
+                    tipo: type,
+                    data_atendimento: date,
+                    assunto: subject,
+                    descricao: description,
+                    encaminhamento: action,
+                    privado: isPrivate
+                });
+
+                if(error) throw error;
+                
+                closeRecordModal();
+                await fetchTimeline();
+            } catch (err) {
+                console.error(err);
+                alert("Erro ao salvar: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Salvar Registo';
+                lucide.createIcons(); // Restaurar ícone
+            }
+        }
+
+        // --- STUBS ---
+        function toggleSidebar() { if(window.SidebarComponent) SidebarComponent.toggleSidebar(); }
+        function toggleCategory(id) { if(window.SidebarComponent) SidebarComponent.toggleCategory(id); }
+        async function logout() { if(window.SidebarComponent) SidebarComponent.logout(); }
+
+        // ZOOM UTILS
+        function openPhotoZoom() {
+            if(!selectedStudent) return;
+            const modal = document.getElementById('photoModal');
+            document.getElementById('enlargedPhoto').src = document.getElementById('profileAvatar').src;
+            document.getElementById('enlargedName').innerText = selectedStudent.nome_completo;
+            modal.classList.remove('hidden');
+        }
+        function closePhotoZoom() { document.getElementById('photoModal').classList.add('hidden'); }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Professores | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Importação do Componente de Sidebar -->
+    <script src="../../sidebar.js"></script>
+    <script src="../../assets/js/supabase_client.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-collapsed .sidebar-text, .sidebar-collapsed .sidebar-category-header, .sidebar-collapsed .chevron-icon, .sidebar-collapsed .sidebar-category-title { display: none; }
+        .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
+        .sidebar-collapsed .logo-full { display: none; }
+        .sidebar-collapsed .logo-short { display: block; }
+        .logo-short { display: none; }
+
+        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .category-content.open { max-height: 1000px; }
+        .chevron-icon { transition: transform 0.3s ease; }
+        .rotate-180 { transform: rotate(180deg); }
+
+        .modal-content::-webkit-scrollbar { width: 6px; }
+        .modal-content::-webkit-scrollbar-track { background: transparent; }
+        .modal-content::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden">
+
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0">
+            <div class="flex flex-col">
+                <h1 class="text-xl font-bold text-fmm-dark">Corpo Docente</h1>
+                <p class="text-xs text-slate-400">Gestão de professores e atribuições de disciplinas</p>
+            </div>
+            <button onclick="openModal()" class="bg-fmm-blue hover:bg-fmm-dark text-white px-6 py-2.5 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all shadow-lg shadow-fmm-blue/20">
+                <i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar Professor
+            </button>
+        </header>
+
+        <div class="px-8 pt-8 flex-shrink-0">
+            <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4">
+                <div class="flex-1 relative group">
+                    <i data-lucide="search" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
+                    <input type="text" id="searchInput" onkeyup="fetchProfessores()" placeholder="Procurar por nome ou e-mail..." 
+                           class="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            <div class="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50/50 border-b border-slate-100 text-[11px] uppercase tracking-widest text-slate-400 font-bold">
+                            <th class="px-8 py-5">Professor / Contato</th>
+                            <th class="px-6 py-5">Disciplinas Vinculadas</th>
+                            <th class="px-6 py-5 text-center">Cargo</th>
+                            <th class="px-8 py-5 text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="professoresTableBody" class="divide-y divide-slate-50"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <div id="professorModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl flex flex-col animate-fade-in-up overflow-hidden">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white rounded-t-[32px]">
+                <h2 class="text-2xl font-bold text-fmm-dark" id="modalTitle">Novo Professor</h2>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-slate-100">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="modal-content overflow-y-auto p-8 space-y-8 max-h-[70vh] custom-scrollbar">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="space-y-1.5 md:col-span-2">
+                        <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Nome Completo</label>
+                        <input type="text" id="inNome" placeholder="Ex: Prof. Dr. Roberto Silva" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">E-mail Corporativo</label>
+                        <input type="email" id="inEmail" placeholder="roberto.silva@fmm.org.br" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">WhatsApp / Contato</label>
+                        <input type="tel" id="inPhone" placeholder="(92) 9XXXX-XXXX" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
+                    </div>
+                </div>
+                <div id="passwordField" class="space-y-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Senha de Acesso</label>
+                    <input type="password" id="inSenha" placeholder="Mínimo 6 caracteres" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
+                </div>
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between border-b pb-2">
+                        <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Disciplinas Disponíveis</label>
+                        <span class="text-[10px] font-bold text-fmm-blue bg-fmm-blue/10 px-2 py-0.5 rounded">Selecione as áreas</span>
+                    </div>
+                    <div id="disciplinasList" class="space-y-6"></div>
+                </div>
+            </div>
+            <div class="p-8 border-t bg-slate-50/50 rounded-b-[32px] flex justify-end gap-4">
+                <button onclick="closeModal()" class="px-6 py-3 text-sm font-bold text-slate-500 hover:text-slate-700 transition-all">Cancelar</button>
+                <button id="btnSave" onclick="saveProfessor()" class="px-10 py-3.5 bg-fmm-lime text-fmm-dark font-bold text-sm rounded-2xl shadow-xl shadow-fmm-lime/20 hover:scale-105 active:scale-95 transition-all">
+                    Salvar Professor
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let editingId = null;
+        let allSubjects = [];
+        let listProfessoresCache = [];
+        let userLevels = [];
+
+        // Mapeamento de Séries por Nível
+        const seriesByLevel = {
+            'EF1': ['5º Ano'],
+            'EF2': ['6º Ano', '7º Ano', '8º Ano', '9º Ano'],
+            'EMT': ['1ª Série', '2ª Série', '3ª Série']
+        };
+
+        async function init() {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) return window.location.href = '../../index.html'; 
+            
+            // --- CAPTURA DE CONTEXTO DO USUÁRIO ---
+            const { data: profile } = await supabaseClient.from('perfis').select('cargo, niveis_acesso').eq('id', user.id).single();
+            
+            if (profile) {
+                if (profile.cargo === 'diretor') {
+                    userLevels = ['EF1', 'EF2', 'EMT'];
+                } else {
+                    userLevels = profile.niveis_acesso || [];
+                }
+            }
+
+            await SidebarComponent.render('sidebar-container');
+            await fetchProfessores(profile.cargo);
+            await fetchDisciplinasParaModal();
+            lucide.createIcons();
+        }
+
+        async function fetchProfessores(userRole) {
+            const termo = document.getElementById('searchInput').value;
+            const body = document.getElementById('professoresTableBody');
+            
+            // Buscamos professores e suas disciplinas (com as séries das disciplinas para filtrar)
+            let { data: professores, error } = await supabaseClient
+                .from('perfis')
+                .select(`*, professor_disciplinas (sigla_disciplina, disciplinas(series))`)
+                .eq('cargo', 'professor')
+                .ilike('nome_completo', `%${termo}%`)
+                .order('nome_completo');
+
+            if (error) return console.error(error);
+            
+            // --- LÓGICA DE FILTRAGEM POR NÍVEL ---
+            let allowedSeries = [];
+            userLevels.forEach(lvl => { if(seriesByLevel[lvl]) allowedSeries.push(...seriesByLevel[lvl]); });
+
+            const filteredProfessores = professores.filter(p => {
+                // Diretor vê todos
+                if (userRole === 'diretor') return true;
+                
+                // Professores que não têm disciplinas ainda aparecem para todos os coordenadores (para que possam ser configurados)
+                if (!p.professor_disciplinas || p.professor_disciplinas.length === 0) return true;
+
+                // Mostra professor se ele leciona ao menos uma disciplina do nível autorizado
+                return p.professor_disciplinas.some(pd => 
+                    pd.disciplinas && pd.disciplinas.series && pd.disciplinas.series.some(s => allowedSeries.includes(s))
+                );
+            });
+
+            listProfessoresCache = filteredProfessores || [];
+
+            body.innerHTML = listProfessoresCache.map(p => {
+                const disciplinas = p.professor_disciplinas.map(pd => 
+                    `<span class="px-2 py-1 bg-fmm-blue/5 text-fmm-blue text-[10px] font-bold rounded-md border border-fmm-blue/10">${pd.sigla_disciplina}</span>`
+                ).join(' ');
+
+                return `
+                    <tr class="hover:bg-slate-50/80 transition-all group">
+                        <td class="px-8 py-5">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-xl bg-slate-200 border-2 border-white shadow-sm flex items-center justify-center font-bold text-slate-500">
+                                    ${p.nome_completo.charAt(0)}
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="font-bold text-fmm-dark text-sm">${p.nome_completo}</span>
+                                    <span class="text-[10px] text-slate-400 font-medium">${p.email} | ${p.telefone || '--'}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5">
+                            <div class="flex flex-wrap gap-1.5 max-w-xs">${disciplinas || '<span class="text-xs text-slate-300 italic">Nenhuma</span>'}</div>
+                        </td>
+                        <td class="px-6 py-5 text-center">
+                            <span class="px-2.5 py-1 bg-green-50 text-green-600 text-[10px] font-bold rounded-full border border-green-100 uppercase">${p.cargo}</span>
+                        </td>
+                        <td class="px-8 py-5 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <button onclick="prepEdit('${p.id}')" class="p-2.5 text-slate-400 hover:text-fmm-blue hover:bg-fmm-blue/10 rounded-xl transition-all shadow-sm">
+                                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="deleteProfessor('${p.id}')" class="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all shadow-sm">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        async function fetchDisciplinasParaModal() {
+            const { data, error } = await supabaseClient.from('disciplinas').select('sigla, nome, tipo, series').order('nome');
+            if (error) return console.error(error);
+            
+            // --- FILTRAGEM DE DISCIPLINAS DISPONÍVEIS POR NÍVEL ---
+            let allowedSeries = [];
+            userLevels.forEach(lvl => { if(seriesByLevel[lvl]) allowedSeries.push(...seriesByLevel[lvl]); });
+
+            allSubjects = data.filter(d => 
+                !d.series || d.series.length === 0 || d.series.some(s => allowedSeries.includes(s))
+            );
+
+            const container = document.getElementById('disciplinasList');
+            container.innerHTML = '';
+            const categorias = { "BCC": "BNCC (Base Comum)", "Técnica": "Área Técnica" };
+            
+            for (const [key, label] of Object.entries(categorias)) {
+                const lista = allSubjects.filter(d => d.tipo === key);
+                if (lista.length > 0) {
+                    const section = document.createElement('div');
+                    section.innerHTML = `
+                        <h4 class="text-[10px] font-bold text-fmm-blue uppercase mb-3 tracking-wider flex items-center gap-2"><span class="w-1 h-3 bg-fmm-lime rounded-full"></span>${label}</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                            ${lista.map(d => `
+                                <label class="flex items-center p-3 bg-white border border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors shadow-sm">
+                                    <input type="checkbox" name="disciplina" value="${d.sigla}" class="w-4 h-4 text-fmm-blue rounded border-slate-300 focus:ring-fmm-blue">
+                                    <span class="ml-3 text-xs font-medium text-slate-600">${d.nome} (${d.sigla})</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                    `;
+                    container.appendChild(section);
+                }
+            }
+        }
+
+        async function saveProfessor() {
+            const nome = document.getElementById('inNome').value;
+            const email = document.getElementById('inEmail').value;
+            const phone = document.getElementById('inPhone').value;
+            const senha = document.getElementById('inSenha').value;
+            const disciplinasSelecionadas = Array.from(document.querySelectorAll('input[name="disciplina"]:checked')).map(cb => cb.value);
+
+            if(!nome || !email) return alert("Nome e e-mail são obrigatórios.");
+            const btn = document.getElementById('btnSave');
+            btn.disabled = true; btn.innerHTML = "Processando...";
+
+            try {
+                let userId = editingId;
+                if (!editingId) {
+                    if(!senha || senha.length < 6) throw new Error("A senha deve ter pelo menos 6 caracteres.");
+                    const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+                        email, password: senha, options: { data: { full_name: nome, role: 'professor', phone: phone } }
+                    });
+                    if (authError) throw authError;
+                    userId = authData.user.id;
+                } else {
+                    const { error } = await supabaseClient.from('perfis').update({ nome_completo: nome, telefone: phone }).eq('id', editingId);
+                    if (error) throw error;
+                }
+
+                await supabaseClient.from('professor_disciplinas').delete().eq('id_professor', userId);
+                if (disciplinasSelecionadas.length > 0) {
+                    const links = disciplinasSelecionadas.map(sigla => ({ id_professor: userId, sigla_disciplina: sigla }));
+                    await supabaseClient.from('professor_disciplinas').insert(links);
+                }
+
+                alert("Professor guardado com sucesso!");
+                closeModal(); fetchProfessores(userLevels.length === 3 ? 'diretor' : 'coordenador');
+            } catch (err) { alert("Erro: " + err.message); } 
+            finally { btn.disabled = false; btn.innerHTML = "Salvar Professor"; }
+        }
+
+        function prepEdit(id) {
+            const p = listProfessoresCache.find(prof => prof.id === id);
+            if (!p) return;
+
+            editingId = p.id;
+            document.getElementById('modalTitle').innerText = "Editar Professor";
+            document.getElementById('btnSave').innerText = "Atualizar Professor";
+            document.getElementById('inNome').value = p.nome_completo;
+            document.getElementById('inEmail').value = p.email;
+            document.getElementById('inEmail').disabled = true;
+            document.getElementById('inPhone').value = p.telefone || '';
+            document.getElementById('passwordField').classList.add('hidden');
+
+            const vinculadas = p.professor_disciplinas.map(pd => pd.sigla_disciplina);
+            document.querySelectorAll('input[name="disciplina"]').forEach(cb => {
+                cb.checked = vinculadas.includes(cb.value);
+            });
+
+            openModal();
+        }
+
+        async function deleteProfessor(id) {
+            if (!confirm("Remover este professor? O login não será apagado, apenas o perfil e vínculos.")) return;
+            const { error } = await supabaseClient.from('perfis').delete().eq('id', id);
+            if (error) alert(error.message); else fetchProfessores(userLevels.length === 3 ? 'diretor' : 'coordenador');
+        }
+
+        function toggleSidebar() { if (window.SidebarComponent) SidebarComponent.toggleSidebar(); }
+        function toggleCategory(id) { if (window.SidebarComponent) SidebarComponent.toggleCategory(id); }
+        async function openModal() { if (allSubjects.length === 0) await fetchDisciplinasParaModal(); document.getElementById('professorModal').classList.remove('hidden'); }
+        function closeModal() { 
+            document.getElementById('professorModal').classList.add('hidden'); editingId = null;
+            document.getElementById('modalTitle').innerText = "Novo Professor";
+            document.getElementById('btnSave').innerText = "Salvar Professor";
+            document.getElementById('inEmail').disabled = false;
+            document.getElementById('passwordField').classList.remove('hidden');
+            document.querySelectorAll('#professorModal input[type="text"], #professorModal input[type="email"], #professorModal input[type="password"], #professorModal input[type="tel"]').forEach(i => i.value = '');
+            document.querySelectorAll('#professorModal input[type="checkbox"]').forEach(i => i.checked = false);
+        }
+        async function logout() { if (confirm("Deseja sair?")) { await supabaseClient.auth.signOut(); window.location.href = "../../index.html"; } }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

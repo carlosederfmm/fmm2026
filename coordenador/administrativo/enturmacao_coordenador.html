@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enturmação | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Importação do Componente de Sidebar -->
+    <script src="../../sidebar.js"></script>
+    <script src="../../assets/js/supabase_client.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-collapsed .sidebar-text, .sidebar-collapsed .sidebar-category-header, .sidebar-collapsed .chevron-icon, .sidebar-collapsed .sidebar-category-title { display: none; }
+        .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
+        .sidebar-collapsed .logo-full { display: none; }
+        .sidebar-collapsed .logo-short { display: block; }
+        .logo-short { display: none; }
+
+        .category-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(0,0,0,0.05);
+        }
+        .category-content.open { max-height: 1000px; }
+        .chevron-icon { transition: transform 0.3s ease; }
+        .rotate-180 { transform: rotate(180deg); }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
+        
+        .avatar-mini {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #f1f5f9;
+            border: 1px solid white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .avatar-mini:hover { transform: scale(1.1); }
+
+        /* Estilos das Abas */
+        .tab-btn { position: relative; transition: all 0.3s; }
+        .tab-btn.active { color: #00638f; }
+        .tab-btn.active::after { content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 3px; background: #00638f; border-radius: 10px 10px 0 0; }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden">
+
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
+        
+        <header class="bg-white border-b flex flex-col z-10 shadow-sm flex-shrink-0">
+            <div class="h-20 flex items-center justify-between px-8">
+                <div class="flex flex-col">
+                    <h1 class="text-xl font-bold text-fmm-dark">Gestão de Enturmação</h1>
+                    <p class="text-xs text-slate-400">Organização das turmas e grupos de ensino</p>
+                </div>
+                <button onclick="window.location.reload()" class="bg-fmm-blue hover:bg-fmm-dark text-white px-6 py-2.5 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all shadow-lg shadow-fmm-blue/20">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> Atualizar Dados
+                </button>
+            </div>
+            
+            <!-- ABAS -->
+            <div class="px-8 flex gap-8 border-t border-slate-50">
+                <button onclick="switchView('geral')" id="btn-tab-geral" class="tab-btn active py-4 text-xs font-black uppercase tracking-widest text-slate-400">Enturmação Geral</button>
+                <button onclick="switchView('ingles')" id="btn-tab-ingles" class="tab-btn py-4 text-xs font-black uppercase tracking-widest text-slate-400">Subturmas de Inglês</button>
+            </div>
+        </header>
+
+        <!-- ABA 1: ENTURMAÇÃO GERAL -->
+        <div id="view-geral" class="flex-1 p-8 flex flex-col gap-6 overflow-hidden">
+            <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-6">
+                <div class="flex flex-col gap-1 min-w-[250px]">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Selecionar Turma Destino</label>
+                    <select id="selectTurma" onchange="handleTurmaChange()" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm font-bold text-fmm-dark">
+                        <option value="">Escolha uma turma...</option>
+                    </select>
+                </div>
+
+                <div id="statsTurma" class="hidden flex items-center gap-6 border-l pl-6 animate-fade-in-up">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">Vagas Preenchidas</span>
+                        <span id="vagasCount" class="text-lg font-extrabold text-fmm-blue">0 / 48</span>
+                    </div>
+                    <div class="h-8 w-px bg-slate-100"></div>
+                    <div class="flex flex-col">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">Nível / Série</span>
+                        <span id="nivelSerieDesc" class="text-xs font-bold text-slate-600 italic">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 overflow-hidden">
+                <div class="flex flex-col bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+                    <div class="p-6 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center">
+                        <div>
+                            <h3 class="font-bold text-fmm-dark text-sm">Alunos Disponíveis</h3>
+                            <p class="text-[10px] text-slate-400 font-medium">Sem turma vinculada</p>
+                        </div>
+                        <div class="relative w-48">
+                            <i data-lucide="search" class="absolute left-3 top-2 w-3.5 h-3.5 text-slate-400"></i>
+                            <input type="text" id="searchDisponivel" onkeyup="handleAvailableSearch(this.value)" placeholder="Buscar aluno..." class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[11px] outline-none focus:ring-1 focus:ring-fmm-blue">
+                        </div>
+                    </div>
+                    <div id="listDisponiveis" class="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar"></div>
+                </div>
+
+                <div class="flex flex-col bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+                    <div class="p-6 border-b border-slate-50 bg-fmm-blue/5 flex justify-between items-center">
+                        <div>
+                            <h3 class="font-bold text-fmm-blue text-sm">Alunos Alocados na Turma</h3>
+                            <p id="turmaTitle" class="text-[10px] text-fmm-blue/60 font-bold uppercase tracking-widest">Nenhuma turma selecionada</p>
+                        </div>
+                        <div class="w-10 h-10 bg-fmm-blue rounded-xl flex items-center justify-center text-white shadow-lg">
+                            <i data-lucide="users" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div id="listAlocados" class="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar bg-slate-50/30"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABA 2: SUBTURMAS DE INGLÊS -->
+        <div id="view-ingles" class="hidden flex-1 p-8 flex flex-col gap-6 overflow-hidden animate-fade-in-up">
+            <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center justify-between gap-6">
+                <div class="flex flex-col gap-1 min-w-[250px]">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Turma de Origem (Pai)</label>
+                    <select id="selectTurmaIngles" onchange="handleTurmaInglesChange()" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm font-bold text-fmm-blue">
+                        <option value="">Escolha uma turma...</option>
+                    </select>
+                </div>
+                <div id="inglesActions" class="hidden flex gap-3">
+                    <button onclick="distribuirInglesAutomatica()" id="btnAutoAZ" class="hidden px-6 py-2.5 bg-white border border-fmm-blue text-fmm-blue rounded-xl font-bold text-xs hover:bg-fmm-blue hover:text-white transition-all">Divisão A-Z (50/50)</button>
+                    <button onclick="salvarEnturmacaoIngles()" class="bg-fmm-green hover:bg-green-700 text-white px-8 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-lg shadow-fmm-green/20">
+                        <i data-lucide="save" class="w-4 h-4"></i> Salvar Distribuição
+                    </button>
+                </div>
+            </div>
+
+            <!-- ÁREA DE GRUPOS (KANBAN) -->
+            <div id="inglesContainer" class="hidden flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 overflow-hidden">
+                <!-- COLUNA: DISPONÍVEIS -->
+                <div class="flex flex-col bg-slate-100/50 rounded-[32px] border border-slate-200 overflow-hidden">
+                    <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-200/30">
+                        <h3 class="text-xs font-black text-slate-500 uppercase tracking-widest">Sem Grupo</h3>
+                        <span id="count-unassigned" class="bg-slate-400 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">0</span>
+                    </div>
+                    <div id="list-unassigned" class="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar"></div>
+                </div>
+
+                <!-- COLUNA: GRUPO A / INTERMEDIÁRIO -->
+                <div class="flex flex-col bg-white rounded-[32px] border border-fmm-blue/10 shadow-sm overflow-hidden">
+                    <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-fmm-blue/5">
+                        <div>
+                            <h3 id="label-group-a" class="text-xs font-black text-fmm-blue uppercase tracking-widest">Grupo A</h3>
+                            <p id="prof-group-a" class="text-[9px] font-bold text-slate-400 uppercase">Carregando...</p>
+                        </div>
+                        <span id="count-group-a" class="bg-fmm-blue text-white text-[10px] px-2 py-0.5 rounded-full font-bold">0</span>
+                    </div>
+                    <div id="list-group-a" class="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar"></div>
+                </div>
+
+                <!-- COLUNA: GRUPO B / AVANÇADO -->
+                <div class="flex flex-col bg-white rounded-[32px] border border-fmm-green/10 shadow-sm overflow-hidden">
+                    <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-fmm-green/5">
+                        <div>
+                            <h3 id="label-group-b" class="text-xs font-black text-fmm-green uppercase tracking-widest">Grupo B</h3>
+                            <p id="prof-group-b" class="text-[9px] font-bold text-slate-400 uppercase">Carregando...</p>
+                        </div>
+                        <span id="count-group-b" class="bg-fmm-green text-white text-[10px] px-2 py-0.5 rounded-full font-bold">0</span>
+                    </div>
+                    <div id="list-group-b" class="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar"></div>
+                </div>
+            </div>
+
+            <div id="inglesEmpty" class="flex-1 flex flex-col items-center justify-center text-slate-300 opacity-40">
+                <i data-lucide="split" class="w-16 h-16 mb-4"></i>
+                <p class="text-sm font-black uppercase tracking-widest">Selecione uma turma para dividir os grupos</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL: SETUP SUBTURMAS INGLÊS -->
+    <div id="setupInglesModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-md rounded-[40px] shadow-2xl p-8 animate-fade-in-up">
+            <h2 class="text-xl font-black text-fmm-dark uppercase mb-2">Configurar Inglês</h2>
+            <p class="text-xs text-slate-500 mb-6">Esta turma ainda não possui divisões de inglês. Defina os professores para cada grupo.</p>
+            
+            <div class="space-y-4">
+                <div>
+                    <label id="label-setup-a" class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">Professor Grupo A</label>
+                    <select id="setup-prof-a" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none"></select>
+                </div>
+                <div>
+                    <label id="label-setup-b" class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">Professor Grupo B</label>
+                    <select id="setup-prof-b" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none"></select>
+                </div>
+            </div>
+
+            <div class="mt-8 flex gap-3">
+                <button onclick="document.getElementById('setupInglesModal').classList.add('hidden')" class="flex-1 py-3 bg-slate-100 text-slate-500 rounded-2xl text-xs font-bold uppercase">Cancelar</button>
+                <button onclick="confirmarCriacaoSubturmas()" class="flex-1 py-3 bg-fmm-blue text-white rounded-2xl text-xs font-bold uppercase shadow-lg">Criar Grupos</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE ZOOM DA FOTO -->
+    <div id="photoZoomModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onclick="closePhotoZoom()">
+        <div class="relative animate-fade-in-up" onclick="event.stopPropagation()">
+            <button onclick="closePhotoZoom()" class="absolute -top-12 -right-4 text-white hover:text-fmm-lime transition-colors">
+                <i data-lucide="x" class="w-8 h-8"></i>
+            </button>
+            <img id="enlargedPhoto" src="" class="max-w-[90vw] max-h-[80vh] rounded-[40px] shadow-2xl border-4 border-white/10 object-contain">
+            <div id="enlargedName" class="mt-4 text-center text-white font-bold text-lg tracking-tight"></div>
+        </div>
+    </div>
+
+    <script>
+        let todasTurmas = [];
+        let alunosDisponiveis = []; // Apenas alunos sem turma (server-side query)
+        let alunosAlocados = [];    // Apenas alunos da turma selecionada
+        let turmaAtualId = "";
+        let userLevels = [];
+        let searchTimeout = null;
+        
+        let currentSubturmas = [];
+        let professorsList = [];
+        let alunosNaTurmaPai = [];
+
+        function switchView(view) {
+            document.getElementById('view-geral').classList.toggle('hidden', view !== 'geral');
+            document.getElementById('view-ingles').classList.toggle('hidden', view !== 'ingles');
+            document.getElementById('btn-tab-geral').classList.toggle('active', view === 'geral');
+            document.getElementById('btn-tab-ingles').classList.toggle('active', view === 'ingles');
+        }
+
+        function formatDriveUrl(url) {
+            if (!url) return null;
+            if (url.includes('drive.google.com') && url.includes('/file/d/')) {
+                const idMatch = url.match(/\/d\/(.*?)\//);
+                if (idMatch && idMatch[1]) return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
+            }
+            return url;
+        }
+
+        function openPhotoZoom(url, name) {
+            const modal = document.getElementById('photoZoomModal');
+            const img = document.getElementById('enlargedPhoto');
+            const nameDiv = document.getElementById('enlargedName');
+            img.src = url;
+            nameDiv.innerText = name;
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closePhotoZoom() { document.getElementById('photoZoomModal').classList.add('hidden'); }
+
+        async function initData() {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) return window.location.href = '../../index.html'; 
+            
+            const { data: profile } = await window.supabaseClient
+                .from('perfis')
+                .select('cargo, niveis_acesso')
+                .eq('id', user.id)
+                .single();
+
+            if (profile) {
+                if (profile.cargo === 'diretor') {
+                    userLevels = ['EF1', 'EF2', 'EMT'];
+                } else {
+                    userLevels = profile.niveis_acesso || [];
+                }
+            }
+
+            await SidebarComponent.render('sidebar-container');
+
+            try {
+                const { data: turmas } = await supabaseClient.from('turmas').select('*').order('nome');
+                todasTurmas = turmas ? turmas.filter(t => userLevels.includes(t.nivel)) : [];
+                
+                const select = document.getElementById('selectTurma');
+                const selectIng = document.getElementById('selectTurmaIngles');
+                
+                const optionsHTML = '<option value="">Escolha uma turma...</option>' + 
+                    todasTurmas.map(t => `<option value="${t.id}" data-serie="${t.serie}" data-nivel="${t.nivel}">${t.nome} - ${t.serie} ${t.nivel}</option>`).join('');
+                
+                select.innerHTML = optionsHTML;
+                selectIng.innerHTML = optionsHTML;
+                
+                const { data: profs } = await window.supabaseClient.from('perfis').select('id, nome_completo').eq('cargo', 'professor').order('nome_completo');
+                professorsList = profs || [];
+
+                // Carga inicial (Alunos Disponíveis)
+                await fetchAlunosDisponiveis();
+            } catch (err) { console.error(err); }
+        }
+
+        // --- CORE: LÓGICA DE CARREGAMENTO ESCALÁVEL (> 1500 ALUNOS) ---
+
+        /**
+         * Busca alunos sem turma com suporte a busca server-side (evita limite de 1000)
+         */
+        async function fetchAlunosDisponiveis(termo = '') {
+            let query = supabaseClient
+                .from('alunos')
+                .select('ra, nome_completo, url_foto, id_turma, id_subturma_ingles')
+                .is('id_turma', null)
+                .order('nome_completo')
+                .limit(200); // Mostra apenas os primeiros 200 sem filtro para performance
+
+            if (termo) {
+                query = query.ilike('nome_completo', `%${termo}%`);
+            }
+
+            const { data, error } = await query;
+            if (error) return console.error(error);
+            
+            alunosDisponiveis = data || [];
+            renderLists();
+        }
+
+        /**
+         * Busca TODOS os alunos da turma selecionada (Independente do limite global)
+         */
+        async function fetchAlunosAlocados(turmaId) {
+            if (!turmaId) {
+                alunosAlocados = [];
+                renderLists();
+                return;
+            }
+
+            const { data, error } = await supabaseClient
+                .from('alunos')
+                .select('ra, nome_completo, url_foto, id_turma, id_subturma_ingles')
+                .eq('id_turma', turmaId)
+                .order('nome_completo');
+
+            if (error) return console.error(error);
+            
+            alunosAlocados = data || [];
+            renderLists();
+        }
+
+        function handleAvailableSearch(val) {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                fetchAlunosDisponiveis(val);
+            }, 400);
+        }
+
+        function renderLists() {
+            const listDisp = document.getElementById('listDisponiveis');
+            const listAloc = document.getElementById('listAlocados');
+
+            // Renderiza Disponíveis (Query Server-side já fez o filtro)
+            listDisp.innerHTML = alunosDisponiveis.length === 0 
+                ? `<p class="text-center py-10 text-slate-300 text-xs italic">Nenhum aluno disponível</p>`
+                : alunosDisponiveis.map(aluno => renderAlunoItem(aluno, 'add')).join('');
+
+            // Renderiza Alocados
+            if (turmaAtualId) {
+                document.getElementById('vagasCount').innerText = `${alunosAlocados.length} / 48`;
+                listAloc.innerHTML = alunosAlocados.length === 0
+                    ? `<div class="h-full flex items-center justify-center text-slate-300 text-xs italic">Turma vazia</div>`
+                    : alunosAlocados.map(aluno => renderAlunoItem(aluno, 'remove')).join('');
+            } else {
+                listAloc.innerHTML = `<div class="h-full flex flex-col items-center justify-center text-slate-300 gap-2"><i data-lucide="arrow-left-right" class="w-10 h-10 opacity-20"></i><p class="text-xs font-medium italic">Selecione uma turma para carregar os dados</p></div>`;
+            }
+            lucide.createIcons();
+        }
+
+        function renderAlunoItem(aluno, mode) {
+            const formattedUrl = formatDriveUrl(aluno.url_foto);
+            const photo = aluno.url_foto 
+                ? `<img src="${formattedUrl}" class="avatar-mini" onclick="openPhotoZoom('${formattedUrl}', '${aluno.nome_completo}')" onerror="this.parentElement.innerHTML='<div class=\'avatar-mini flex items-center justify-center text-[10px] font-bold text-slate-500\'>${aluno.nome_completo.charAt(0)}</div>'">` 
+                : `<div class="avatar-mini flex items-center justify-center text-[10px] font-bold text-slate-500">${aluno.nome_completo.charAt(0)}</div>`;
+
+            const btn = mode === 'add' 
+                ? `<button onclick="moverParaTurma('${aluno.ra}')" class="p-2 text-fmm-blue hover:bg-fmm-blue hover:text-white rounded-xl transition-all opacity-0 group-hover:opacity-100"><i data-lucide="plus-circle" class="w-4 h-4"></i></button>`
+                : `<button onclick="removerDaTurma('${aluno.ra}')" class="p-2 text-red-400 hover:bg-red-50 hover:text-white rounded-xl transition-all opacity-0 group-hover:opacity-100"><i data-lucide="minus-circle" class="w-4 h-4"></i></button>`;
+
+            return `
+                <div class="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-2xl hover:border-fmm-blue/30 transition-all shadow-sm group">
+                    <div class="flex items-center gap-3">
+                        <div class="flex-shrink-0">${photo}</div>
+                        <div class="flex flex-col">
+                            <span class="text-xs font-bold text-fmm-dark uppercase">${aluno.nome_completo}</span>
+                            <span class="text-[9px] text-slate-400 font-bold uppercase">RA: ${aluno.ra}</span>
+                        </div>
+                    </div>
+                    ${btn}
+                </div>`;
+        }
+
+        async function handleTurmaChange() {
+            turmaAtualId = document.getElementById('selectTurma').value;
+            const t = todasTurmas.find(x => x.id === turmaAtualId);
+            
+            if (t) {
+                document.getElementById('statsTurma').classList.remove('hidden');
+                document.getElementById('turmaTitle').innerText = t.nome;
+                document.getElementById('nivelSerieDesc').innerText = `${t.nivel} / ${t.serie}`;
+                // Carrega especificamente os alunos dessa turma
+                await fetchAlunosAlocados(turmaAtualId);
+            } else {
+                document.getElementById('statsTurma').classList.add('hidden');
+                document.getElementById('turmaTitle').innerText = "Nenhuma turma selecionada";
+                alunosAlocados = [];
+                renderLists();
+            }
+        }
+
+        async function moverParaTurma(ra) {
+            if (!turmaAtualId) return;
+            const { error } = await supabaseClient.from('alunos').update({ id_turma: turmaAtualId }).eq('ra', ra);
+            if (!error) {
+                await supabaseClient.from('matriculas').upsert({ ra_aluno: ra, id_turma: turmaAtualId, ano_letivo: 2026, status: 'CURSANDO' }, { onConflict: 'ra_aluno, id_turma, ano_letivo' });
+                // Atualiza as listas locais sem recarregar tudo
+                await fetchAlunosAlocados(turmaAtualId);
+                await fetchAlunosDisponiveis(document.getElementById('searchDisponivel').value);
+            }
+        }
+
+        async function removerDaTurma(ra) {
+            if(!confirm("Remover este aluno da turma?")) return;
+            const { error } = await supabaseClient.from('alunos').update({ id_turma: null, id_subturma_ingles: null }).eq('ra', ra);
+            if (!error) {
+                await fetchAlunosAlocados(turmaAtualId);
+                await fetchAlunosDisponiveis(document.getElementById('searchDisponivel').value);
+            }
+        }
+
+        async function handleTurmaInglesChange() {
+            const sel = document.getElementById('selectTurmaIngles');
+            const turmaId = sel.value;
+            if(!turmaId) {
+                document.getElementById('inglesContainer').classList.add('hidden');
+                document.getElementById('inglesEmpty').classList.remove('hidden');
+                document.getElementById('inglesActions').classList.add('hidden');
+                return;
+            }
+
+            const opt = sel.options[sel.selectedIndex];
+            const isThird = opt.dataset.serie === '3ª Série';
+            
+            const { data: subs } = await window.supabaseClient.from('subturmas').select('*').eq('id_turma_origem', turmaId);
+            currentSubturmas = subs || [];
+
+            if (currentSubturmas.length === 0) {
+                abrirSetupIngles(isThird);
+                return;
+            }
+
+            document.getElementById('inglesEmpty').classList.add('hidden');
+            document.getElementById('inglesContainer').classList.remove('hidden');
+            document.getElementById('inglesActions').classList.remove('hidden');
+            document.getElementById('btnAutoAZ').classList.toggle('hidden', isThird);
+
+            document.getElementById('label-group-a').innerText = isThird ? "Intermediário" : "Grupo A (1ª Metade)";
+            document.getElementById('label-group-b').innerText = isThird ? "Avançado" : "Grupo B (2ª Metade)";
+
+            document.getElementById('prof-group-a').innerText = professorsList.find(p => p.id === currentSubturmas[0]?.id_professor)?.nome_completo || 'Sem Prof.';
+            document.getElementById('prof-group-b').innerText = professorsList.find(p => p.id === currentSubturmas[1]?.id_professor)?.nome_completo || 'Sem Prof.';
+
+            const { data: alTurma } = await window.supabaseClient.from('alunos').select('ra, nome_completo, id_subturma_ingles').eq('id_turma', turmaId).eq('status', 'Cursando').order('nome_completo');
+            alunosNaTurmaPai = alTurma || [];
+            renderInglesColumns();
+        }
+
+        function renderInglesColumns() {
+            const listUn = document.getElementById('list-unassigned');
+            const listA = document.getElementById('list-group-a');
+            const listB = document.getElementById('list-group-b');
+            
+            listUn.innerHTML = ''; listA.innerHTML = ''; listB.innerHTML = '';
+            let cU=0, cA=0, cB=0;
+
+            const subAId = currentSubturmas[0]?.id;
+            const subBId = currentSubturmas[1]?.id;
+
+            alunosNaTurmaPai.forEach(a => {
+                const card = document.createElement('div');
+                card.className = "flex items-center justify-between p-3 bg-white border border-slate-100 rounded-2xl shadow-sm group hover:border-fmm-blue/20";
+                card.innerHTML = `
+                    <div class="flex flex-col">
+                        <span class="text-[10px] font-black text-fmm-dark uppercase truncate w-32">${a.nome_completo}</span>
+                        <span class="text-[9px] font-bold text-slate-400">RA: ${a.ra}</span>
+                    </div>
+                    <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                        <button onclick="setGrupoIngles('${a.ra}', '${subAId}')" class="p-1.5 bg-blue-50 text-fmm-blue rounded-lg hover:bg-fmm-blue hover:text-white"><i data-lucide="arrow-left" class="w-3 h-3"></i></button>
+                        <button onclick="setGrupoIngles('${a.ra}', '${subBId}')" class="p-1.5 bg-green-50 text-fmm-green rounded-lg hover:bg-fmm-green hover:text-white"><i data-lucide="arrow-right" class="w-3 h-3"></i></button>
+                        <button onclick="setGrupoIngles('${a.ra}', null)" class="p-1.5 bg-slate-50 text-slate-400 rounded-lg hover:bg-slate-200"><i data-lucide="x" class="w-3 h-3"></i></button>
+                    </div>
+                `;
+
+                if (a.id_subturma_ingles === subAId) { listA.appendChild(card); cA++; }
+                else if (a.id_subturma_ingles === subBId) { listB.appendChild(card); cB++; }
+                else { listUn.appendChild(card); cU++; }
+            });
+
+            document.getElementById('count-unassigned').innerText = cU;
+            document.getElementById('count-group-a').innerText = cA;
+            document.getElementById('count-group-b').innerText = cB;
+            lucide.createIcons();
+        }
+
+        function setGrupoIngles(ra, subId) {
+            const aluno = alunosNaTurmaPai.find(a => a.ra === ra);
+            if(aluno) {
+                aluno.id_subturma_ingles = subId;
+                renderInglesColumns();
+            }
+        }
+
+        function distribuirInglesAutomatica() {
+            if(!confirm("Dividir turma alfabeticamente 50/50?")) return;
+            alunosNaTurmaPai.sort((a, b) => a.nome_completo.localeCompare(b.nome_completo));
+            const mid = Math.ceil(alunosNaTurmaPai.length / 2);
+            alunosNaTurmaPai.forEach((a, idx) => {
+                a.id_subturma_ingles = (idx < mid) ? currentSubturmas[0].id : currentSubturmas[1].id;
+            });
+            renderInglesColumns();
+        }
+
+        async function salvarEnturmacaoIngles() {
+            const btn = document.querySelector('#inglesActions button:last-child');
+            btn.innerHTML = "Salvando..."; btn.disabled = true;
+
+            for (const a of alunosNaTurmaPai) {
+                await window.supabaseClient.from('alunos').update({ id_subturma_ingles: a.id_subturma_ingles }).eq('ra', a.ra);
+            }
+
+            btn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Salvar Distribuição'; btn.disabled = false;
+            alert("Enturmação de Inglês salva com sucesso!");
+            lucide.createIcons();
+        }
+
+        function abrirSetupIngles(isThird) {
+            document.getElementById('label-setup-a').innerText = isThird ? "Prof. Intermediário" : "Prof. Grupo A";
+            document.getElementById('label-setup-b').innerText = isThird ? "Prof. Avançado" : "Prof. Grupo B";
+            
+            const options = professorsList.map(p => `<option value="${p.id}">${p.nome_completo}</option>`).join('');
+            document.getElementById('setup-prof-a').innerHTML = options;
+            document.getElementById('setup-prof-b').innerHTML = options;
+            
+            document.getElementById('setupInglesModal').classList.remove('hidden');
+        }
+
+        async function confirmarCriacaoSubturmas() {
+            const sel = document.getElementById('selectTurmaIngles');
+            const turmaId = sel.value;
+            const opt = sel.options[sel.selectedIndex];
+            const isThird = opt.dataset.serie === '3ª Série';
+            
+            const payload = [
+                { id_turma_origem: turmaId, nome: isThird ? 'Intermediário' : 'Grupo A', id_professor: document.getElementById('setup-prof-a').value, tipo_divisao: isThird ? 'NIVELAMENTO' : 'ALFABETICA' },
+                { id_turma_origem: turmaId, nome: isThird ? 'Avançado' : 'Grupo B', id_professor: document.getElementById('setup-prof-b').value, tipo_divisao: isThird ? 'NIVELAMENTO' : 'ALFABETICA' }
+            ];
+
+            const { error } = await window.supabaseClient.from('subturmas').insert(payload);
+            if(!error) {
+                document.getElementById('setupInglesModal').classList.add('hidden');
+                handleTurmaInglesChange();
+            }
+        }
+
+        window.onload = () => { initData(); lucide.createIcons(); };
+    </script>
+</body>
+</html>

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitação de Orientação | SME FMM</title>
+    
+    <!-- Bibliotecas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Infraestrutura SME FMM -->
+    <script src="../../assets/js/supabase_client.js"></script>
+    <script src="../../sidebar.js"></script>
+    <script src="../../assets/js/constants.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; overflow: hidden; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .list-row {
+            background: white; border-bottom: 1px solid #f1f5f9;
+            transition: all 0.2s ease;
+        }
+        .list-row:hover { background-color: #f8fafc; }
+
+        .status-badge {
+            font-weight: 800; font-size: 8px; text-transform: uppercase; letter-spacing: 0.1em; 
+            padding: 4px 10px; border-radius: 8px; border-width: 1px; display: inline-flex; align-items: center; gap: 4px;
+        }
+        .status-pending { background: #fff7ed; color: #9a3412; border-color: #ffedd5; }
+        .status-ongoing { background: #eff6ff; color: #1e40af; border-color: #dbeafe; }
+        .status-finished { background: #f0fdf4; color: #166534; border-color: #dcfce7; }
+        .status-ignored { background: #fef2f2; color: #991b1b; border-color: #fee2e2; }
+
+        .form-control {
+            width: 100%; padding: 12px 16px; background-color: #f8fafc; border: 1px solid #e2e8f0; 
+            border-radius: 16px; font-size: 13px; font-weight: 500; color: #1e293b;
+            outline: none; transition: all 0.2s;
+        }
+        .form-control:focus { border-color: #00638f; background-color: white; box-shadow: 0 0 0 4px rgba(0, 99, 143, 0.08); }
+
+        .student-result-card {
+            padding: 12px; border-radius: 16px; border: 1px solid #f1f5f9; transition: all 0.2s; cursor: pointer;
+        }
+        .student-result-card:hover { border-color: #00638f; background: #f0f9ff; }
+
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-ui { animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden">
+
+    <!-- SIDEBAR CONTAINER -->
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-40 transition-all duration-300"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
+        
+        <!-- HEADER -->
+        <header class="bg-white h-20 border-b flex items-center justify-between px-10 z-10 shadow-sm flex-shrink-0">
+            <div class="flex items-center gap-5">
+                <div class="w-10 h-10 bg-fmm-dark rounded-xl flex items-center justify-center text-white shadow-lg">
+                    <i data-lucide="bell-plus" class="w-5 h-5 text-fmm-lime"></i>
+                </div>
+                <div class="flex flex-col">
+                    <h1 class="text-lg font-black text-fmm-dark tracking-tight uppercase">Chamados para Orientação</h1>
+                    <p class="text-[9px] text-fmm-blue font-bold uppercase tracking-[0.2em] opacity-50">Solicitação de apoio psicológico e pedagógico</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <button onclick="openNewCallModal()" class="bg-fmm-dark hover:bg-fmm-blue text-white px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg transform hover:scale-105">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    Abrir Novo Chamado
+                </button>
+            </div>
+        </header>
+
+        <!-- BUSCA E LISTA -->
+        <div class="flex-1 flex flex-col overflow-hidden p-8 gap-6">
+            
+            <!-- BARRA DE FILTROS -->
+            <div class="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap gap-4 items-center">
+                <div class="relative group flex-1 min-w-[300px]">
+                    <i data-lucide="search" class="absolute left-4 top-3 w-4 h-4 text-slate-400"></i>
+                    <input type="text" id="searchInput" onkeyup="filterCalls()" placeholder="Filtrar por aluno, RA ou motivo..." class="pl-12 pr-6 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-fmm-blue outline-none transition-all w-full">
+                </div>
+                <div class="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+                    <span class="text-[10px] font-black text-slate-400 uppercase">Status:</span>
+                    <select id="filterStatus" onchange="fetchOpenedCalls()" class="bg-transparent text-[10px] font-black text-fmm-dark uppercase outline-none cursor-pointer">
+                        <option value="all">Todos os Registros</option>
+                        <option value="pending">Pendentes</option>
+                        <option value="ongoing">Em Curso</option>
+                        <option value="finished">Encerrados</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- TABELA DE CHAMADOS ABERTOS -->
+            <div class="flex-1 bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                <div class="grid grid-cols-12 bg-slate-50/50 border-b border-slate-100 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <div class="col-span-3">Estudante</div>
+                    <div class="col-span-5">Motivação da Solicitação</div>
+                    <div class="col-span-2 text-center">Data de Abertura</div>
+                    <div class="col-span-2 text-right">Estado Atual</div>
+                </div>
+
+                <div id="callsList" class="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-50">
+                    <!-- Injetado via JS -->
+                    <div class="flex flex-col items-center justify-center py-20 text-slate-300">
+                        <i data-lucide="loader-2" class="w-8 h-8 animate-spin mb-4 opacity-20"></i>
+                        <p class="text-[10px] font-bold uppercase tracking-widest">Sincronizando Seus Chamados...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL DE NOVO CHAMADO (UX REFINADO) -->
+    <div id="callModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-fmm-dark/80 backdrop-blur-sm p-6">
+        <div class="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-ui overflow-hidden border-[8px] border-white">
+            
+            <div class="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-fmm-dark rounded-2xl flex items-center justify-center text-white shadow-lg">
+                        <i data-lucide="message-square-plus" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none mb-1">Nova Demanda</h2>
+                        <p class="text-[10px] text-fmm-blue font-bold uppercase tracking-widest">Serviço de Apoio à Orientação</p>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="text-slate-300 hover:text-red-500 transition-all p-2 rounded-full hover:bg-white shadow-sm">
+                    <i data-lucide="x" class="w-7 h-7"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-10 space-y-8 custom-scrollbar">
+                
+                <!-- PASSO 1: SELECIONAR ALUNO -->
+                <div class="space-y-3">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">1. Localizar Estudante</label>
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-4 top-3.5 w-4 h-4 text-slate-400"></i>
+                        <input type="text" id="studentSearchInput" onkeyup="searchStudents(this.value)" placeholder="Digite o Nome ou RA..." class="form-control pl-12">
+                        <!-- Resultados da busca de aluno -->
+                        <div id="studentResults" class="absolute z-20 left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 max-h-48 overflow-y-auto hidden custom-scrollbar"></div>
+                    </div>
+                    <!-- Aluno Selecionado Preview -->
+                    <div id="selectedStudentPreview" class="hidden p-4 bg-fmm-blue/5 rounded-2xl border border-fmm-blue/10 flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="relative">
+                                <img id="selAvatar" src="" class="w-12 h-12 rounded-xl object-cover border-2 border-white shadow-sm">
+                            </div>
+                            <div>
+                                <h4 id="selName" class="text-sm font-black text-fmm-dark uppercase leading-none mb-1">---</h4>
+                                <p id="selRA" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">RA: 000000</p>
+                            </div>
+                        </div>
+                        <button onclick="clearSelectedStudent()" class="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                    <input type="hidden" id="selectedRA">
+                </div>
+
+                <!-- PASSO 2: MOTIVAÇÃO -->
+                <div class="space-y-3">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">2. Relato do Motivo / Justificativa</label>
+                    <textarea id="callReason" class="form-control min-h-[180px] leading-relaxed text-sm p-6" placeholder="Descreva detalhadamente o comportamento, situação ou necessidade que justifica este encaminhamento..."></textarea>
+                    <p class="text-[9px] text-slate-400 font-medium italic ml-2">* Este relato será lido exclusivamente pela equipe de orientação.</p>
+                </div>
+            </div>
+
+            <div class="p-8 border-t bg-slate-50/30 flex justify-end gap-3">
+                <button onclick="closeModal()" class="px-8 py-3 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-slate-600">Cancelar</button>
+                <button id="btnSubmit" onclick="submitCall()" class="px-12 py-3 bg-fmm-dark text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-xl shadow-xl shadow-fmm-dark/20 hover:bg-fmm-blue transition-all flex items-center gap-2">
+                    <i data-lucide="send" class="w-3.5 h-3.5"></i> Enviar para Orientação
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let openedCalls = [];
+        let searchTimeout = null;
+
+        async function init() {
+            if (window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if (!user) return window.location.href = '../../index.html';
+            
+            const { data: profile } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).single();
+            currentUser = profile;
+
+            await fetchOpenedCalls();
+            lucide.createIcons();
+        }
+
+        async function fetchOpenedCalls() {
+            const list = document.getElementById('callsList');
+            const statusFilter = document.getElementById('filterStatus').value;
+
+            let query = window.supabaseClient
+                .from('orientacao_chamados')
+                .select('*, alunos(nome_completo, ra)')
+                .eq('id_coordenador', currentUser.id)
+                .order('data_abertura', { ascending: false });
+
+            if (statusFilter !== 'all') {
+                query = query.eq('status', statusFilter);
+            }
+
+            const { data, error } = await query;
+            
+            if (error) {
+                list.innerHTML = `<div class="py-20 text-center text-red-400 italic text-xs uppercase tracking-widest">Erro ao carregar chamados.</div>`;
+                return;
+            }
+
+            openedCalls = data || [];
+            renderCalls();
+        }
+
+        function renderCalls() {
+            const container = document.getElementById('callsList');
+            const search = document.getElementById('searchInput').value.toLowerCase();
+
+            let filtered = openedCalls.filter(c => 
+                c.alunos.nome_completo.toLowerCase().includes(search) || 
+                c.alunos.ra.includes(search) || 
+                c.motivo.toLowerCase().includes(search)
+            );
+
+            if(filtered.length === 0) {
+                container.innerHTML = `<div class="py-20 text-center text-slate-300 italic text-xs uppercase tracking-widest">Nenhum chamado corresponde aos filtros.</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(c => {
+                const dateParts = ManausTime.format(c.data_abertura);
+                return `
+                    <div class="list-row grid grid-cols-12 items-center px-8 py-5 gap-4 animate-ui">
+                        <div class="col-span-3 flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-black text-xs text-slate-400">
+                                ${c.alunos.nome_completo.charAt(0)}
+                            </div>
+                            <div class="overflow-hidden">
+                                <h3 class="text-xs font-black text-fmm-dark uppercase truncate">${c.alunos.nome_completo}</h3>
+                                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">RA: ${c.alunos.ra}</p>
+                            </div>
+                        </div>
+                        <div class="col-span-5">
+                            <p class="text-[11px] text-slate-500 font-medium leading-snug line-clamp-2 italic">"${c.motivo}"</p>
+                        </div>
+                        <div class="col-span-2 text-center">
+                            <span class="text-[10px] font-black text-fmm-blue uppercase block">${dateParts}</span>
+                        </div>
+                        <div class="col-span-2 text-right">
+                            <span class="status-badge status-${c.status}">${getStatusLabel(c.status)}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function getStatusLabel(status) {
+            const labels = { 'pending': 'Pendente', 'ongoing': 'Em curso', 'finished': 'Finalizado', 'ignored': 'Arquivado' };
+            return labels[status] || status;
+        }
+
+        // --- BUSCA DE ALUNO NO BANCO (Lida com > 1500 alunos) ---
+        function searchStudents(val) {
+            clearTimeout(searchTimeout);
+            const results = document.getElementById('studentResults');
+            
+            if(!val || val.length < 3) {
+                results.classList.add('hidden');
+                return;
+            }
+
+            searchTimeout = setTimeout(async () => {
+                const { data, error } = await window.supabaseClient
+                    .from('alunos')
+                    .select('ra, nome_completo, url_foto, turmas(nome)')
+                    .or(`nome_completo.ilike.%${val}%,ra.ilike.%${val}%`)
+                    .limit(5); // Limite para não sobrecarregar a UI
+
+                if (error || !data || data.length === 0) {
+                    results.innerHTML = `<div class="p-4 text-xs text-slate-400 italic">Nenhum aluno encontrado.</div>`;
+                    results.classList.remove('hidden');
+                    return;
+                }
+
+                results.innerHTML = data.map(s => `
+                    <div onclick="selectStudent('${s.ra}', '${s.nome_completo.replace(/'/g, "\\'")}', '${s.url_foto}')" class="student-result-card flex items-center gap-3 border-b border-slate-50 last:border-0">
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-400">
+                            ${s.nome_completo.charAt(0)}
+                        </div>
+                        <div class="flex flex-col overflow-hidden">
+                            <span class="text-[11px] font-black text-fmm-dark uppercase truncate">${s.nome_completo}</span>
+                            <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">RA: ${s.ra} • ${s.turmas?.nome || 'Sem Turma'}</span>
+                        </div>
+                    </div>
+                `).join('');
+                results.classList.remove('hidden');
+            }, 400);
+        }
+
+        function selectStudent(ra, name, photo) {
+            document.getElementById('selectedRA').value = ra;
+            document.getElementById('selName').innerText = name;
+            document.getElementById('selRA').innerText = `RA: ${ra}`;
+            
+            const avatar = document.getElementById('selAvatar');
+            if (photo && photo !== 'null') {
+                // Função helper formatDriveUrl já injetada via constantes ou manual
+                const idMatch = photo.match(/\/d\/(.*?)\//);
+                avatar.src = idMatch ? `https://lh3.googleusercontent.com/d/${idMatch[1]}` : photo;
+            } else {
+                avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff&bold=true`;
+            }
+            
+            document.getElementById('studentSearchInput').classList.add('hidden');
+            document.getElementById('studentResults').classList.add('hidden');
+            document.getElementById('selectedStudentPreview').classList.remove('hidden');
+        }
+
+        function clearSelectedStudent() {
+            document.getElementById('selectedRA').value = '';
+            document.getElementById('selectedStudentPreview').classList.add('hidden');
+            document.getElementById('studentSearchInput').classList.remove('hidden');
+            document.getElementById('studentSearchInput').value = '';
+            document.getElementById('studentSearchInput').focus();
+        }
+
+        function filterCalls() { renderCalls(); }
+
+        // --- SUBMIT REAL DO CHAMADO ---
+        async function submitCall() {
+            const ra = document.getElementById('selectedRA').value;
+            const reason = document.getElementById('callReason').value;
+            const btn = document.getElementById('btnSubmit');
+
+            if(!ra) return alert("Por favor, selecione um aluno.");
+            if(!reason || reason.trim().length < 10) return alert("Por favor, descreva o motivo da solicitação detalhadamente.");
+
+            btn.disabled = true;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Enviando...';
+            lucide.createIcons();
+
+            try {
+                const { error } = await window.supabaseClient
+                    .from('orientacao_chamados')
+                    .insert({ 
+                        ra_aluno: ra, 
+                        id_coordenador: currentUser.id, 
+                        motivo: reason,
+                        status: 'pending'
+                    });
+
+                if (error) throw error;
+
+                showToast("Chamado enviado com sucesso para a Orientação!");
+                closeModal();
+                await fetchOpenedCalls();
+            } catch (err) {
+                alert("Erro ao enviar chamado: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                lucide.createIcons();
+            }
+        }
+
+        function openNewCallModal() {
+            clearSelectedStudent();
+            document.getElementById('callReason').value = '';
+            document.getElementById('callModal').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('callModal').classList.add('hidden'); }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            t.classList.replace('opacity-0', 'opacity-100'); t.classList.replace('translate-y-20', 'translate-y-0');
+            setTimeout(() => { t.classList.replace('opacity-100', 'opacity-0'); t.classList.replace('translate-y-0', 'translate-y-20'); }, 3000);
+        }
+
+        window.onload = init;
+    </script>
+
+    <!-- TOAST DESIGNER -->
+    <div id="toast" class="fixed bottom-12 right-12 z-[110] translate-y-20 opacity-0 transition-all duration-500">
+        <div class="bg-[#0f172a] text-white px-8 py-5 rounded-3xl shadow-2xl flex items-center gap-4 border border-white/10">
+            <div class="w-10 h-10 bg-fmm-lime rounded-2xl flex items-center justify-center shadow-lg">
+                <i data-lucide="check" class="w-5 h-5 text-fmm-dark"></i>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-[8px] font-black uppercase tracking-widest opacity-40">SME FMM 2026</span>
+                <span class="text-[11px] font-bold" id="toast-msg">Chamado Aberto</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

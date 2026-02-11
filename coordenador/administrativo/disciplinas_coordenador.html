@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Disciplinas | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- TASK 3.2.1: Importação do Cliente Global e Constantes -->
+    <script src="../../assets/js/supabase_client.js"></script>
+    <script src="../../assets/js/constants.js"></script>
+    <!-- Importação do Componente de Sidebar -->
+    <script src="../../sidebar.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-collapsed .sidebar-text, .sidebar-collapsed .sidebar-category-header, .sidebar-collapsed .chevron-icon, .sidebar-collapsed .sidebar-category-title { display: none; }
+        .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
+        .sidebar-collapsed .logo-full { display: none; }
+        .sidebar-collapsed .logo-short { display: block; }
+        .logo-short { display: none; }
+
+        .category-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .category-content.open {
+            max-height: 1000px;
+        }
+        .chevron-icon {
+            transition: transform 0.3s ease;
+        }
+        .rotate-180 {
+            transform: rotate(180deg);
+        }
+
+        .modal-content::-webkit-scrollbar { width: 6px; }
+        .modal-content::-webkit-scrollbar-track { background: transparent; }
+        .modal-content::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden">
+
+    <!-- SIDEBAR CONTAINER -->
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
+        
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0">
+            <div class="flex flex-col">
+                <h1 class="text-xl font-bold text-fmm-dark">Gestão de Disciplinas</h1>
+                <p class="text-xs text-slate-400">Organização da matriz curricular FMM</p>
+            </div>
+            <button onclick="openModal()" class="bg-fmm-blue hover:bg-fmm-dark text-white px-6 py-2.5 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all shadow-lg shadow-fmm-blue/20">
+                <i data-lucide="plus" class="w-4 h-4"></i> Nova Disciplina
+            </button>
+        </header>
+
+        <div class="px-8 pt-8 flex-shrink-0">
+            <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4">
+                <div class="flex-1 relative group">
+                    <i data-lucide="search" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
+                    <input type="text" id="searchInput" onkeyup="fetchDisciplinas()" placeholder="Procurar por nome da disciplina ou sigla..." 
+                           class="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
+                </div>
+                <select id="filterTipo" onchange="fetchDisciplinas()" class="px-6 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-slate-600 font-medium text-sm">
+                    <option value="">Todas as Áreas</option>
+                    <option value="BCC">BCC (Base Comum)</option>
+                    <option value="Técnica">Área Técnica</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            <div class="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50/50 border-b border-slate-100 text-[11px] uppercase tracking-widest text-slate-400 font-bold">
+                            <th class="px-8 py-5">Nome da Disciplina / Sigla</th>
+                            <th class="px-6 py-5">Área / Séries</th>
+                            <th class="px-6 py-5 text-center">Regime de Avaliação</th>
+                            <th class="px-6 py-5 text-center">Carga Horária</th>
+                            <th class="px-8 py-5 text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="disciplinasTableBody" class="divide-y divide-slate-50"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL DE CADASTRO -->
+    <div id="disciplinaModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl flex flex-col animate-fade-in-up overflow-hidden">
+            
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
+                <h2 class="text-2xl font-bold text-fmm-dark" id="modalTitle">Nova Disciplina</h2>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-slate-100">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <div class="modal-content overflow-y-auto p-8 space-y-6 max-h-[70vh] custom-scrollbar">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="md:col-span-3 space-y-1.5">
+                        <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Nome da Disciplina</label>
+                        <input type="text" id="inNome" placeholder="Ex: Matemática, Eletrônica Digital..." class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Sigla</label>
+                        <input type="text" id="inSigla" placeholder="Ex: MAT" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Área de Atuação / Matriz</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="selectTipo('BCC')" id="btnBCC" class="tipo-btn py-4 px-4 border-2 border-slate-100 rounded-2xl flex flex-col items-center gap-1 transition-all">
+                            <span class="font-bold text-sm">BCC</span>
+                            <span class="text-[9px] uppercase tracking-widest opacity-60">Base Comum</span>
+                        </button>
+                        <button onclick="selectTipo('Técnica')" id="btnTec" class="tipo-btn py-4 px-4 border-2 border-slate-100 rounded-2xl flex flex-col items-center gap-1 transition-all">
+                            <span class="font-bold text-sm">Técnica</span>
+                            <span class="text-[9px] uppercase tracking-widest opacity-60">Área Técnica</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="semestreWrapper" class="hidden space-y-1.5 animate-fade-in-up">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Semestre Letivo</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="relative flex items-center justify-center p-3 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-50">
+                            <input type="radio" name="semestre" value="1º Semestre" class="mr-2">
+                            <span class="text-sm font-medium">1º Semestre</span>
+                        </label>
+                        <label class="relative flex items-center justify-center p-3 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-50">
+                            <input type="radio" name="semestre" value="2º Semestre" class="mr-2">
+                            <span class="text-sm font-medium">2º Semestre</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Seleção de Séries (ATUALIZADA) -->
+                <div class="space-y-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Séries Vinculadas</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <label class="flex items-center p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
+                            <input type="checkbox" name="serie" value="5º Ano" class="mr-2 rounded">
+                            <span class="text-xs font-medium">5º Ano (EF1)</span>
+                        </label>
+                        <!-- EF2 EXPANDIDO -->
+                        <label class="flex items-center p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
+                            <input type="checkbox" name="serie" value="6º Ano" class="mr-2 rounded">
+                            <span class="text-xs font-medium">6º Ano (EF2)</span>
+                        </label>
+                        <label class="flex items-center p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
+                            <input type="checkbox" name="serie" value="7º Ano" class="mr-2 rounded">
+                            <span class="text-xs font-medium">7º Ano (EF2)</span>
+                        </label>
+                        <label class="flex items-center p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
+                            <input type="checkbox" name="serie" value="8º Ano" class="mr-2 rounded">
+                            <span class="text-xs font-medium">8º Ano (EF2)</span>
+                        </label>
+                        <label class="flex items-center p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
+                            <input type="checkbox" name="serie" value="9º Ano" class="mr-2 rounded">
+                            <span class="text-xs font-medium">9º Ano (EF2)</span>
+                        </label>
+                        <!-- EMT -->
+                        <label class="flex items-center p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
+                            <input type="checkbox" name="serie" value="1ª Série" class="mr-2 rounded">
+                            <span class="text-xs font-medium">1ª Série (EMT)</span>
+                        </label>
+                        <label class="flex items-center p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
+                            <input type="checkbox" name="serie" value="2ª Série" class="mr-2 rounded">
+                            <span class="text-xs font-medium">2ª Série (EMT)</span>
+                        </label>
+                        <label class="flex items-center p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
+                            <input type="checkbox" name="serie" value="3ª Série" class="mr-2 rounded">
+                            <span class="text-xs font-medium">3ª Série (EMT)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="regimeInfo" class="p-4 bg-fmm-blue/5 border border-fmm-blue/10 rounded-2xl flex items-start gap-3">
+                    <i data-lucide="info" class="w-5 h-5 text-fmm-blue flex-shrink-0 mt-0.5"></i>
+                    <div>
+                        <h4 class="text-xs font-bold text-fmm-blue uppercase mb-0.5">Regime Acadêmico</h4>
+                        <p id="regimeDesc" class="text-xs text-slate-600">Selecione uma área para ver o regime de avaliação.</p>
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Carga Horária Total (Horas)</label>
+                    <input type="number" id="inCarga" placeholder="Ex: 80" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
+                </div>
+            </div>
+
+            <div class="p-8 border-t bg-slate-50/50 rounded-b-[32px] flex justify-end gap-4">
+                <button onclick="closeModal()" class="px-6 py-3 text-sm font-bold text-slate-500 hover:text-slate-700 transition-all">Cancelar</button>
+                <button id="btnSave" onclick="saveDisciplina()" class="px-10 py-3.5 bg-fmm-lime text-fmm-dark font-bold text-sm rounded-2xl shadow-xl shadow-fmm-lime/20 hover:scale-105 active:scale-95 transition-all">
+                    Guardar Disciplina
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // TASK 3.2.1: SupabaseClient agora é global vindo de assets/js/supabase_client.js
+
+        let selectedTipo = "";
+        let editingSigla = null;
+        let userLevels = []; // Níveis permitidos ao coordenador
+
+        // Mapeamento lógico de Níveis para Séries para facilitar o filtro
+        const seriesByLevel = {
+            'EF1': ['5º Ano'],
+            'EF2': ['6º Ano', '7º Ano', '8º Ano', '9º Ano'],
+            'EMT': ['1ª Série', '2ª Série', '3ª Série']
+        };
+
+        async function init() {
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if (!user) return window.location.href = '../../index.html'; 
+            
+            // --- CAPTURA DE CONTEXTO DO USUÁRIO ---
+            const { data: profile } = await window.supabaseClient
+                .from('perfis')
+                .select('cargo, niveis_acesso')
+                .eq('id', user.id)
+                .single();
+
+            if (profile) {
+                if (profile.cargo === 'diretor') {
+                    userLevels = ['EF1', 'EF2', 'EMT'];
+                } else {
+                    userLevels = profile.niveis_acesso || [];
+                }
+            }
+
+            await SidebarComponent.render('sidebar-container');
+            await fetchDisciplinas();
+            lucide.createIcons();
+        }
+
+        async function fetchDisciplinas() {
+            const termo = document.getElementById('searchInput').value;
+            const tipoFiltro = document.getElementById('filterTipo').value;
+            const body = document.getElementById('disciplinasTableBody');
+            
+            let query = window.supabaseClient.from('disciplinas').select('*');
+            if (termo) query = query.or(`nome.ilike.%${termo}%,sigla.ilike.%${termo}%`);
+            if (tipoFiltro) query = query.eq('tipo', tipoFiltro);
+
+            const { data, error } = await query.order('nome');
+            if (error) return;
+
+            // --- LÓGICA DE FILTRAGEM POR NÍVEL AUTORIZADO ---
+            // Criamos uma lista consolidada de todas as séries que o coordenador pode ver
+            let allowedSeries = [];
+            userLevels.forEach(lvl => {
+                if (seriesByLevel[lvl]) allowedSeries = allowedSeries.concat(seriesByLevel[lvl]);
+            });
+
+            // Filtramos as disciplinas: uma disciplina só aparece se ao menos uma de suas séries vinculadas estiver na lista permitida
+            const filteredData = data.filter(d => {
+                if (!d.series || d.series.length === 0) return true; // Se não tiver série, mostra (casos genéricos)
+                return d.series.some(s => allowedSeries.includes(s));
+            });
+
+            body.innerHTML = filteredData.map(d => {
+                const seriesText = d.series ? d.series.join(", ") : "N/A";
+                return `
+                    <tr class="hover:bg-slate-50/80 transition-all group">
+                        <td class="px-8 py-5">
+                            <span class="font-bold text-fmm-dark text-sm block">${d.nome} (${d.sigla})</span>
+                        </td>
+                        <td class="px-6 py-5">
+                            <div class="flex flex-col gap-1.5">
+                                <span class="px-3 py-1 w-fit ${d.tipo === 'BCC' ? 'bg-fmm-blue/10 text-fmm-blue' : 'bg-fmm-green/10 text-fmm-green'} text-[10px] font-bold rounded-lg uppercase tracking-wider">
+                                    ${d.tipo}
+                                </span>
+                                <span class="text-[10px] text-slate-500 font-medium">Séries: ${seriesText}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5 text-center">
+                            <div class="flex flex-col">
+                                <span class="text-xs font-bold text-slate-600">${d.regime}</span>
+                                ${d.semestre ? `<span class="text-[10px] text-fmm-blue font-bold">${d.semestre}</span>` : ''}
+                            </div>
+                        </td>
+                        <td class="px-6 py-5 text-center">
+                            <span class="text-sm font-bold text-fmm-dark">${d.carga_horaria}h</span>
+                        </td>
+                        <td class="px-8 py-5">
+                            <div class="flex items-center justify-center gap-2">
+                                <button onclick='prepEdit(${JSON.stringify(d)})' class="p-2.5 text-slate-400 hover:text-fmm-blue hover:bg-fmm-blue/10 rounded-xl transition-all shadow-sm"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                                <button onclick="deleteDisciplina('${d.sigla}')" class="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all shadow-sm"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function selectTipo(tipo) {
+            selectedTipo = tipo;
+            const btnBCC = document.getElementById('btnBCC');
+            const btnTec = document.getElementById('btnTec');
+            const desc = document.getElementById('regimeDesc');
+            const semestreWrapper = document.getElementById('semestreWrapper');
+
+            [btnBCC, btnTec].forEach(b => {
+                b.classList.remove('border-fmm-blue', 'text-fmm-blue', 'bg-fmm-blue/5', 'border-fmm-green', 'text-fmm-green', 'bg-fmm-green/5');
+                b.classList.add('border-slate-100', 'text-slate-400');
+            });
+
+            if (tipo === 'BCC') {
+                btnBCC.classList.replace('border-slate-100', 'border-fmm-blue');
+                btnBCC.classList.replace('text-slate-400', 'text-fmm-blue');
+                btnBCC.classList.add('bg-fmm-blue/5');
+                desc.innerText = "Disciplinas da Base Comum são Anuais e divididas em 3 Trimestres.";
+                semestreWrapper.classList.add('hidden');
+                document.querySelectorAll('input[name="semestre"]').forEach(r => r.checked = false);
+            } else {
+                btnTec.classList.replace('border-slate-100', 'border-fmm-green');
+                btnTec.classList.replace('text-slate-400', 'text-fmm-green');
+                btnTec.classList.add('bg-fmm-green/5');
+                desc.innerText = "Disciplinas da Área Técnica são Semestrais (1º ou 2º Semestre).";
+                semestreWrapper.classList.remove('hidden');
+            }
+        }
+
+        async function saveDisciplina() {
+            const nome = document.getElementById('inNome').value;
+            const sigla = document.getElementById('inSigla').value;
+            const carga = document.getElementById('inCarga').value;
+            const btn = document.getElementById('btnSave');
+            const semestreRadio = document.querySelector('input[name="semestre"]:checked');
+            const semestre = semestreRadio ? semestreRadio.value : null;
+            const seriesCheckboxes = document.querySelectorAll('input[name="serie"]:checked');
+            const series = Array.from(seriesCheckboxes).map(cb => cb.value);
+
+            if(!nome || !sigla || !selectedTipo || !carga) return alert("Preencha todos os campos obrigatórios.");
+            if(selectedTipo === 'Técnica' && !semestre) return alert("Selecione o semestre da disciplina técnica.");
+            if(series.length === 0) return alert("Selecione ao menos uma série.");
+
+            btn.disabled = true;
+            btn.innerHTML = "Guardando...";
+
+            const payload = {
+                sigla, nome, tipo: selectedTipo,
+                regime: selectedTipo === 'BCC' ? "Anual" : "Semestral",
+                semestre, series, carga_horaria: parseInt(carga)
+            };
+
+            try {
+                const { error } = await window.supabaseClient.from('disciplinas').upsert(payload);
+                if (error) throw error;
+                closeModal();
+                fetchDisciplinas();
+            } catch (err) { alert("Erro ao guardar: " + err.message); } 
+            finally { btn.disabled = false; btn.innerHTML = "Guardar Disciplina"; }
+        }
+
+        function prepEdit(d) {
+            editingSigla = d.sigla;
+            document.getElementById('modalTitle').innerText = "Editar Disciplina";
+            document.getElementById('btnSave').innerText = "Atualizar Disciplina";
+            document.getElementById('inNome').value = d.nome;
+            document.getElementById('inSigla').value = d.sigla;
+            document.getElementById('inSigla').disabled = true;
+            document.getElementById('inCarga').value = d.carga_horaria;
+            selectTipo(d.tipo);
+            if (d.semestre) {
+                const radio = document.querySelector(`input[name="semestre"][value="${d.semestre}"]`);
+                if (radio) radio.checked = true;
+            }
+            document.querySelectorAll('input[name="serie"]').forEach(cb => cb.checked = d.series.includes(cb.value));
+            openModal();
+        }
+
+        async function deleteDisciplina(sigla) {
+            if(!confirm("Deseja excluir esta disciplina?")) return;
+            const { error } = await window.supabaseClient.from('disciplinas').delete().eq('sigla', sigla);
+            if (error) alert("Erro: " + error.message); else fetchDisciplinas();
+        }
+
+        function toggleSidebar() { if (window.SidebarComponent) SidebarComponent.toggleSidebar(); }
+        function toggleCategory(id) { if (window.SidebarComponent) SidebarComponent.toggleCategory(id); }
+
+        function openModal() { document.getElementById('disciplinaModal').classList.remove('hidden'); }
+        function closeModal() { 
+            document.getElementById('disciplinaModal').classList.add('hidden');
+            editingSigla = null;
+            document.getElementById('inSigla').disabled = false;
+            document.querySelectorAll('#disciplinaModal input').forEach(i => {
+                if(i.type === 'checkbox' || i.type === 'radio') i.checked = false;
+                else i.value = '';
+            });
+            selectedTipo = "";
+            document.querySelectorAll('.tipo-btn').forEach(b => b.classList.remove('border-fmm-blue', 'text-fmm-blue', 'bg-fmm-blue/5', 'border-fmm-green', 'text-fmm-green', 'bg-fmm-green/5'));
+        }
+
+        async function handleLogout() { if (confirm("Deseja sair do sistema?")) { await window.supabaseClient.auth.signOut(); window.location.href = "../../index.html"; } }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

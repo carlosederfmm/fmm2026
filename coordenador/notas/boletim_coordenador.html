@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boletim Individual | SME FMM</title>
+    <link rel="icon" href="https://www.fundacaomatiasmachline.org.br/wp-content/uploads/2020/04/icon2.png" type="image/png">
+    
+    <!-- Bibliotecas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Infraestrutura FMM 2026 -->
+    <script src="../../assets/js/supabase_client.js"></script>
+    <script src="../../sidebar.js"></script>
+    <script src="../../assets/js/constants.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: { dark: '#003c5b', blue: '#00638f', green: '#80a51b', lime: '#c8d400' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; overflow: hidden; }
+        
+        /* Sidebar Global Fix */
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-collapsed .sidebar-text, .sidebar-collapsed .sidebar-category-header, .sidebar-collapsed .chevron-icon { display: none; }
+        .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
+        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+        .category-content.open { max-height: 1000px; }
+        .rotate-180 { transform: rotate(180deg); }
+
+        /* Scrollbars */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Inputs de Nota */
+        .grade-input { 
+            width: 50px; text-align: center; border-radius: 8px; border: 1px solid #e2e8f0; 
+            padding: 6px 2px; font-weight: 800; font-size: 13px; transition: all 0.2s; background: white;
+        }
+        .grade-input:focus { border-color: #00638f; outline: none; box-shadow: 0 0 0 3px rgba(0, 99, 143, 0.1); transform: scale(1.05); }
+        .grade-input:disabled { background: #f8fafc; color: #94a3b8; border-style: dashed; cursor: not-allowed; }
+        
+        .color-risk { color: #ef4444; }
+        .color-safe { color: #00638f; }
+
+        .tab-btn {
+            padding: 12px 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; 
+            letter-spacing: 0.1em; border-bottom: 3px solid transparent; transition: all 0.2s;
+            color: #64748b; white-space: nowrap;
+        }
+        .tab-btn.active { border-bottom-color: #003c5b; color: #003c5b; background: rgba(0, 60, 91, 0.02); }
+
+        @keyframes slideInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-ui { animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        .student-item { transition: all 0.2s; border-left: 4px solid transparent; }
+        .student-item:hover { background-color: #f8fafc; }
+        .student-item.active { background-color: #eff6ff; border-left-color: #00638f; }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden text-slate-800">
+
+    <!-- SIDEBAR GLOBAL -->
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-50"></aside>
+
+    <!-- COLUNA INTERNA: LISTA DE ALUNOS -->
+    <aside class="w-80 bg-white border-r border-slate-200 flex flex-col z-30 flex-shrink-0 shadow-sm">
+        <div class="p-6 bg-slate-50 border-b border-slate-200 space-y-4">
+            <div class="flex flex-col gap-1">
+                <label class="text-[9px] font-black text-fmm-blue uppercase tracking-widest ml-1">Filtrar Turma</label>
+                <select id="classFilter" onchange="fetchStudents()" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-fmm-blue outline-none shadow-sm">
+                    <option value="all">Todas as Turmas Autorizadas</option>
+                </select>
+            </div>
+            <div class="relative group">
+                <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
+                <input type="text" id="searchStudent" onkeyup="filterLocalList()" placeholder="Nome ou RA..." class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-fmm-blue outline-none shadow-sm">
+            </div>
+        </div>
+        
+        <div id="studentList" class="flex-1 overflow-y-auto custom-scrollbar">
+            <!-- Injetado via JS -->
+            <div class="flex flex-col items-center justify-center h-full text-slate-300 p-8 text-center">
+                <i data-lucide="loader-2" class="w-8 h-8 animate-spin mb-2 opacity-20"></i>
+                <p class="text-xs italic">Sincronizando registros...</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- CONTEÚDO PRINCIPAL: BOLETIM -->
+    <main class="flex-1 flex flex-col overflow-hidden bg-slate-100/50">
+        
+        <!-- Estado Vazio -->
+        <div id="emptyState" class="flex-1 flex flex-col items-center justify-center text-slate-300 p-12 text-center">
+            <div class="bg-white p-10 rounded-[48px] shadow-xl mb-6 border border-slate-100">
+                <i data-lucide="user-search" class="w-16 h-16 text-slate-200"></i>
+            </div>
+            <h3 class="text-xl font-black text-fmm-dark uppercase tracking-widest mb-2">Prontuário Individual</h3>
+            <p class="text-sm text-slate-400 italic max-w-xs">Selecione um estudante na lista lateral para visualizar e gerir o rendimento acadêmico.</p>
+        </div>
+
+        <!-- Conteúdo do Aluno (Hidden por padrão) -->
+        <div id="boletimContent" class="hidden flex-1 flex flex-col overflow-hidden animate-ui">
+            
+            <!-- Header do Aluno -->
+            <header class="bg-white px-10 py-6 border-b border-slate-200 shadow-sm relative overflow-hidden flex-shrink-0">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-fmm-dark via-fmm-blue to-fmm-green"></div>
+                
+                <div class="flex justify-between items-center relative z-10">
+                    <div class="flex items-center gap-6">
+                        <div class="relative group">
+                            <img id="headerAvatar" src="" class="w-16 h-16 rounded-[24px] object-cover border-2 border-white shadow-xl bg-slate-100 transition-transform group-hover:scale-105">
+                            <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-fmm-lime rounded-full border-4 border-white flex items-center justify-center shadow-md">
+                                <i data-lucide="check" class="w-3 h-3 text-fmm-dark"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <h2 id="headerName" class="text-2xl font-black text-fmm-dark tracking-tight leading-none mb-2 uppercase">Nome do Estudante</h2>
+                            <div class="flex items-center gap-3">
+                                <span id="headerRA" class="px-3 py-1 bg-slate-100 rounded-lg text-[10px] font-black text-slate-500 uppercase tracking-widest border border-slate-200 shadow-sm">RA: 000000</span>
+                                <span id="headerClass" class="text-xs font-bold text-fmm-blue">---</span>
+                                <div class="h-3 w-px bg-slate-200"></div>
+                                <span id="headerStatus" class="text-[9px] font-black uppercase text-fmm-green bg-green-50 px-2 py-0.5 rounded-full border border-green-100">Cursando</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-8">
+                        <div class="text-right">
+                            <p class="text-[9px] text-slate-400 uppercase font-black tracking-[0.2em] mb-1">Média Global</p>
+                            <p id="globalAverage" class="text-4xl font-black text-slate-700 leading-none">0.0</p>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Abas de Período (Dinâmicas) -->
+            <nav id="viewControls" class="bg-white border-b border-slate-200 px-10 flex gap-2 overflow-x-auto no-scrollbar flex-shrink-0">
+                <!-- Injetado via JS dependendo do nível -->
+            </nav>
+
+            <!-- Área da Grade -->
+            <div id="contentArea" class="flex-1 overflow-auto p-10 custom-scrollbar relative">
+                
+                <div id="syncIndicator" class="hidden absolute top-4 right-10 flex items-center gap-2 px-3 py-1.5 bg-fmm-blue/5 border border-fmm-blue/10 rounded-full animate-pulse z-20">
+                    <i data-lucide="refresh-ccw" class="w-3 h-3 text-fmm-blue"></i>
+                    <span class="text-[9px] font-black text-fmm-blue uppercase">Salvando...</span>
+                </div>
+
+                <div class="bg-white rounded-[32px] shadow-2xl border border-slate-200 overflow-hidden">
+                    <table class="w-full text-sm text-left border-separate border-spacing-0">
+                        <thead id="tableHead" class="bg-fmm-dark text-white uppercase text-[10px] font-black tracking-widest">
+                            <!-- Injetado via JS -->
+                        </thead>
+                        <tbody id="gradesTableBody" class="divide-y divide-slate-100">
+                            <!-- Injetado via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-8 flex justify-center">
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] flex items-center gap-2">
+                        <i data-lucide="info" class="w-3 h-3"></i> Clique nos campos permitidos para alterar administrativamente
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- TOAST DE SUCESSO -->
+    <div id="toast" class="fixed bottom-8 right-8 z-[100] translate-y-20 opacity-0 transition-all duration-500">
+        <div class="bg-slate-900 text-white px-8 py-5 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/5">
+            <div class="w-8 h-8 bg-fmm-lime/20 rounded-full flex items-center justify-center">
+                <i data-lucide="check" class="w-4 h-4 text-fmm-lime"></i>
+            </div>
+            <span class="text-xs font-bold tracking-tight" id="toast-msg">Alteração Sincronizada</span>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ENGINE DO BOLETIM INDIVIDUAL - COORDENAÇÃO
+         */
+        
+        let allStudents = [];
+        let basicSubjects = [];
+        let techSubjects = [];
+        let currentStudent = null;
+        let currentView = 'anual';
+        let saveTimers = {};
+        let userLevels = []; // Níveis autorizados
+
+        const HIDDEN_SUBJECTS = ['ATUAL', 'BIO.APL', 'FÍSICA.APL', 'GEO.APL', 'HIST.APL', 'L.ING', 'P.DESP', 'QUIM.APL'];
+
+        function formatDriveUrl(url) {
+            if (!url) return null;
+            if (url.includes('drive.google.com') && url.includes('/file/d/')) {
+                const idMatch = url.match(/\/d\/(.*?)\//);
+                if (idMatch && idMatch[1]) return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
+            }
+            return url;
+        }
+
+        async function init() {
+            if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if (!user) return window.location.href = '../../index.html';
+
+            // --- CAPTURA DE CONTEXTO ---
+            const { data: profile } = await window.supabaseClient.from('perfis').select('cargo, niveis_acesso').eq('id', user.id).single();
+            if (profile) {
+                if (profile.cargo === 'diretor') {
+                    userLevels = ['EF1', 'EF2', 'EMT'];
+                } else {
+                    userLevels = profile.niveis_acesso || [];
+                }
+            }
+
+            await loadInitialMetadata();
+            lucide.createIcons();
+        }
+
+        async function loadInitialMetadata() {
+            // Busca apenas turmas autorizadas para este coordenador
+            const { data: turmas } = await window.supabaseClient.from('turmas').select('*').in('nivel', userLevels).order('nome');
+            const select = document.getElementById('classFilter');
+            if (turmas) {
+                turmas.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true }));
+                turmas.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id;
+                    opt.innerText = t.nome;
+                    select.appendChild(opt);
+                });
+            }
+
+            const { data: disc } = await window.supabaseClient.from('disciplinas').select('*').order('nome');
+            const visible = disc ? disc.filter(d => !HIDDEN_SUBJECTS.includes(d.sigla)) : [];
+            basicSubjects = visible.filter(d => d.tipo === 'BCC');
+            techSubjects = visible.filter(d => d.tipo === 'Técnica');
+
+            await fetchStudents();
+        }
+
+        async function fetchStudents() {
+            const classId = document.getElementById('classFilter').value;
+            
+            // Usamos !inner para garantir que o filtro de nível seja respeitado na busca global
+            let query = window.supabaseClient.from('matriculas')
+                .select('id, ra_aluno, turmas!inner(nome, serie, nivel), alunos(ra, nome_completo, url_foto, email_institucional, status)')
+                .eq('status', 'CURSANDO')
+                .eq('ano_letivo', 2026);
+            
+            if (classId !== 'all') {
+                query = query.eq('id_turma', classId);
+            } else {
+                query = query.in('turmas.nivel', userLevels);
+            }
+
+            const { data: matriculas } = await query;
+            if (!matriculas) return;
+
+            // Mapeia para formato amigável filtrando nulos
+            allStudents = matriculas
+                .filter(m => m.alunos)
+                .map(m => ({
+                    id: m.id,
+                    ra: m.ra_aluno,
+                    name: m.alunos.nome_completo,
+                    email: m.alunos.email_institucional,
+                    status: m.alunos.status,
+                    className: m.turmas.nome,
+                    serie: m.turmas.serie,
+                    nivel: m.turmas.nivel,
+                    avatar: formatDriveUrl(m.alunos.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.alunos.nome_completo)}&background=random&color=fff`
+                }));
+
+            allStudents.sort((a, b) => a.name.localeCompare(b.name));
+            renderStudentList(allStudents);
+        }
+
+        function renderStudentList(list) {
+            const container = document.getElementById('studentList');
+            if (list.length === 0) {
+                container.innerHTML = `<div class="p-8 text-center text-slate-300 italic text-xs">Nenhum aluno localizado nos níveis autorizados.</div>`;
+                return;
+            }
+            container.innerHTML = list.map(s => `
+                <div onclick="selectStudent('${s.ra}')" id="item-${s.ra}" class="student-item p-4 border-b border-slate-50 cursor-pointer flex items-center gap-4">
+                    <img src="${s.avatar}" class="w-10 h-10 rounded-xl object-cover shadow-sm bg-slate-100">
+                    <div class="overflow-hidden">
+                        <p class="text-xs font-bold text-fmm-dark truncate uppercase">${s.name}</p>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">${s.className} | RA: ${s.ra}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterLocalList() {
+            const val = document.getElementById('searchStudent').value.toLowerCase();
+            const filtered = allStudents.filter(s => s.name.toLowerCase().includes(val) || s.ra.includes(val));
+            renderStudentList(filtered);
+        }
+
+        async function selectStudent(ra) {
+            document.querySelectorAll('.student-item').forEach(el => el.classList.remove('active'));
+            document.getElementById(`item-${ra}`)?.classList.add('active');
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('boletimContent').classList.remove('hidden');
+
+            const student = allStudents.find(s => s.ra === ra);
+            currentStudent = student;
+
+            document.getElementById('headerName').innerText = student.name;
+            document.getElementById('headerRA').innerText = `RA: ${student.ra}`;
+            document.getElementById('headerClass').innerText = `${student.className} • ${student.serie}`;
+            document.getElementById('headerAvatar').src = student.avatar;
+            document.getElementById('headerStatus').innerText = student.status;
+
+            currentView = 'anual';
+            updateTabControls();
+
+            await loadGrades(student.id);
+            renderTable();
+            calculateGlobalAverage();
+        }
+
+        function updateTabControls() {
+            const nav = document.getElementById('viewControls');
+            const isFundamental = currentStudent.nivel === 'EF1' || currentStudent.nivel === 'EF2';
+            
+            let tabs = [];
+            if (isFundamental) {
+                tabs = window.DB_CONSTANTS.PERIODS.FUNDAMENTAL;
+            } else {
+                tabs = [
+                    ...window.DB_CONSTANTS.PERIODS.MEDIO_BCC,
+                    { isSeparator: true },
+                    ...window.DB_CONSTANTS.PERIODS.MEDIO_TEC.map(t => ({...t, isTec: true}))
+                ];
+            }
+
+            nav.innerHTML = tabs.map(t => {
+                if (t.isSeparator) return `<div class="w-px bg-slate-100 h-6 self-center mx-2"></div>`;
+                
+                const id = t.isTec ? `${t.id}_TEC` : t.id;
+                const activeClass = currentView === id ? 'active' : '';
+                const icon = t.isTec ? `<i data-lucide="cpu" class="w-3.5 h-3.5"></i> ` : '';
+                
+                return `<button onclick="switchView('${id}')" id="tab-${id}" class="tab-btn ${activeClass} flex items-center gap-2">${icon}${t.label}</button>`;
+            }).join('');
+            
+            lucide.createIcons();
+        }
+
+        async function loadGrades(matId) {
+            const isFundamental = currentStudent.nivel === 'EF1' || currentStudent.nivel === 'EF2';
+            
+            let promises = [];
+            if (isFundamental) {
+                promises = [
+                    window.supabaseClient.from('notas_fundamental').select('*').eq('id_matricula', matId),
+                    window.supabaseClient.from('anual_fundamental').select('*').eq('id_matricula', matId),
+                    Promise.resolve({ data: [] }) 
+                ];
+            } else {
+                promises = [
+                    window.supabaseClient.from('notas_basica').select('*').eq('id_matricula', matId),
+                    window.supabaseClient.from('anual_basica').select('*').eq('id_matricula', matId),
+                    window.supabaseClient.from('notas_tecnica').select('*').eq('id_matricula', matId)
+                ];
+            }
+
+            const [{ data: nbT }, { data: nbA }, { data: ntT }] = await Promise.all(promises);
+            currentStudent.grades = { BCC: nbT || [], ANUAL: nbA || [], TEC: ntT || [] };
+        }
+
+        function renderTable() {
+            if (!currentStudent) return;
+            const thead = document.getElementById('tableHead');
+            const tbody = document.getElementById('gradesTableBody');
+            const isFundamental = currentStudent.nivel === 'EF1' || currentStudent.nivel === 'EF2';
+            const isTec = currentView.includes('TEC');
+
+            tbody.innerHTML = '';
+            thead.innerHTML = '';
+
+            if (isTec) {
+                thead.innerHTML = `
+                    <tr>
+                        <th class="p-5 border-r border-white/5 rounded-tl-3xl">Componente Técnico</th>
+                        <th class="p-3 text-center border-r border-white/5">P1</th>
+                        <th class="p-3 text-center border-r border-white/5">P2</th>
+                        <th class="p-3 text-center bg-slate-800/20">M1</th>
+                        <th class="p-3 text-center border-r border-white/5">Recup. P</th>
+                        <th class="p-3 text-center border-r border-white/5">Cons.</th>
+                        <th class="p-3 text-center bg-orange-600/20 text-orange-50 border-r border-white/5">Recup. F</th>
+                        <th class="p-3 text-center bg-fmm-green text-white rounded-tr-3xl">NOTA SEMESTRAL</th>
+                    </tr>`;
+
+                const semesterLabel = currentView === '1_SEMESTRE_TEC' ? '1º Semestre' : '2º Semestre';
+                const dbPeriodo = currentView === '1_SEMESTRE_TEC' ? '1_SEMESTRE' : '2_SEMESTRE';
+
+                techSubjects.filter(sub => {
+                    const matchSerie = sub.series && sub.series.includes(currentStudent.serie);
+                    const matchSemestre = sub.semestre === semesterLabel;
+                    return matchSerie && matchSemestre;
+                }).forEach(sub => {
+                    const g = currentStudent.grades.TEC.find(x => x.sigla_disciplina === sub.sigla && x.periodo === dbPeriodo) || { p1: 0, p2: 0, media_1: 0, recup_parcial: 0, conselho_semestral: 0, media_2: 0, recup_final_semestral: 0, nota_final_periodo: 0 };
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50 transition-colors";
+                    tr.innerHTML = `
+                        <td class="p-5 font-black text-fmm-dark text-xs">${sub.nome}</td>
+                        <td class="p-3 text-center">${renderInput(sub.sigla, 'p1', g.p1, 'TEC')}</td>
+                        <td class="p-3 text-center">${renderInput(sub.sigla, 'p2', g.p2, 'TEC')}</td>
+                        <td class="p-3 text-center font-bold text-slate-400 bg-slate-50">${Number(g.media_1).toFixed(1)}</td>
+                        <td class="p-3 text-center">${renderInput(sub.sigla, 'recup_parcial', g.recup_parcial, 'TEC')}</td>
+                        <td class="p-3 text-center">${renderInput(sub.sigla, 'conselho_semestral', g.conselho_semestral, 'TEC')}</td>
+                        <td class="p-3 text-center border-r">${renderInput(sub.sigla, 'recup_final_semestral', g.recup_final_semestral, 'TEC')}</td>
+                        <td class="p-3 text-center font-black text-base ${g.nota_final_periodo < 6 ? 'text-red-600' : 'text-fmm-green'}">${Number(g.nota_final_periodo).toFixed(1)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else if (currentView === 'anual') {
+                const headers = isFundamental ? ['B1', 'B2', 'B3', 'B4'] : ['T1', 'T2', 'T3'];
+                thead.innerHTML = `
+                    <tr>
+                        <th class="p-5 border-r border-white/5 rounded-tl-3xl">Disciplina</th>
+                        ${headers.map(h => `<th class="p-3 text-center border-r border-white/5">${h}</th>`).join('')}
+                        <th class="p-3 text-center bg-fmm-blue/20 text-fmm-blue">Média</th>
+                        <th class="p-3 text-center bg-orange-600/20 text-orange-50">Rec. F</th>
+                        <th class="p-3 text-center bg-fmm-blue/20 text-fmm-blue border-r border-white/10">Cons.</th>
+                        <th class="p-3 text-center bg-fmm-blue text-white font-black text-xs">M. FINAL</th>
+                    </tr>`;
+
+                basicSubjects.forEach(sub => {
+                    if (sub.series && !sub.series.includes(currentStudent.serie)) return;
+                    
+                    const p1 = currentStudent.grades.BCC.find(x => x.sigla_disciplina === sub.sigla && x.periodo.startsWith('1'))?.[isFundamental ? 'nb' : 'nt'] || 0;
+                    const p2 = currentStudent.grades.BCC.find(x => x.sigla_disciplina === sub.sigla && x.periodo.startsWith('2'))?.[isFundamental ? 'nb' : 'nt'] || 0;
+                    const p3 = currentStudent.grades.BCC.find(x => x.sigla_disciplina === sub.sigla && x.periodo.startsWith('3'))?.[isFundamental ? 'nb' : 'nt'] || 0;
+                    const p4 = isFundamental ? (currentStudent.grades.BCC.find(x => x.sigla_disciplina === sub.sigla && x.periodo.startsWith('4'))?.nb || 0) : null;
+                    
+                    const an = currentStudent.grades.ANUAL.find(x => x.sigla_disciplina === sub.sigla) || { media_anual: 0, recup_final: 0, conselho_classe: 0, media_final: 0 };
+                    
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50 transition-colors";
+                    tr.innerHTML = `
+                        <td class="p-5 font-black text-fmm-dark text-xs">${sub.nome}</td>
+                        <td class="p-3 text-center font-bold text-slate-500">${Number(p1).toFixed(1)}</td>
+                        <td class="p-3 text-center font-bold text-slate-500">${Number(p2).toFixed(1)}</td>
+                        <td class="p-3 text-center font-bold text-slate-500">${Number(p3).toFixed(1)}</td>
+                        ${isFundamental ? `<td class="p-3 text-center font-bold text-slate-500">${Number(p4).toFixed(1)}</td>` : ''}
+                        <td class="p-3 text-center font-black bg-blue-50/50">${Number(an.media_anual).toFixed(1)}</td>
+                        <td class="p-3 text-center">${renderInput(sub.sigla, 'recup_final', an.recup_final, 'ANUAL')}</td>
+                        <td class="p-3 text-center border-r">${renderInput(sub.sigla, 'conselho_classe', an.conselho_classe, 'ANUAL')}</td>
+                        <td class="p-3 text-center bg-fmm-blue/5 font-black text-base ${an.media_final < 6 ? 'text-red-600' : 'text-fmm-blue'}">${Number(an.media_final).toFixed(1)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                const recLabel = isFundamental ? 'Recup. RB' : 'Recup. RT';
+                const totalLabel = isFundamental ? 'Nota Bimestral' : 'Nota Trimestral';
+                thead.innerHTML = `
+                    <tr>
+                        <th class="p-5 border-r border-white/5 rounded-tl-3xl">Disciplina</th>
+                        <th class="p-3 text-center border-r border-white/5">Prova 1 (P1)</th>
+                        <th class="p-3 text-center border-r border-white/5">Prova 2 (P2)</th>
+                        <th class="p-3 text-center bg-slate-800/20">M. Parcial</th>
+                        <th class="p-3 text-center bg-orange-600/20 text-orange-50 border-r border-white/5">${recLabel}</th>
+                        <th class="p-3 text-center bg-fmm-blue text-white rounded-tr-3xl">${totalLabel}</th>
+                    </tr>`;
+
+                basicSubjects.forEach(sub => {
+                    if (sub.series && !sub.series.includes(currentStudent.serie)) return;
+                    const g = currentStudent.grades.BCC.find(x => x.sigla_disciplina === sub.sigla && x.periodo === currentView) || { p1: 0, p2: 0, rt: 0, rb: 0, nt: 0, nb: 0 };
+                    const tr = document.createElement('tr');
+                    const mp = (Number(g.p1 || 0) + Number(g.p2 || 0)) / 2;
+                    const totalVal = isFundamental ? g.nb : g.nt;
+                    const recField = isFundamental ? 'rb' : 'rt';
+                    const recVal = isFundamental ? g.rb : g.rt;
+
+                    tr.className = "hover:bg-slate-50 transition-colors";
+                    tr.innerHTML = `
+                        <td class="p-5 font-black text-fmm-dark text-xs">${sub.nome}</td>
+                        <td class="p-3 text-center">${renderInput(sub.sigla, 'p1', g.p1, 'BCC')}</td>
+                        <td class="p-3 text-center">${renderInput(sub.sigla, 'p2', g.p2, 'BCC')}</td>
+                        <td class="p-3 text-center font-bold text-slate-400 bg-slate-50">${mp.toFixed(1)}</td>
+                        <td class="p-3 text-center border-r">${renderInput(sub.sigla, recField, recVal, 'BCC')}</td>
+                        <td class="p-3 text-center font-black text-base ${totalVal < 6 ? 'text-red-600' : 'text-fmm-blue'}">${Number(totalVal).toFixed(1)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+        function renderInput(sigla, field, val, type) {
+            const valStr = (val === 0 || val === null) ? '' : val.toString();
+            return `<input type="text" value="${valStr}" oninput="handleInput(this, '${sigla}', '${field}', '${type}')" class="grade-input" placeholder="-">`;
+        }
+
+        function handleInput(el, sigla, field, type) {
+            const valStr = el.value.replace(',', '.');
+            if (valStr !== '' && (isNaN(valStr) || valStr < 0 || valStr > 10)) { el.classList.add('ring-2', 'ring-red-500'); return; }
+            el.classList.remove('ring-2', 'ring-red-500');
+            const val = valStr === '' ? 0 : parseFloat(valStr);
+
+            const timerKey = `${sigla}-${field}-${type}`;
+            if (saveTimers[timerKey]) clearTimeout(saveTimers[timerKey]);
+            
+            document.getElementById('syncIndicator').classList.remove('hidden');
+
+            saveTimers[timerKey] = setTimeout(async () => {
+                await saveGrade(sigla, field, val, type);
+                await loadGrades(currentStudent.id);
+                renderTable();
+                calculateGlobalAverage();
+                document.getElementById('syncIndicator').classList.add('hidden');
+                showToast("Alteração Sincronizada");
+            }, 800);
+        }
+
+        async function saveGrade(sigla, field, val, type) {
+            const isFundamental = currentStudent.nivel === 'EF1' || currentStudent.nivel === 'EF2';
+            let table, conflict;
+            if (isFundamental) {
+                table = type === 'ANUAL' ? 'anual_fundamental' : 'notas_fundamental';
+                conflict = type === 'ANUAL' ? 'id_matricula,sigla_disciplina' : 'id_matricula,sigla_disciplina,periodo';
+            } else {
+                table = type === 'BCC' ? 'notas_basica' : (type === 'ANUAL' ? 'anual_basica' : 'notas_tecnica');
+                conflict = type === 'ANUAL' ? 'id_matricula,sigla_disciplina' : 'id_matricula,sigla_disciplina,periodo';
+            }
+            
+            const payload = { 
+                id_matricula: currentStudent.id, 
+                sigla_disciplina: sigla, 
+                [field]: val,
+                alterado_pela_coordenacao: true
+            };
+            
+            if (type !== 'ANUAL') {
+                if (type === 'TEC') {
+                    payload.periodo = (currentView === '1_SEMESTRE_TEC' ? '1_SEMESTRE' : '2_SEMESTRE');
+                } else {
+                    payload.periodo = currentView;
+                }
+            }
+
+            const { error } = await window.supabaseClient.from(table).upsert(payload, { onConflict: conflict });
+            if (error) console.error("Erro ao salvar:", error);
+        }
+
+        function calculateGlobalAverage() {
+            if (!currentStudent || !currentStudent.grades.ANUAL) return;
+            const grades = currentStudent.grades.ANUAL;
+            if (grades.length === 0) {
+                document.getElementById('globalAverage').innerText = "0.0";
+                return;
+            }
+            const sum = grades.reduce((acc, curr) => acc + Number(curr.media_final || 0), 0);
+            const avg = sum / grades.length;
+            const el = document.getElementById('globalAverage');
+            el.innerText = avg.toFixed(1);
+            el.className = `text-4xl font-black ${avg < 6 ? 'text-red-600' : 'text-slate-700'}`;
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            t.classList.replace('opacity-0', 'opacity-100'); t.classList.replace('translate-y-20', 'translate-y-0');
+            setTimeout(() => { t.classList.replace('opacity-100', 'opacity-0'); t.classList.replace('translate-y-0', 'translate-y-20'); }, 2500);
+        }
+
+        function toggleSidebar() { if(window.SidebarComponent) SidebarComponent.toggleSidebar(); }
+        async function logout() { if(confirm("Deseja sair do sistema?")) { await window.supabaseClient.auth.signOut(); window.location.href = "../../index.html"; } }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

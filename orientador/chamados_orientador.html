@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fila de Chamados | SME FMM</title>
+    
+    <!-- Bibliotecas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Infraestrutura SME FMM -->
+    <script src="../assets/js/supabase_client.js"></script>
+    <script src="../sidebar.js"></script>
+    <script src="../assets/js/constants.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; overflow: hidden; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .list-row {
+            background: white; border-bottom: 1px solid #f1f5f9;
+            transition: all 0.2s ease;
+        }
+        .list-row:hover { background-color: #f8fafc; }
+        .list-row:last-child { border-bottom: none; }
+
+        .status-select-pill {
+            appearance: none;
+            padding: 6px 32px 6px 12px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            border-width: 2px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 10px;
+            outline: none;
+        }
+
+        .status-select-pill.status-pending { background-color: #fff7ed; color: #9a3412; border-color: #ffedd5; }
+        .status-select-pill.status-ongoing { background-color: #eff6ff; color: #1e40af; border-color: #dbeafe; }
+        .status-select-pill.status-finished { background-color: #f0fdf4; color: #166534; border-color: #dcfce7; }
+        .status-select-pill.status-ignored { background-color: #f8fafc; color: #64748b; border-color: #f1f5f9; }
+
+        .assign-btn {
+            display: flex; align-items: center; gap: 6px;
+            padding: 6px 12px; border-radius: 10px; font-size: 9px; font-weight: 800;
+            text-transform: uppercase; transition: all 0.2s;
+            border: 1px solid #e2e8f0; background: white; color: #64748b;
+        }
+        .assign-btn:hover { border-color: #00638f; color: #00638f; background: #f0f9ff; }
+        .assign-btn.is-me { background: #f0fdf4; color: #166534; border-color: #dcfce7; }
+
+        .modal-backdrop { background-color: rgba(0, 30, 45, 0.8); backdrop-filter: blur(12px); }
+        
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-ui { animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        .form-control {
+            width: 100%; padding: 12px 16px; background-color: #f8fafc; border: 1px solid #e2e8f0; 
+            border-radius: 14px; font-size: 13px; font-weight: 500; color: #1e293b;
+            outline: none; transition: all 0.2s;
+        }
+        .form-control:focus { border-color: #00638f; background-color: white; box-shadow: 0 0 0 4px rgba(0, 99, 143, 0.08); }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden">
+
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-40 transition-all duration-300"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
+        
+        <header class="bg-white h-20 border-b flex items-center justify-between px-10 z-10 shadow-sm flex-shrink-0">
+            <div class="flex items-center gap-5">
+                <div class="w-10 h-10 bg-fmm-dark rounded-xl flex items-center justify-center text-white shadow-lg">
+                    <i data-lucide="layers" class="w-5 h-5"></i>
+                </div>
+                <div class="flex flex-col">
+                    <h1 class="text-lg font-black text-fmm-dark tracking-tight uppercase">Fila de Atendimento</h1>
+                    <p class="text-[9px] text-fmm-blue font-bold uppercase tracking-[0.2em] opacity-50">Triagem de chamados institucionais</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div id="sync-indicator" class="hidden items-center gap-2 px-3 py-1.5 bg-fmm-blue/5 rounded-full border border-fmm-blue/10 animate-pulse">
+                    <i data-lucide="refresh-ccw" class="w-3.5 h-3.5 text-fmm-blue"></i>
+                    <span class="text-[9px] font-black text-fmm-blue uppercase">Sincronizando</span>
+                </div>
+                <div class="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+                    <span class="text-[9px] font-black text-slate-400 uppercase">Filtrar</span>
+                    <select id="filterStatus" onchange="fetchCalls()" class="bg-transparent text-[10px] font-black text-fmm-dark uppercase outline-none cursor-pointer">
+                        <option value="all">Todos</option>
+                        <option value="pending">Pendentes</option>
+                        <option value="ongoing">Em Curso</option>
+                        <option value="finished">Concluídos</option>
+                    </select>
+                </div>
+                <div class="relative group">
+                    <i data-lucide="search" class="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400"></i>
+                    <input type="text" id="searchInput" onkeyup="renderCalls()" placeholder="RA ou Nome..." class="pl-9 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-fmm-blue outline-none transition-all w-60">
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-hidden p-8 bg-slate-50">
+            <div class="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
+                
+                <div class="grid grid-cols-12 bg-slate-50/50 border-b border-slate-100 px-10 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <div class="col-span-3">Estudante</div>
+                    <div class="col-span-4">Motivo / Demanda</div>
+                    <div class="col-span-1 text-center">Data</div>
+                    <div class="col-span-2 text-center">Responsável</div>
+                    <div class="col-span-2 text-right">Status Atual</div>
+                </div>
+
+                <div id="callsList" class="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-50">
+                    <div class="flex flex-col items-center justify-center py-40 text-slate-300">
+                        <i data-lucide="loader-2" class="w-10 h-10 animate-spin mb-4 opacity-20 text-fmm-blue"></i>
+                        <p class="text-[10px] font-bold uppercase tracking-[0.3em]">Carregando Fila...</p>
+                    </div>
+                </div>
+
+                <div class="px-10 py-4 bg-slate-50/30 border-t border-slate-50 flex justify-between items-center">
+                    <span class="text-[9px] font-bold text-slate-400 uppercase" id="list-counter">0 registros encontrados</span>
+                    <div class="flex gap-4">
+                        <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-amber-500"></div><span class="text-[8px] font-bold text-slate-400 uppercase">Pendente</span></div>
+                        <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-blue-500"></div><span class="text-[8px] font-bold text-slate-400 uppercase">Em Curso</span></div>
+                        <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-green-500"></div><span class="text-[8px] font-bold text-slate-400 uppercase">Concluído</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL DE DETALHES -->
+    <div id="callModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center modal-backdrop p-6">
+        <div class="bg-white rounded-[40px] shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col animate-ui overflow-hidden border-[8px] border-white">
+            
+            <div class="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
+                <div class="flex items-center gap-6">
+                    <img id="modalStudentAvatar" src="" class="w-16 h-16 rounded-[24px] object-cover bg-white shadow-md border-2 border-white">
+                    <div>
+                        <h2 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none mb-2" id="modalStudentName">---</h2>
+                        <div class="flex items-center gap-3">
+                            <span class="px-3 py-1 bg-white rounded-lg text-[9px] font-black text-slate-400 uppercase tracking-widest border border-slate-100 shadow-sm" id="modalStudentRA">RA: ---</span>
+                            <span class="text-[10px] font-extrabold text-fmm-blue uppercase" id="modalStudentTurma">Turma: ---</span>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="text-slate-300 hover:text-red-500 transition-all p-2 rounded-full hover:bg-white hover:shadow-md">
+                    <i data-lucide="x" class="w-7 h-7"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar">
+                <input type="hidden" id="callId">
+                <div class="grid grid-cols-1 lg:grid-cols-5 gap-10">
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="p-6 bg-fmm-blue/5 rounded-3xl border border-fmm-blue/10 space-y-3">
+                            <label class="text-[9px] font-black text-fmm-blue uppercase tracking-widest">Origem do Chamado</label>
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-fmm-blue text-white flex items-center justify-center font-black text-[10px]" id="modalCoordInitials">--</div>
+                                <!-- O NOME DE QUEM FEZ O CHAMADO SERÁ EXIBIDO AQUI -->
+                                <span class="text-xs font-black text-fmm-dark uppercase" id="modalCoordName">Carregando...</span>
+                            </div>
+                            <p class="text-[9px] text-slate-400 font-bold" id="modalCallDate">Abertura: --/--/----</p>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Estado da Demanda</label>
+                                <select id="modalStatus" class="form-control font-bold">
+                                    <option value="pending">Aguardando Triagem</option>
+                                    <option value="ongoing">Em Atendimento</option>
+                                    <option value="finished">Concluído</option>
+                                    <option value="ignored">Arquivado</option>
+                                </select>
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Orientador Designado</label>
+                                <select id="modalAssignee" class="form-control font-bold">
+                                    <option value="">Não Atribuído</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-3 h-full">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest mb-2 block">Relato Detalhado (Coordenação)</label>
+                        <textarea id="modalReason" class="form-control h-full min-h-[300px] leading-relaxed text-sm p-6 bg-slate-50/50 border-dashed" placeholder="..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-8 border-t bg-slate-50/30 flex justify-between items-center">
+                <button onclick="deleteCall()" class="px-6 py-3 text-red-400 hover:text-red-600 font-black text-[9px] uppercase tracking-widest transition-all flex items-center gap-2">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    Eliminar Chamado
+                </button>
+                <div class="flex gap-3">
+                    <button onclick="closeModal()" class="px-6 py-3 text-slate-400 font-black text-[9px] uppercase tracking-widest">Cancelar</button>
+                    <button onclick="saveCall()" id="btnSaveModal" class="px-10 py-3 bg-fmm-blue text-white font-black text-[9px] uppercase tracking-widest rounded-xl shadow-lg hover:scale-105 transition-all">Sincronizar</button>
+                    <button onclick="startAppointmentFromCall()" class="px-10 py-3 bg-fmm-dark text-white font-black text-[9px] uppercase tracking-widest rounded-xl shadow-xl hover:bg-fmm-green transition-all flex items-center gap-2">
+                        <i data-lucide="clipboard-list" class="w-3.5 h-3.5 text-fmm-lime"></i> Iniciar Prontuário
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let orientadoresList = [];
+        let globalCalls = [];
+
+        async function init() {
+            if (window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if (!user) return window.location.href = '../index.html';
+            
+            const { data: profile } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).single();
+            currentUser = profile;
+
+            await fetchOrientadores();
+            await fetchCalls();
+        }
+
+        async function fetchOrientadores() {
+            const { data } = await window.supabaseClient.from('perfis').select('id, nome_completo').eq('cargo', 'orientador');
+            orientadoresList = data || [];
+            const select = document.getElementById('modalAssignee');
+            select.innerHTML = '<option value="">Não Atribuído</option>' + 
+                orientadoresList.map(o => `<option value="${o.id}">${o.nome_completo}${o.id === currentUser.id ? ' (Eu)' : ''}</option>`).join('');
+        }
+
+        async function fetchCalls() {
+            const list = document.getElementById('callsList');
+            const statusFilter = document.getElementById('filterStatus').value;
+            document.getElementById('sync-indicator').classList.remove('hidden');
+
+            let query = window.supabaseClient
+                .from('orientacao_chamados')
+                .select(`
+                    *,
+                    alunos(nome_completo, ra, url_foto, id_turma, turmas(nome)),
+                    coordenador:id_coordenador(nome_completo),
+                    orientador:id_orientador_designado(nome_completo)
+                `)
+                .order('data_abertura', { ascending: false });
+
+            if (statusFilter !== 'all') query = query.eq('status', statusFilter);
+
+            const { data, error } = await query;
+            
+            if (error) {
+                list.innerHTML = `<div class="py-20 text-center text-red-400 italic text-xs uppercase tracking-widest">Falha na conexão com o banco.</div>`;
+                document.getElementById('sync-indicator').classList.add('hidden');
+                return;
+            }
+
+            globalCalls = data || [];
+            renderCalls();
+            document.getElementById('sync-indicator').classList.add('hidden');
+        }
+
+        function renderCalls() {
+            const container = document.getElementById('callsList');
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            let filtered = globalCalls.filter(c => 
+                c.alunos?.nome_completo?.toLowerCase().includes(search) || 
+                c.alunos?.ra?.includes(search) || 
+                c.motivo?.toLowerCase().includes(search)
+            );
+
+            document.getElementById('list-counter').innerText = `${filtered.length} chamados encontrados`;
+
+            if(filtered.length === 0) {
+                container.innerHTML = `<div class="py-40 text-center text-slate-300 italic text-xs uppercase tracking-[0.2em] animate-ui">Fila de triagem vazia.</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(c => {
+                const avatar = formatDriveUrl(c.alunos?.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(c.alunos?.nome_completo || 'User')}&background=random&color=fff&bold=true`;
+                const dateShort = ManausTime.format(c.data_abertura).substring(0, 5);
+                
+                // NOME DE QUEM FEZ (COORDENADOR)
+                const authorName = c.coordenador?.nome_completo || "FMM";
+                const assignedName = c.orientador?.nome_completo || 'Pendente';
+                const isMeAssigned = c.id_orientador_designado === currentUser?.id;
+
+                return `
+                    <div class="list-row grid grid-cols-12 items-center px-10 py-5 gap-6 animate-ui">
+                        <div class="col-span-3 flex items-center gap-4 cursor-pointer group" onclick="openCallModal('${c.id}')">
+                            <img src="${avatar}" class="w-11 h-11 rounded-xl object-cover bg-slate-100 shadow-sm border border-slate-50 group-hover:scale-105 transition-transform">
+                            <div class="overflow-hidden">
+                                <h3 class="text-xs font-black text-fmm-dark uppercase truncate tracking-tight group-hover:text-fmm-blue transition-colors">${c.alunos?.nome_completo || 'Sem Nome'}</h3>
+                                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">${c.alunos?.turmas?.nome || 'FMM'}</p>
+                            </div>
+                        </div>
+                        <div class="col-span-4 cursor-pointer" onclick="openCallModal('${c.id}')">
+                            <p class="text-[11px] text-slate-500 font-medium leading-snug line-clamp-2 italic opacity-80 group-hover:opacity-100 transition-opacity">"${c.motivo}"</p>
+                        </div>
+                        <div class="col-span-1 text-center">
+                            <span class="text-[10px] font-black text-slate-400 uppercase block">${dateShort}</span>
+                        </div>
+                        <div class="col-span-2 flex flex-col items-center">
+                            <button onclick="quickAssign('${c.id}')" class="assign-btn ${isMeAssigned ? 'is-me' : ''}" title="Clique para assumir este chamado">
+                                <i data-lucide="${isMeAssigned ? 'user-check' : 'user-plus'}" class="w-3.5 h-3.5"></i>
+                                <span class="truncate max-w-[80px]">${isMeAssigned ? 'Eu' : assignedName}</span>
+                            </button>
+                        </div>
+                        <div class="col-span-2 flex items-center justify-end">
+                            <select onchange="quickStatus('${c.id}', this.value)" class="status-select-pill status-${c.status}">
+                                <option value="pending" ${c.status==='pending'?'selected':''}>Pendente</option>
+                                <option value="ongoing" ${c.status==='ongoing'?'selected':''}>Em Curso</option>
+                                <option value="finished" ${c.status==='finished'?'selected':''}>Concluído</option>
+                                <option value="ignored" ${c.status==='ignored'?'selected':''}>Arquivado</option>
+                            </select>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        async function quickStatus(id, newStatus) {
+            document.getElementById('sync-indicator').classList.remove('hidden');
+            const { error } = await window.supabaseClient.from('orientacao_chamados').update({ status: newStatus }).eq('id', id);
+            if (!error) { showToast(`Status atualizado`); fetchCalls(); } 
+            else document.getElementById('sync-indicator').classList.add('hidden');
+        }
+
+        async function quickAssign(id) {
+            if (!currentUser?.id) return alert("Sessão inválida.");
+            document.getElementById('sync-indicator').classList.remove('hidden');
+            const { error } = await window.supabaseClient.from('orientacao_chamados').update({ 
+                id_orientador_designado: currentUser.id, status: 'ongoing'
+            }).eq('id', id);
+            if (!error) { showToast("Demanda atribuída"); fetchCalls(); } 
+            else document.getElementById('sync-indicator').classList.add('hidden');
+        }
+
+        function formatDriveUrl(url) {
+            if (!url) return null;
+            if (url.includes('drive.google.com')) {
+                const id = url.match(/\/d\/(.*?)\//);
+                return id ? `https://lh3.googleusercontent.com/d/${id[1]}` : url;
+            }
+            return url;
+        }
+
+        function openCallModal(id) {
+            const call = globalCalls.find(c => c.id === id);
+            if(!call) return;
+
+            document.getElementById('callId').value = call.id;
+            document.getElementById('modalStudentName').innerText = call.alunos?.nome_completo || 'Sem Nome';
+            document.getElementById('modalStudentRA').innerText = `RA: ${call.alunos?.ra || '---'}`;
+            document.getElementById('modalStudentTurma').innerText = `Turma: ${call.alunos?.turmas?.nome || 'FMM'}`;
+            
+            const avatarUrl = formatDriveUrl(call.alunos?.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(call.alunos?.nome_completo || 'User')}&background=random&color=fff&bold=true`;
+            document.getElementById('modalStudentAvatar').src = avatarUrl;
+            
+            // ATUALIZAÇÃO DO NOME DO COORDENADOR NO MODAL
+            const coordName = call.coordenador?.nome_completo || "FMM - Sistema";
+            document.getElementById('modalCoordName').innerText = coordName;
+            document.getElementById('modalCoordInitials').innerText = coordName.charAt(0);
+            document.getElementById('modalCallDate').innerText = `Abertura: ${ManausTime.format(call.data_abertura)}`;
+            
+            document.getElementById('modalStatus').value = call.status;
+            document.getElementById('modalAssignee').value = call.id_orientador_designado || '';
+            document.getElementById('modalReason').value = call.motivo;
+
+            document.getElementById('callModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeModal() { document.getElementById('callModal').classList.add('hidden'); }
+
+        async function saveCall() {
+            const id = document.getElementById('callId').value;
+            const payload = {
+                status: document.getElementById('modalStatus').value,
+                id_orientador_designado: document.getElementById('modalAssignee').value || null,
+                motivo: document.getElementById('modalReason').value
+            };
+            const { error } = await window.supabaseClient.from('orientacao_chamados').update(payload).eq('id', id);
+            if(!error) { showToast("Sincronizado"); closeModal(); fetchCalls(); }
+        }
+
+        async function deleteCall() {
+            if(!confirm("Atenção: A exclusão de um chamado institucional é definitiva. Prosseguir?")) return;
+            const id = document.getElementById('callId').value;
+            const { error } = await window.supabaseClient.from('orientacao_chamados').delete().eq('id', id);
+            if(!error) { showToast("Chamado removido"); closeModal(); fetchCalls(); }
+        }
+
+        function startAppointmentFromCall() {
+            const id = document.getElementById('callId').value;
+            const call = globalCalls.find(c => c.id === id);
+            sessionStorage.setItem('fmm_referral_context', JSON.stringify({ ra: call.alunos?.ra, callId: call.id, pre_reason: call.motivo }));
+            showToast("Vinculando ao prontuário...");
+            setTimeout(() => { location.href = 'atendimento_orientador.html'; }, 800);
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            t.classList.replace('opacity-0', 'opacity-100'); t.classList.replace('translate-y-20', 'translate-y-0');
+            setTimeout(() => { t.classList.replace('opacity-100', 'opacity-0'); t.classList.replace('translate-y-0', 'translate-y-20'); }, 2500);
+        }
+
+        window.onload = init;
+    </script>
+
+    <div id="toast" class="fixed bottom-12 right-12 z-[110] translate-y-20 opacity-0 transition-all duration-500">
+        <div class="bg-[#0f172a] text-white px-8 py-5 rounded-3xl shadow-2xl flex items-center gap-4 border border-white/10">
+            <div class="w-10 h-10 bg-fmm-lime rounded-2xl flex items-center justify-center shadow-lg"><i data-lucide="check" class="w-5 h-5 text-fmm-dark"></i></div>
+            <div class="flex flex-col"><span class="text-[8px] font-black uppercase tracking-widest opacity-40">SME FMM 2026</span><span class="text-[11px] font-bold" id="toast-msg">Sucesso</span></div>
+        </div>
+    </div>
+</body>
+</html>

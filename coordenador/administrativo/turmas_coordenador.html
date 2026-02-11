@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Turmas | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Importação do Componente de Sidebar -->
+    <script src="../../sidebar.js"></script>
+    <!-- Importação do Cliente Global (Configurado para Manaus) -->
+    <script src="../../assets/js/supabase_client.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        
+        /* Estilos da Sidebar (necessários para o container e animações do JS) */
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-collapsed .sidebar-text, .sidebar-collapsed .sidebar-category-header, .sidebar-collapsed .chevron-icon, .sidebar-collapsed .sidebar-category-title { display: none; }
+        .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
+        .sidebar-collapsed .logo-full { display: none; }
+        .sidebar-collapsed .logo-short { display: block; }
+        .logo-short { display: none; }
+
+        /* Accordion Menu Styles (Usados pelo JS) */
+        .category-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .category-content.open {
+            max-height: 1000px;
+        }
+        .chevron-icon {
+            transition: transform 0.3s ease;
+        }
+        .rotate-180 {
+            transform: rotate(180deg);
+        }
+
+        .modal-content::-webkit-scrollbar { width: 6px; }
+        .modal-content::-webkit-scrollbar-track { background: transparent; }
+        .modal-content::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden">
+
+    <!-- SIDEBAR CONTAINER -->
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20">
+        <!-- Carregado via JS -->
+    </aside>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
+        
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0">
+            <div class="flex flex-col">
+                <h1 class="text-xl font-bold text-fmm-dark">Gestão de Turmas</h1>
+                <p class="text-xs text-slate-400">Configuração de níveis e cursos</p>
+            </div>
+            <button onclick="openModal()" class="bg-fmm-blue hover:bg-fmm-dark text-white px-6 py-2.5 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all shadow-lg shadow-fmm-blue/20">
+                <i data-lucide="plus" class="w-4 h-4"></i> Nova Turma
+            </button>
+        </header>
+
+        <!-- FILTROS -->
+        <div class="px-8 pt-8 flex-shrink-0">
+            <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4">
+                <div class="flex-1 relative group">
+                    <i data-lucide="search" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
+                    <input type="text" id="searchInput" onkeyup="fetchTurmas()" placeholder="Procurar por nome da turma..." 
+                           class="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
+                </div>
+                <select id="filterNivel" onchange="fetchTurmas()" class="px-6 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-slate-600 font-medium text-sm">
+                    <option value="">Todos os Níveis</option>
+                    <option value="EF1">EF1 (Fundamental 1)</option>
+                    <option value="EF2">EF2 (Fundamental 2)</option>
+                    <option value="EMT">EMT (Médio Técnico)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- TABELA -->
+        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            <div class="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50/50 border-b border-slate-100 text-[11px] uppercase tracking-widest text-slate-400 font-bold">
+                            <th class="px-8 py-5">Identificação</th>
+                            <th class="px-6 py-5">Nível de Ensino</th>
+                            <th class="px-6 py-5">Série / Ano</th>
+                            <th class="px-6 py-5">Curso / Área</th>
+                            <th class="px-8 py-5 text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="turmasTableBody" class="divide-y divide-slate-50">
+                        <!-- Carregado via Supabase -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL DE CADASTRO -->
+    <div id="turmaModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-xl rounded-[32px] shadow-2xl flex flex-col animate-fade-in-up">
+            
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white rounded-t-[32px]">
+                <h2 class="text-2xl font-bold text-fmm-dark" id="modalTitle">Nova Turma</h2>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-slate-100">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <div class="p-8 space-y-6 modal-content overflow-y-auto max-h-[70vh] custom-scrollbar">
+                <!-- Nome da Turma -->
+                <div class="space-y-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Nome da Turma</label>
+                    <input type="text" id="inNomeTurma" placeholder="Ex: Turma A, 101, etc." class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
+                </div>
+
+                <!-- Nível de Ensino -->
+                <div class="space-y-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Nível de Ensino</label>
+                    <select id="inNivel" onchange="updateSeries()" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all font-medium">
+                        <option value="EF1">EF1 - Ensino Fundamental 1 (5º Ano)</option>
+                        <option value="EF2">EF2 - Ensino Fundamental 2 (6º ao 9º Ano)</option>
+                        <option value="EMT">EMT - Ensino Médio Técnico</option>
+                    </select>
+                </div>
+
+                <!-- Série / Ano -->
+                <div id="serieWrapper" class="space-y-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Série / Ano</label>
+                    <select id="inSerie" onchange="checkTechnicalArea()" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all font-medium">
+                        <!-- Séries injetadas via JS -->
+                    </select>
+                </div>
+
+                <!-- Escolha de Curso (Apenas para 3ª Série EMT) -->
+                <div id="cursoWrapper" class="hidden space-y-1.5 animate-fade-in-up">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Área Técnica (3ª Série)</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="selectCurso('Mecatrônica')" id="btnMec" class="curso-btn py-3 px-4 border-2 border-slate-100 rounded-2xl font-bold text-sm text-slate-400 transition-all hover:bg-slate-50">
+                            Mecatrônica
+                        </button>
+                        <button onclick="selectCurso('Informática')" id="btnInf" class="curso-btn py-3 px-4 border-2 border-slate-100 rounded-2xl font-bold text-sm text-slate-400 transition-all hover:bg-slate-50">
+                            Informática
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Modal -->
+            <div class="p-8 border-t bg-slate-50/50 rounded-b-[32px] flex justify-end gap-4">
+                <button onclick="closeModal()" class="px-6 py-3 text-sm font-bold text-slate-500 hover:text-slate-700 transition-all">Cancelar</button>
+                <button id="btnSave" onclick="saveTurma()" class="px-10 py-3.5 bg-fmm-lime text-fmm-dark font-bold text-sm rounded-2xl shadow-xl shadow-fmm-lime/20 hover:scale-105 active:scale-95 transition-all">
+                    Guardar Turma
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedCurso = "Geral";
+        let editingId = null;
+        let userLevels = []; // Níveis permitidos para o usuário logado
+
+        async function init() {
+            // supabaseClient agora vem do script global assets/js/supabase_client.js
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if (!user) return window.location.href = '../../index.html'; 
+            
+            // --- CAPTURA DE CONTEXTO DO USUÁRIO ---
+            const { data: profile } = await window.supabaseClient.from('perfis').select('cargo, niveis_acesso').eq('id', user.id).single();
+            
+            if (profile) {
+                if (profile.cargo === 'diretor') {
+                    userLevels = ['EF1', 'EF2', 'EMT'];
+                } else {
+                    userLevels = profile.niveis_acesso || [];
+                }
+            } else {
+                userLevels = ['EF1', 'EF2', 'EMT'];
+            }
+
+            // Inicializar Sidebar Componentizada
+            await SidebarComponent.render('sidebar-container');
+
+            updateSeries(); 
+            filterNivelOptions(); 
+            await fetchTurmas();
+            lucide.createIcons();
+        }
+
+        function filterNivelOptions() {
+            // Filtra o select da listagem
+            const select = document.getElementById('filterNivel');
+            Array.from(select.options).forEach(opt => {
+                if (opt.value && !userLevels.includes(opt.value)) {
+                    opt.hidden = true; 
+                    opt.disabled = true; 
+                }
+            });
+            
+            // Filtra o select do modal de cadastro
+            const modalSelect = document.getElementById('inNivel');
+            Array.from(modalSelect.options).forEach(opt => {
+                if (!userLevels.includes(opt.value.substring(0, 3))) {
+                     opt.hidden = true;
+                     opt.disabled = true;
+                }
+            });
+
+            // Garante que o valor inicial do modal seja um permitido
+            if (!userLevels.includes(modalSelect.value.substring(0, 3))) {
+                for (let opt of modalSelect.options) {
+                    if (!opt.disabled) {
+                        modalSelect.value = opt.value;
+                        updateSeries();
+                        break;
+                    }
+                }
+            }
+        }
+
+        async function fetchTurmas() {
+            const termo = document.getElementById('searchInput').value;
+            const filtroNivel = document.getElementById('filterNivel').value;
+            const body = document.getElementById('turmasTableBody');
+            
+            // --- LÓGICA DE FILTRAGEM POR NÍVEL AUTORIZADO ---
+            let query = window.supabaseClient.from('turmas').select('*');
+            
+            if (termo) query = query.ilike('nome', `%${termo}%`);
+            
+            if (filtroNivel) {
+                // Se um filtro foi selecionado (e o usuário tem acesso a ele), aplicamos
+                query = query.eq('nivel', filtroNivel);
+            } else {
+                // Se não houver filtro, mostramos apenas os níveis que o usuário pode ver
+                if (userLevels.length > 0) {
+                    query = query.in('nivel', userLevels);
+                }
+            }
+
+            const { data, error } = await query.order('nome');
+            if (error) return;
+
+            body.innerHTML = data.map(t => `
+                <tr class="hover:bg-slate-50/80 transition-all group">
+                    <td class="px-8 py-5"><span class="font-bold text-fmm-dark text-sm">${t.nome}</span></td>
+                    <td class="px-6 py-5"><span class="px-3 py-1 bg-fmm-blue/10 text-fmm-blue text-[10px] font-bold rounded-lg uppercase tracking-wider">${t.nivel}</span></td>
+                    <td class="px-6 py-5 text-sm font-medium text-slate-600">${t.serie}</td>
+                    <td class="px-6 py-5"><span class="text-xs font-bold ${t.area_tecnica === 'Mecatrônica' ? 'text-orange-500' : t.area_tecnica === 'Informática' ? 'text-blue-500' : 'text-slate-400'}">${t.area_tecnica || (t.nivel === 'EMT' ? 'Técnico' : 'Geral')}</span></td>
+                    <td class="px-8 py-5">
+                        <div class="flex items-center justify-center gap-2">
+                            <button onclick='prepEdit(${JSON.stringify(t)})' class="p-2.5 text-slate-400 hover:text-fmm-blue hover:bg-fmm-blue/10 rounded-xl transition-all shadow-sm"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                            <button onclick="deleteTurma('${t.id}')" class="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all shadow-sm"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function updateSeries() {
+            const nivel = document.getElementById('inNivel').value;
+            const serieSelect = document.getElementById('inSerie');
+            serieSelect.innerHTML = '';
+            
+            if (nivel === 'EF1') {
+                serieSelect.innerHTML = '<option value="5º Ano">5º Ano</option>';
+            } else if (nivel === 'EF2') {
+                serieSelect.innerHTML = `
+                    <option value="6º Ano">6º Ano</option>
+                    <option value="7º Ano">7º Ano</option>
+                    <option value="8º Ano">8º Ano</option>
+                    <option value="9º Ano">9º Ano</option>
+                `;
+            } else if (nivel === 'EMT') {
+                serieSelect.innerHTML = `
+                    <option value="1ª Série">1ª Série</option>
+                    <option value="2ª Série">2ª Série</option>
+                    <option value="3ª Série">3ª Série</option>
+                `;
+            }
+            checkTechnicalArea();
+        }
+
+        function checkTechnicalArea() {
+            const nivel = document.getElementById('inNivel').value;
+            const serie = document.getElementById('inSerie').value;
+            const cursoWrapper = document.getElementById('cursoWrapper');
+            if (nivel === 'EMT' && serie === '3ª Série') {
+                cursoWrapper.classList.remove('hidden');
+                if(!editingId) selectedCurso = ""; 
+                resetCursoButtons();
+            } else {
+                cursoWrapper.classList.add('hidden');
+                selectedCurso = (nivel === 'EMT') ? "Técnico" : "Geral";
+            }
+        }
+
+        function selectCurso(curso) {
+            selectedCurso = curso;
+            resetCursoButtons();
+            const btn = (curso === 'Mecatrônica') ? document.getElementById('btnMec') : document.getElementById('btnInf');
+            if(btn) {
+                btn.classList.replace('border-slate-100', 'border-fmm-blue');
+                btn.classList.replace('text-slate-400', 'text-fmm-blue');
+                btn.classList.add('bg-fmm-blue/5');
+            }
+        }
+
+        function resetCursoButtons() {
+            document.querySelectorAll('.curso-btn').forEach(b => {
+                b.classList.remove('border-fmm-blue', 'text-fmm-blue', 'bg-fmm-blue/5');
+                b.classList.add('border-slate-100', 'text-slate-400');
+            });
+        }
+
+        async function saveTurma() {
+            const nome = document.getElementById('inNomeTurma').value;
+            const nivel = document.getElementById('inNivel').value;
+            const serie = document.getElementById('inSerie').value;
+            const btn = document.getElementById('btnSave');
+            if(!nome) return alert("Insira o nome da turma.");
+            if(nivel === 'EMT' && serie === '3ª Série' && !selectedCurso) return alert("Selecione a área técnica.");
+            
+            btn.disabled = true; btn.innerHTML = "Guardando...";
+            const payload = { nome, nivel, serie, area_tecnica: selectedCurso };
+            if(editingId) payload.id = editingId;
+            
+            try {
+                const { error } = await window.supabaseClient.from('turmas').upsert(payload);
+                if (error) throw error;
+                closeModal(); fetchTurmas();
+            } catch (err) { alert("Erro: " + err.message); } 
+            finally { btn.disabled = false; btn.innerHTML = "Guardar Turma"; }
+        }
+
+        function prepEdit(t) {
+            editingId = t.id;
+            document.getElementById('modalTitle').innerText = "Editar Turma";
+            document.getElementById('btnSave').innerText = "Atualizar Turma";
+            document.getElementById('inNomeTurma').value = t.nome;
+            document.getElementById('inNivel').value = t.nivel;
+            updateSeries();
+            document.getElementById('inSerie').value = t.serie;
+            checkTechnicalArea();
+            if(t.area_tecnica === 'Mecatrônica' || t.area_tecnica === 'Informática') selectCurso(t.area_tecnica);
+            else selectedCurso = t.area_tecnica;
+            openModal();
+        }
+
+        async function deleteTurma(id) {
+            if(!confirm("Deseja excluir esta turma?")) return;
+            const { error } = await window.supabaseClient.from('turmas').delete().eq('id', id);
+            if (error) alert("Erro: " + error.message); else fetchTurmas();
+        }
+
+        function toggleSidebar() { if (window.SidebarComponent) SidebarComponent.toggleSidebar(); }
+        function toggleCategory(id) { if (window.SidebarComponent) SidebarComponent.toggleCategory(id); }
+
+        function openModal() { document.getElementById('turmaModal').classList.remove('hidden'); }
+        function closeModal() { 
+            document.getElementById('turmaModal').classList.add('hidden');
+            editingId = null;
+            document.getElementById('inNomeTurma').value = '';
+            // Reset para o primeiro nível permitido no fechamento para evitar estados inconsistentes
+            const modalSelect = document.getElementById('inNivel');
+            for(let opt of modalSelect.options) {
+                if(!opt.disabled) {
+                    modalSelect.value = opt.value;
+                    break;
+                }
+            }
+            updateSeries();
+            resetCursoButtons();
+        }
+
+        async function logout() { if (confirm("Deseja sair do sistema?")) { await window.supabaseClient.auth.signOut(); window.location.href = "../../index.html"; } }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

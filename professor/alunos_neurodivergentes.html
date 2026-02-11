@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alunos Neurodivergentes | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Assets SME -->
+    <script src="../assets/js/supabase_client.js"></script>
+    <script src="../sidebar.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        /* Ajuste para Sidebar e Estado Colapsado */
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        /* Lógica de ocultação quando a sidebar está minimizada */
+        .sidebar-collapsed .sidebar-text, 
+        .sidebar-collapsed .sidebar-category-header, 
+        .sidebar-collapsed .chevron-icon, 
+        .sidebar-collapsed .sidebar-category-title,
+        .sidebar-collapsed .sidebar-category { display: none; }
+        
+        .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
+        .sidebar-collapsed .logo-full { display: none; }
+        .sidebar-collapsed .logo-short { display: block; }
+        .logo-short { display: none; }
+
+        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.05); }
+        .category-content.open { max-height: 1000px; }
+        .rotate-180 { transform: rotate(180deg); }
+        
+        /* Estilo do item ativo na sidebar */
+        .sidebar-item-active { background-color: rgba(255, 255, 255, 0.05); border-right: 4px solid #c8d400; color: #ffffff !important; }
+
+        /* Estilos da Tabela Moderna */
+        .table-container {
+            background: white;
+            border-radius: 24px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+
+        .tr-hover { transition: background-color 0.2s; }
+        .tr-hover:hover { background-color: #f8fafc; }
+
+        .avatar-clickable {
+            width: 40px; height: 40px; border-radius: 10px; object-fit: cover;
+            cursor: pointer; transition: transform 0.2s;
+            border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .avatar-clickable:hover { transform: scale(1.1); }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden">
+
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden relative">
+        
+        <!-- Header -->
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-fmm-blue/10 rounded-xl flex items-center justify-center text-fmm-blue">
+                    <i data-lucide="brain" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-black text-fmm-dark uppercase tracking-tight">Alunos Neurodivergentes</h1>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Consulta de orientações pedagógicas</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <div class="relative w-64">
+                    <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
+                    <input type="text" id="searchInput" onkeyup="filterResults()" placeholder="Nome ou RA..." 
+                           class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
+                </div>
+                <select id="filterTurma" onchange="filterResults()" class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-fmm-blue cursor-pointer">
+                    <option value="all">Todas as Turmas</option>
+                </select>
+            </div>
+        </header>
+
+        <!-- Listagem em Tabela -->
+        <div class="flex-1 overflow-auto p-8 custom-scrollbar relative bg-slate-50">
+            
+            <div id="loadingState" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-50/50 z-20">
+                <i data-lucide="loader-2" class="w-10 h-10 animate-spin text-fmm-blue mb-2"></i>
+                <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Sincronizando laudos...</p>
+            </div>
+
+            <div class="table-container animate-fade">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-white border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            <th class="px-6 py-5 w-20 text-center">Foto</th>
+                            <th class="px-6 py-5">RA</th>
+                            <th class="px-6 py-5">Estudante</th>
+                            <th class="px-6 py-5">Turma / Série</th>
+                            <th class="px-6 py-5">Laudo e Orientações</th>
+                            <th class="px-6 py-5 text-center">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsListBody" class="divide-y divide-slate-50 text-sm font-medium text-slate-600">
+                        <!-- Conteúdo injetado via JS -->
+                    </tbody>
+                </table>
+
+                <div id="emptyState" class="hidden flex flex-col items-center justify-center py-20 text-slate-300">
+                    <i data-lucide="user-x" class="w-12 h-12 mb-4 opacity-20"></i>
+                    <p class="text-xs font-black uppercase tracking-[0.2em] opacity-40">Nenhum aluno localizado</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="h-10 bg-white border-t border-slate-100 px-8 flex items-center justify-between shrink-0">
+            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-fmm-blue"></span>
+                Dados confidenciais para uso pedagógico exclusivo.
+            </p>
+            <span id="counter" class="text-[9px] font-black text-fmm-blue uppercase">0 Alunos Ativos</span>
+        </footer>
+    </main>
+
+    <!-- MODAL DE ZOOM DA FOTO -->
+    <div id="photoZoomModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onclick="closePhotoZoom()">
+        <div class="relative animate-fade" onclick="event.stopPropagation()">
+            <button onclick="closePhotoZoom()" class="absolute -top-12 -right-4 text-white hover:text-fmm-lime transition-colors">
+                <i data-lucide="x" class="w-8 h-8"></i>
+            </button>
+            <img id="enlargedPhoto" src="" class="max-w-[90vw] max-h-[80vh] rounded-[40px] shadow-2xl border-4 border-white/10 object-contain">
+            <div id="enlargedName" class="mt-4 text-center text-white font-bold text-lg tracking-tight"></div>
+        </div>
+    </div>
+
+    <script>
+        let allNeuroStudents = [];
+        let todasTurmas = [];
+
+        function formatDriveUrl(url) {
+            if (!url) return null;
+            if (url.includes('drive.google.com') && url.includes('/file/d/')) {
+                const idMatch = url.match(/\/d\/(.*?)\//);
+                if (idMatch && idMatch[1]) return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
+            }
+            return url;
+        }
+
+        async function init() {
+            if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            lucide.createIcons();
+            await fetchData();
+        }
+
+        async function fetchData() {
+            const loading = document.getElementById('loadingState');
+            loading.classList.remove('hidden');
+
+            try {
+                // Carrega alunos que possuem laudo
+                const { data: alunos, error: errorAlunos } = await window.supabaseClient
+                    .from('alunos')
+                    .select('ra, nome_completo, url_foto, laudo, turmas(id, nome, serie)')
+                    .not('laudo', 'is', null)
+                    .neq('laudo', '')
+                    .eq('status', 'Cursando')
+                    .order('nome_completo');
+
+                if (errorAlunos) throw errorAlunos;
+                allNeuroStudents = alunos || [];
+
+                // Carrega turmas para o filtro
+                const { data: turmas, error: errorTurmas } = await window.supabaseClient
+                    .from('turmas')
+                    .select('id, nome')
+                    .order('nome');
+
+                if (errorTurmas) throw errorTurmas;
+                todasTurmas = turmas || [];
+
+                const selectT = document.getElementById('filterTurma');
+                selectT.innerHTML = '<option value="all">Todas as Turmas</option>';
+                todasTurmas.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.nome;
+                    opt.innerText = t.nome;
+                    selectT.appendChild(opt);
+                });
+
+                renderTable(allNeuroStudents);
+
+            } catch (err) {
+                console.error("Erro ao carregar dados:", err);
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        function renderTable(students) {
+            const body = document.getElementById('studentsListBody');
+            const empty = document.getElementById('emptyState');
+            const counter = document.getElementById('counter');
+
+            body.innerHTML = '';
+            
+            if (students.length === 0) {
+                empty.classList.remove('hidden');
+                counter.innerText = '0 Alunos Ativos';
+                return;
+            }
+
+            empty.classList.add('hidden');
+            counter.innerText = `${students.length} Alunos Ativos`;
+
+            students.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.className = 'tr-hover border-b border-slate-50 last:border-0';
+                
+                const initials = s.nome_completo.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                const urlFoto = formatDriveUrl(s.url_foto);
+                const fullPhotoUrl = urlFoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=003c5b&color=fff`;
+
+                const avatarHtml = urlFoto 
+                    ? `<img src="${urlFoto}" class="avatar-clickable mx-auto" onclick="openPhotoZoom('${fullPhotoUrl}', '${s.nome_completo}')" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=003c5b&color=fff'">`
+                    : `<div class="avatar-clickable mx-auto flex items-center justify-center bg-fmm-blue text-white font-black text-[10px]" onclick="openPhotoZoom('${fullPhotoUrl}', '${s.nome_completo}')">${initials}</div>`;
+                
+                tr.innerHTML = `
+                    <td class="px-6 py-4">${avatarHtml}</td>
+                    <td class="px-6 py-4 font-mono text-[11px] text-slate-400 font-bold">${s.ra}</td>
+                    <td class="px-6 py-4">
+                        <span class="text-fmm-dark font-black uppercase text-xs tracking-tight">${s.nome_completo}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex flex-col">
+                            <span class="text-[11px] font-black text-fmm-blue uppercase">${s.turmas?.nome || 'S/T'}</span>
+                            <span class="text-[9px] font-bold text-slate-400 uppercase">${s.turmas?.serie || '---'}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <p class="text-xs text-slate-500 font-medium leading-relaxed max-w-xl whitespace-pre-line">
+                            ${s.laudo}
+                        </p>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <a href="individual_professor.html?ra=${s.ra}" class="p-2.5 bg-slate-50 text-slate-400 hover:text-fmm-blue hover:bg-blue-50 rounded-xl transition-all inline-flex items-center justify-center" title="Ficha Individual">
+                            <i data-lucide="user-search" class="w-4 h-4"></i>
+                        </a>
+                    </td>
+                `;
+                body.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
+        function filterResults() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const turma = document.getElementById('filterTurma').value;
+
+            const filtered = allNeuroStudents.filter(s => {
+                const matchText = s.nome_completo.toLowerCase().includes(search) || s.ra.toString().includes(search);
+                const matchTurma = turma === 'all' || s.turmas?.nome === turma;
+                return matchText && matchTurma;
+            });
+
+            renderTable(filtered);
+        }
+
+        function openPhotoZoom(url, name) {
+            const modal = document.getElementById('photoZoomModal');
+            document.getElementById('enlargedPhoto').src = url;
+            document.getElementById('enlargedName').innerText = name;
+            modal.classList.remove('hidden');
+        }
+
+        function closePhotoZoom() {
+            document.getElementById('photoZoomModal').classList.add('hidden');
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
