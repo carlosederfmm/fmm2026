@@ -25,10 +25,10 @@
                             green: '#80a51b',
                             lime: '#c8d400',
                             bg: '#f8fafc',
-                            level1: '#3b82f6', // Azul
-                            level2: '#eab308', // Amarelo
-                            level3: '#f97316', // Laranja
-                            level4: '#ef4444'  // Vermelho
+                            level1: '#3b82f6', 
+                            level2: '#eab308', 
+                            level3: '#f97316', 
+                            level4: '#ef4444'  
                         }
                     }
                 }
@@ -71,7 +71,7 @@
 
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
-        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
     </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden">
@@ -89,15 +89,26 @@
                 </h1>
                 <p class="text-xs text-slate-400 font-medium">Controlo de sanções e ocorrências</p>
             </div>
-            <div class="relative w-96">
-                <i data-lucide="search" class="absolute left-4 top-3 w-4 h-4 text-slate-400"></i>
-                <input type="text" id="studentSearch" oninput="handleSearch(this.value)" placeholder="Buscar por Nome ou RA..." class="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all font-medium text-sm">
+            
+            <div class="flex items-center gap-4">
+                <!-- FILTRO POR TURMA -->
+                <div class="relative w-48">
+                    <select id="classFilter" onchange="handleClassChange()" class="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all font-bold text-xs text-slate-600 appearance-none cursor-pointer">
+                        <option value="all">Todas as Turmas</option>
+                    </select>
+                    <i data-lucide="chevron-down" class="absolute right-4 top-3 w-4 h-4 text-slate-400 pointer-events-none"></i>
+                </div>
+
+                <div class="relative w-80">
+                    <i data-lucide="search" class="absolute left-4 top-3 w-4 h-4 text-slate-400"></i>
+                    <input type="text" id="studentSearch" oninput="handleSearch(this.value)" placeholder="Buscar por Nome ou RA..." class="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all font-medium text-sm">
+                </div>
             </div>
         </header>
 
         <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
-            <div id="studentsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
-            <div id="emptyState" class="hidden col-span-full py-20 flex flex-col items-center justify-center text-slate-400">
+            <div id="studentsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"></div>
+            <div id="emptyState" class="hidden col-span-full py-20 flex flex-col items-center justify-center text-slate-300">
                 <i data-lucide="search-x" class="w-12 h-12 mb-4 opacity-20"></i>
                 <p class="text-sm italic">Nenhum aluno encontrado.</p>
             </div>
@@ -262,7 +273,7 @@
         let editingSanctionId = null;
         let searchTimeout = null;
         let latestRequestTimestamp = 0;
-        let userLevels = []; // Níveis permitidos ao coordenador
+        let userLevels = []; 
 
         function formatDriveUrl(url) {
             if (!url) return null;
@@ -274,27 +285,33 @@
         }
 
         async function init() {
-            // TASK 3.2.1: Sidebar Componentizada
             if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
             
             const { data: { user } } = await window.supabaseClient.auth.getUser();
             if(user) {
                  const { data: profile } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).single();
                  currentUser = profile;
+                 if (profile.cargo === 'diretor') userLevels = ['EF1', 'EF2', 'EMT'];
+                 else userLevels = profile.niveis_acesso || [];
+            }
 
-                 // --- CAPTURA DE CONTEXTO DO USUÁRIO ---
-                 if (profile.cargo === 'diretor') {
-                    userLevels = ['EF1', 'EF2', 'EMT'];
-                 } else {
-                    userLevels = profile.niveis_acesso || [];
-                 }
+            // Carregar Turmas para o Filtro
+            const { data: turmas } = await window.supabaseClient.from('turmas').select('id, nome').in('nivel', userLevels).order('nome');
+            const classFilter = document.getElementById('classFilter');
+            if(turmas) {
+                turmas.sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR', {numeric: true}));
+                turmas.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id;
+                    opt.innerText = t.nome;
+                    classFilter.appendChild(opt);
+                });
             }
 
             const reasonSelect = document.getElementById('sanctionReason');
             reasonSelect.innerHTML = '<option value="">Selecione a infração...</option>' + 
                 INFRACTIONS.map(inf => `<option value="${inf}">${inf}</option>`).join('');
             
-            // TASK 3.2.2: Inicializa data via ManausTime helper
             document.getElementById('sanctionDate').value = ManausTime.toISODate();
 
             renderGrid();
@@ -302,6 +319,8 @@
         }
 
         function handleSearch(val) { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => { renderGrid(val); }, 300); }
+        
+        function handleClassChange() { renderGrid(document.getElementById('studentSearch').value); }
 
         async function renderGrid(filterVal = '') {
             const thisRequestTime = Date.now();
@@ -310,21 +329,16 @@
             const grid = document.getElementById('studentsGrid');
             const loading = document.getElementById('loadingState');
             const empty = document.getElementById('emptyState');
-
-            if (filterVal && filterVal.length === 1) return;
+            const classId = document.getElementById('classFilter').value;
 
             loading.classList.remove('hidden');
             grid.innerHTML = '';
             if(empty) empty.classList.add('hidden');
 
-            // --- LÓGICA DE FILTRAGEM POR NÍVEL AUTORIZADO ---
-            // Usamos inner join com turmas para filtrar pelo nível autorizado
-            let query = window.supabaseClient.from('alunos').select('ra, nome_completo, url_foto, turmas!inner(nivel)').limit(60);
+            let query = window.supabaseClient.from('alunos').select('ra, nome_completo, url_foto, id_turma, turmas!inner(nivel)').limit(150);
             
-            if (userLevels.length > 0) {
-                query = query.in('turmas.nivel', userLevels);
-            }
-
+            if (userLevels.length > 0) query = query.in('turmas.nivel', userLevels);
+            if (classId !== 'all') query = query.eq('id_turma', classId);
             if(filterVal && filterVal.length >= 2) query = query.or(`nome_completo.ilike.%${filterVal}%,ra.ilike.%${filterVal}%`);
 
             const { data: students, error } = await query.order('nome_completo');
@@ -337,7 +351,6 @@
                  return;
             }
 
-            // Buscar sanções para os dots de uma vez só
             const { data: allSancoes } = await window.supabaseClient.from('sancoes_disciplinares').select('ra_aluno, nivel');
 
             for(const s of students) {
@@ -345,10 +358,10 @@
                 const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
                 sancoesAlu.forEach(sc => counts[sc.nivel]++);
 
-                const avatar = formatDriveUrl(s.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=random`;
+                const avatar = formatDriveUrl(s.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=random&size=256&color=fff&bold=true`;
 
                 const card = document.createElement('div');
-                card.className = "bg-white p-5 rounded-[24px] border border-slate-100 shadow-sm card-hover cursor-pointer transition-all animate-fade-in-up";
+                card.className = "bg-white rounded-[28px] border border-slate-100 shadow-sm card-hover cursor-pointer transition-all animate-fade-in-up overflow-hidden group";
                 card.onclick = () => openDrawer(s.ra);
 
                 let dotsHTML = '';
@@ -357,18 +370,21 @@
                     let dots = '';
                     for(let i=0; i<3; i++) dots += `<div class="level-dot ${i < filled ? 'active-'+lvl : ''}"></div>`;
                     const label = lvl === 1 ? 'Notif' : lvl === 2 ? 'Adv V' : lvl === 3 ? 'Adv E' : 'Susp';
-                    dotsHTML += `<div class="flex flex-col gap-1.5 items-center"><span class="text-[9px] font-bold text-slate-400 uppercase">${label}</span><div class="flex gap-1">${dots}</div></div>`;
+                    dotsHTML += `<div class="flex flex-col gap-1 items-center"><span class="text-[8px] font-black text-slate-400 uppercase tracking-tighter">${label}</span><div class="flex gap-0.5">${dots}</div></div>`;
                 });
 
                 card.innerHTML = `
-                    <div class="flex items-center gap-4 mb-6">
-                        <img src="${avatar}" class="w-14 h-14 rounded-2xl object-cover bg-slate-100">
-                        <div class="overflow-hidden">
-                            <h3 class="font-bold text-fmm-dark text-sm leading-tight truncate" title="${s.nome_completo}">${s.nome_completo}</h3>
-                            <span class="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 mt-1 inline-block">RA: ${s.ra}</span>
+                    <div class="relative h-56 w-full bg-slate-100 overflow-hidden">
+                        <img src="${avatar}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90"></div>
+                        <div class="absolute bottom-0 left-0 right-0 p-4">
+                            <h3 class="font-black text-white text-sm leading-tight uppercase tracking-tight line-clamp-1" title="${s.nome_completo}">${s.nome_completo}</h3>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="text-[9px] font-black text-fmm-lime uppercase tracking-widest">RA: ${s.ra}</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="flex justify-between border-t border-slate-50 pt-4">${dotsHTML}</div>
+                    <div class="p-4 bg-white flex justify-between items-center">${dotsHTML}</div>
                 `;
                 grid.appendChild(card);
             }
@@ -385,7 +401,7 @@
             document.getElementById('drawerRA').innerText = `RA: ${student.ra}`;
             document.getElementById('drawerAvatar').src = formatDriveUrl(student.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.nome_completo)}`;
             await renderHistory();
-            await checkAlerts(); // RESTAURADO: Verificação de alertas 3/3
+            await checkAlerts(); 
             document.getElementById('studentDrawer').classList.add('open');
         }
 
@@ -415,7 +431,7 @@
                     levelSection.className = "mb-6";
                     levelSection.innerHTML = `<h4 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 border-b border-slate-100 pb-1">${levelLabels[level]}</h4>`;
                     groupedHistory[level].forEach(h => {
-                        const displayDate = ManausTime.format(h.data_sancao); // TASK 3.2.2
+                        const displayDate = ManausTime.format(h.data_sancao); 
                         const authorName = h.perfis?.nome_completo || 'Sistema';
                         const obsHTML = h.observacao ? `<p class="text-[10px] text-slate-500 mt-2 bg-white/50 p-2 rounded border border-slate-100 italic">Obs: "${h.observacao}"</p>` : '';
                         levelSection.innerHTML += `
@@ -443,7 +459,6 @@
             lucide.createIcons();
         }
 
-        // RESTAURADO: Lógica de Alertas de Limite e Comunicados aos Pais
         async function checkAlerts() {
             const container = document.getElementById('parentAlertContainer');
             container.innerHTML = '';
