@@ -9,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- TASK 3.2.1: Importação do Cliente Global (Configurado para Manaus) -->
+    <!-- Infraestrutura SME FMM -->
     <script src="assets/js/supabase_client.js"></script>
 
     <script>
@@ -34,7 +34,7 @@
         body { font-family: 'Inter', sans-serif; }
         .glass-effect {
             background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(12px);
         }
         @keyframes slideUp {
             from { opacity: 0; transform: translateY(20px); }
@@ -43,133 +43,156 @@
         .animate-slide-up { animation: slideUp 0.4s ease-out forwards; }
         
         input:focus {
-            box-shadow: 0 0 0 2px rgba(0, 99, 143, 0.1);
+            box-shadow: 0 0 0 4px rgba(0, 99, 143, 0.1);
         }
     </style>
 </head>
 <body class="bg-fmm-dark min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
     
-    <div class="absolute top-0 left-0 w-[500px] h-[500px] bg-fmm-blue rounded-full filter blur-[120px] opacity-20 -translate-x-1/2 -translate-y-1/2"></div>
+    <!-- Elementos Decorativos de Fundo -->
+    <div class="absolute top-0 left-0 w-[600px] h-[600px] bg-fmm-blue rounded-full filter blur-[120px] opacity-20 -translate-x-1/2 -translate-y-1/2"></div>
     <div class="absolute bottom-0 right-0 w-[500px] h-[500px] bg-fmm-lime rounded-full filter blur-[120px] opacity-10 translate-x-1/2 translate-y-1/2"></div>
 
     <div class="w-full max-w-md z-10 animate-slide-up">
-        <div class="glass-effect p-8 md:p-10 rounded-[40px] shadow-2xl border border-white/20">
+        <div class="glass-effect p-10 rounded-[40px] shadow-2xl border border-white/20">
             
-            <div class="flex flex-col items-center mb-8">
-                <div class="bg-fmm-dark p-4 rounded-3xl mb-4 shadow-xl">
+            <!-- Logo e Título -->
+            <div class="flex flex-col items-center mb-10">
+                <div class="bg-fmm-dark p-4 rounded-3xl mb-4 shadow-xl border border-white/5">
                     <img src="assets/logo-fmm-white.png" alt="FMM Logo" class="h-10" onerror="this.src='https://ui-avatars.com/api/?name=FMM&background=003c5b&color=fff&size=128'">
                 </div>
-                <h1 class="text-2xl font-bold text-fmm-dark">Bem-vindo de volta</h1>
-                <p class="text-slate-500 text-sm font-medium mt-1">Acesse sua conta institucional</p>
+                <h1 class="text-2xl font-bold text-fmm-dark tracking-tight">Portal do Colaborador</h1>
+                <p class="text-slate-500 text-sm font-medium mt-1">SME Matias Machline 2026</p>
             </div>
 
-            <div id="loginView">
-                <form id="loginForm" class="space-y-4">
-                    <div class="space-y-1.5">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">E-mail Institucional</label>
-                        <div class="relative group">
-                            <i data-lucide="mail" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
-                            <input type="email" id="loginEmail" required placeholder="usuario@fmm.org.br" 
-                                   class="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-fmm-blue transition-all">
-                        </div>
+            <!-- Formulário de Login -->
+            <form id="loginForm" class="space-y-5">
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">E-mail Institucional</label>
+                    <div class="relative group">
+                        <i data-lucide="mail" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
+                        <input type="email" id="loginEmail" required placeholder="usuario@fmm.org.br" 
+                               class="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-fmm-blue transition-all font-medium">
                     </div>
-
-                    <div class="space-y-1.5">
-                        <div class="flex justify-between items-center px-1">
-                            <label class="text-[10px] font-bold text-slate-400 uppercase">Senha</label>
-                            <a href="#" class="text-[10px] font-bold text-fmm-blue hover:underline">Recuperar acesso</a>
-                        </div>
-                        <div class="relative group">
-                            <i data-lucide="lock" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
-                            <input type="password" id="loginPassword" required placeholder="••••••••" 
-                                   class="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-fmm-blue transition-all">
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-between px-1">
-                        <label class="flex items-center gap-2 cursor-pointer group">
-                            <input type="checkbox" id="keepConnected" class="w-4 h-4 rounded border-slate-200 text-fmm-blue focus:ring-fmm-blue transition-all">
-                            <span class="text-[11px] font-bold text-slate-400 uppercase group-hover:text-slate-600 transition-colors">Manter conectado</span>
-                        </label>
-                    </div>
-
-                    <button type="submit" id="submitBtn" class="w-full bg-fmm-blue hover:bg-fmm-dark text-white py-4 rounded-2xl font-bold text-sm shadow-xl shadow-fmm-blue/20 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2">
-                        <span>Acessar Sistema</span>
-                        <i data-lucide="log-in" class="w-4 h-4"></i>
-                    </button>
-                </form>
-
-                <div class="mt-8 text-center">
-                    <p class="text-[10px] text-slate-400 font-medium uppercase tracking-widest">Acesso restrito ao staff acadêmico</p>
                 </div>
-            </div>
 
-            <div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-fmm-dark text-white p-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-up z-50">
-                <i id="toastIcon" data-lucide="info" class="w-5 h-5 text-fmm-lime"></i>
-                <p id="toastText" class="text-xs font-bold"></p>
-            </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center px-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Senha de Acesso</label>
+                    </div>
+                    <div class="relative group">
+                        <i data-lucide="lock" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
+                        <input type="password" id="loginPassword" required placeholder="••••••••" 
+                               class="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-fmm-blue transition-all font-medium">
+                    </div>
+                </div>
 
+                <button type="submit" id="submitBtn" class="w-full bg-fmm-blue hover:bg-fmm-dark text-white py-4 rounded-2xl font-bold text-sm shadow-xl shadow-fmm-blue/20 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 mt-4">
+                    <span>Entrar no Sistema</span>
+                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </button>
+            </form>
+
+            <div class="mt-8 pt-6 border-t border-slate-100 text-center">
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Acesso Restrito a Colaboradores</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast de Notificação -->
+    <div id="toast" class="hidden fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-slate-900 text-white p-5 rounded-3xl shadow-2xl flex items-center gap-4 animate-slide-up z-50 border border-white/10">
+        <div id="toastIconContainer" class="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0">
+            <i id="toastIcon" data-lucide="info" class="w-5 h-5"></i>
+        </div>
+        <div class="flex flex-col">
+            <span id="toastTitle" class="text-[10px] font-black uppercase tracking-widest opacity-60">Mensagem do Sistema</span>
+            <p id="toastText" class="text-xs font-bold"></p>
         </div>
     </div>
 
     <script>
-        // TASK 3.2.1: Repetitividade removida. O objeto 'supabaseClient' agora vem do arquivo global.
-
+        // Função de Toast Aprimorada
         function showToast(text, type = 'info') {
             const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const iconContainer = document.getElementById('toastIconContainer');
+            
             document.getElementById('toastText').innerText = text;
-            document.getElementById('toastIcon').setAttribute('data-lucide', type === 'error' ? 'alert-circle' : 'check-circle');
+            
+            if (type === 'error') {
+                icon.setAttribute('data-lucide', 'alert-circle');
+                iconContainer.className = "w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 bg-red-500/20 text-red-500";
+            } else {
+                icon.setAttribute('data-lucide', 'check-circle');
+                iconContainer.className = "w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 bg-fmm-lime/20 text-fmm-lime";
+            }
+            
             toast.classList.remove('hidden');
             lucide.createIcons();
+            
             setTimeout(() => toast.classList.add('hidden'), 4000);
         }
 
+        // Fluxo de Autenticação
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const submitBtn = document.getElementById('submitBtn');
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
 
+            // Bloquear UI
             submitBtn.disabled = true;
             const originalContent = submitBtn.innerHTML;
-            submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin mr-2"></i> Autenticando...';
+            submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Autenticando...';
             lucide.createIcons();
 
             try {
-                // 'supabaseClient' está disponível globalmente através do assets/js/supabase_client.js
-                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({ email, password });
-                if (authError) throw authError;
+                // 1. Login no Supabase Auth
+                const { data: authData, error: authError } = await window.supabaseClient.auth.signInWithPassword({ email, password });
+                
+                if (authError) {
+                    if (authError.message === 'Invalid login credentials') throw new Error("E-mail ou senha incorretos.");
+                    throw authError;
+                }
 
-                const { data: perfil, error: perfError } = await supabaseClient
+                // 2. Busca Perfil do Usuário
+                const { data: perfil, error: perfError } = await window.supabaseClient
                     .from('perfis')
                     .select('cargo')
                     .eq('id', authData.user.id)
                     .maybeSingle();
 
-                if (perfError || !perfil) throw new Error("Perfil não encontrado.");
+                if (perfError) throw perfError;
+                if (!perfil) throw new Error("Perfil não encontrado no banco de dados.");
 
+                // 3. Mapeamento de Destinos (Direcionamento baseado no cargo)
                 const destinos = {
                     'diretor': 'coordenador/principal/dashboard_coordenador.html',
                     'coordenador': 'coordenador/principal/dashboard_coordenador.html',
                     'professor': 'professor/dashboard_professor.html',
-<<<<<<< HEAD
-                    'orientador': 'orientador/dashboard_orientador.html',
-=======
-                    'orientador': 'coordenador/principal/dashboard_coordenador.html'
->>>>>>> 4731ae5899e3a053812dd5ab3be04c6d889ba2b1
+                    'orientador': 'orientador/dashboard_orientador.html'
                 };
 
                 const cargo = perfil.cargo ? perfil.cargo.toLowerCase() : '';
-                window.location.href = destinos[cargo] || 'coordenador/principal/dashboard_coordenador.html';
+                const urlDestino = destinos[cargo] || 'coordenador/principal/dashboard_coordenador.html';
+
+                showToast("Acesso autorizado! Redirecionando...");
+                
+                // Delay para o usuário ler o sucesso
+                setTimeout(() => {
+                    window.location.href = urlDestino;
+                }, 800);
                 
             } catch (err) {
-                showToast(err.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos.' : err.message, 'error');
+                console.error("Erro de login:", err);
+                showToast(err.message, 'error');
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalContent;
                 lucide.createIcons();
             }
         });
 
+        // Inicializar ícones
         lucide.createIcons();
     </script>
 </body>
