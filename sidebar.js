@@ -1,6 +1,6 @@
 /**
  * Componente de Sidebar Reutilizável SME FMM 2026
- * Versão Ultra-Blindada: Injeção automática de CSS e suporte ao cargo Orientador com rotas dinâmicas.
+ * Versão Ultra-Blindada: Injeção automática de CSS e suporte aos cargos Orientador e Secretaria.
  */
 const SidebarComponent = {
     // Estilos internos injetados automaticamente para evitar quebras de layout
@@ -67,22 +67,28 @@ const SidebarComponent = {
             { label: 'Neurodivergentes', icon: 'brain', link: 'professor/alunos_neurodivergentes.html', roles: ['professor'] },
             { label: 'Meu Perfil', icon: 'user-cog', link: 'professor/perfil_professor.html', roles: ['professor'] }
         ],
-        // Menu Linear para o Orientador (sem sanfonas)
         orientador: [
             { label: 'Dashboard', icon: 'layout-grid', link: 'orientador/dashboard_orientador.html', roles: ['orientador'] },
             { label: 'Prontuários', icon: 'clipboard-list', link: 'orientador/atendimento_orientador.html', roles: ['orientador'] },
             { label: 'Fila de Chamados', icon: 'bell', link: 'orientador/chamados_orientador.html', roles: ['orientador'] },
             { label: 'Meu Perfil', icon: 'user-circle', link: 'coordenador/principal/perfil_coordenador.html', roles: ['orientador'] },
             { label: 'Sanções', icon: 'shield-alert', link: 'orientador/sancoes_orientador.html', roles: ['orientador'] }
+        ],
+        // NOVO: Menu Linear para a Secretaria
+        secretaria: [
+            { label: 'Dashboard', icon: 'pie-chart', link: 'secretaria/dashboard_secretaria.html', roles: ['secretaria'] },
+            { label: 'Saídas', icon: 'log-out', link: 'coordenador/pedagogico/saidas_coordenador.html', roles: ['secretaria'] },
+            { label: 'Atrasos', icon: 'clock', link: 'coordenador/pedagogico/atrasos_coordenador.html', roles: ['secretaria'] },
+            { label: 'Meu Perfil', icon: 'user-circle', link: 'coordenador/principal/perfil_coordenador.html', roles: ['secretaria'] }
         ]
-    }, 
+    },
 
     getRelativePrefix: function() {
         const path = window.location.pathname;
         if (path.includes('/notas/') || path.includes('/pedagogico/') || path.includes('/administrativo/') || path.includes('/principal/')) {
             return '../../';
         }
-        if (path.includes('/professor/') || path.includes('/orientador/') || (path.includes('/coordenador/') && !path.includes('/', path.indexOf('/coordenador/') + 13))) {
+        if (path.includes('/professor/') || path.includes('/orientador/') || path.includes('/secretaria/') || (path.includes('/coordenador/') && !path.includes('/', path.indexOf('/coordenador/') + 13))) {
             return '../';
         }
         return './';
@@ -126,6 +132,10 @@ const SidebarComponent = {
         } else if (userRole === 'orientador') {
             const orientadorItems = this.filterItemsByRole(this.menuItems.orientador, userRole);
             navHTML += this.buildSimpleCategory('Serviço de Orientação', orientadorItems, activePage, prefix);
+        } else if (userRole === 'secretaria') {
+            // RENDERIZAÇÃO LINEAR PARA SECRETARIA
+            const secretariaItems = this.filterItemsByRole(this.menuItems.secretaria, userRole);
+            navHTML += this.buildSimpleCategory('Secretaria Escolar', secretariaItems, activePage, prefix);
         } else {
             const principalItems = this.filterItemsByRole(this.menuItems.principal, userRole);
             const admItems = this.filterItemsByRole(this.menuItems.administrativo, userRole);

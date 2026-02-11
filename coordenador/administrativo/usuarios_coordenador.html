@@ -194,10 +194,16 @@
                     [roles.DIRETOR]: 'Diretor',
                     [roles.COORDENADOR]: 'Coordenador',
                     [roles.PROFESSOR]: 'Professor',
-                    [roles.ORIENTADOR]: 'Orientador'
+                    [roles.ORIENTADOR]: 'Orientador',
+                    [roles.SECRETARIA]: 'Secretaria'
                 };
-                cargoSelect.innerHTML = Object.values(roles).map(role => 
-                    `<option value="${role}">${labels[role]}</option>`
+                
+                // Incluímos 'secretaria' manualmente caso não esteja nas constantes ainda
+                const allRoles = [...Object.values(roles)];
+                if (!allRoles.includes('secretaria')) allRoles.push('secretaria');
+
+                cargoSelect.innerHTML = allRoles.map(role => 
+                    `<option value="${role}">${labels[role] || role.charAt(0).toUpperCase() + role.slice(1)}</option>`
                 ).join('');
             }
         }
@@ -215,7 +221,8 @@
                 'diretor': 'bg-purple-100 text-purple-700', 
                 'coordenador': 'bg-fmm-blue/10 text-fmm-blue', 
                 'professor': 'bg-fmm-green/10 text-fmm-green', 
-                'orientador': 'bg-orange-100 text-orange-700' 
+                'orientador': 'bg-orange-100 text-orange-700',
+                'secretaria': 'bg-teal-100 text-teal-700'
             };
 
             body.innerHTML = data.map(u => {
@@ -246,7 +253,7 @@
             const cargo = document.getElementById('inCargo').value;
             const selector = document.getElementById('levelSelector');
             const roles = window.DB_CONSTANTS?.ROLES || {};
-            if([roles.COORDENADOR, roles.DIRETOR, roles.ORIENTADOR].includes(cargo)) selector.classList.remove('hidden');
+            if([roles.COORDENADOR, roles.DIRETOR, roles.ORIENTADOR, 'secretaria'].includes(cargo)) selector.classList.remove('hidden');
             else selector.classList.add('hidden');
         }
 
@@ -275,7 +282,6 @@
             document.getElementById('inPhone').value = user.telefone || '';
             document.getElementById('inCargo').value = user.cargo;
             
-            // Ajuste visual para edição de senha (opcional)
             document.getElementById('labelPassword').innerText = "Alterar Senha (Opcional)";
             document.getElementById('inPassword').placeholder = "Deixe em branco para manter";
             document.getElementById('inPassword').value = '';
@@ -299,7 +305,6 @@
             
             if (!nome || !email) return alert("Preencha Nome e E-mail.");
             
-            // Validação de senha apenas para novos usuários
             if (!editingId && (!password || password.length < 6)) {
                 return alert("A senha deve ter no mínimo 6 caracteres.");
             }
@@ -310,7 +315,6 @@
 
             try {
                 if (editingId) {
-                    // 1. Atualizar dados do Perfil
                     const { error: profileError } = await window.supabaseClient.from('perfis').update({ 
                         nome_completo: nome, 
                         telefone: phone, 
@@ -320,15 +324,12 @@
                     
                     if (profileError) throw profileError;
 
-                    // 2. Atualizar Senha (se preenchida)
                     if (password && password.length >= 6) {
                         const { error: passError } = await window.supabaseClient.rpc('admin_update_user_password', { 
                             user_id: editingId, 
                             new_password: password 
                         });
                         if (passError) throw passError;
-                    } else if (password && password.length < 6) {
-                        alert("Senha muito curta. Os demais dados foram salvos, mas a senha não foi alterada.");
                     }
 
                     alert("Perfil atualizado com sucesso!");
