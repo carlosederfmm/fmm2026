@@ -1,16 +1,9 @@
 /**
  * Componente de Sidebar Reutilizável SME FMM 2026
-<<<<<<< HEAD
  * Versão Ultra-Blindada: Injeção automática de CSS e suporte ao cargo Orientador com rotas dinâmicas.
  */
 const SidebarComponent = {
     // Estilos internos injetados automaticamente para evitar quebras de layout
-=======
- * Versão Ultra-Blindada: Injeção automática de CSS e correção de sobreposição.
- */
-const SidebarComponent = {
-    // Estilos internos para garantir que a sidebar NUNCA quebre, independente da página
->>>>>>> 4731ae5899e3a053812dd5ab3be04c6d889ba2b1
     styles: `
         .sidebar-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .sidebar-collapsed .sidebar-text, 
@@ -40,17 +33,10 @@ const SidebarComponent = {
 
     menuItems: {
         principal: [
-<<<<<<< HEAD
             { label: 'Dashboard', icon: 'pie-chart', link: 'coordenador/principal/dashboard_coordenador.html', roles: ['coordenador', 'diretor'] },
             { label: 'Tarefas (Scrum)', icon: 'check-square', link: 'coordenador/principal/tarefas_coordenador.html', roles: ['coordenador', 'diretor'] },
             { label: 'Requerimentos', icon: 'inbox', link: 'coordenador/principal/requerimentos.html', roles: ['coordenador', 'diretor'], badge: true },
             { label: 'Meu Perfil', icon: 'user-circle', link: 'coordenador/principal/perfil_coordenador.html', roles: ['coordenador', 'diretor'] }
-=======
-            { label: 'Dashboard', icon: 'pie-chart', link: 'coordenador/principal/dashboard_coordenador.html', roles: ['coordenador', 'diretor', 'orientador'] },
-            { label: 'Tarefas (Scrum)', icon: 'check-square', link: 'coordenador/principal/tarefas_coordenador.html', roles: ['coordenador', 'diretor'] },
-            { label: 'Requerimentos', icon: 'inbox', link: 'coordenador/principal/requerimentos.html', roles: ['coordenador', 'diretor'], badge: true },
-            { label: 'Meu Perfil', icon: 'user-circle', link: 'coordenador/principal/perfil_coordenador.html', roles: ['coordenador', 'diretor', 'orientador'] }
->>>>>>> 4731ae5899e3a053812dd5ab3be04c6d889ba2b1
         ],
         administrativo: [
             { label: 'Usuários / Staff', icon: 'shield-check', link: 'coordenador/administrativo/usuarios_coordenador.html', roles: ['diretor', 'coordenador'] },
@@ -62,14 +48,9 @@ const SidebarComponent = {
             { label: 'Grade Horária', icon: 'calendar-range', link: 'coordenador/administrativo/grade_coordenador.html', roles: ['diretor', 'coordenador'] }
         ],
         pedagogico: [
-<<<<<<< HEAD
             { label: 'Sanções', icon: 'shield-alert', link: 'coordenador/pedagogico/sancoes_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Atendimentos', icon: 'message-square', link: 'coordenador/pedagogico/atendimentos_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Chamados (Orientação)', icon: 'bell-plus', link: 'coordenador/pedagogico/chamados_coordenador.html', roles: ['diretor', 'coordenador'] },
-=======
-            { label: 'Sanções', icon: 'shield-alert', link: 'coordenador/pedagogico/sancoes_coordenador.html', roles: ['diretor', 'coordenador', 'orientador'] },
-            { label: 'Atendimentos', icon: 'message-square', link: 'coordenador/pedagogico/atendimentos_coordenador.html', roles: ['diretor', 'coordenador', 'orientador'] },
->>>>>>> 4731ae5899e3a053812dd5ab3be04c6d889ba2b1
             { label: 'Saídas', icon: 'log-out', link: 'coordenador/pedagogico/saidas_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Atrasos', icon: 'clock', link: 'coordenador/pedagogico/atrasos_coordenador.html', roles: ['diretor', 'coordenador'] }
         ],
@@ -85,7 +66,6 @@ const SidebarComponent = {
             { label: 'Conteúdo de Aula', icon: 'book-text', link: 'professor/conteudo_professor.html', roles: ['professor'] },
             { label: 'Neurodivergentes', icon: 'brain', link: 'professor/alunos_neurodivergentes.html', roles: ['professor'] },
             { label: 'Meu Perfil', icon: 'user-cog', link: 'professor/perfil_professor.html', roles: ['professor'] }
-<<<<<<< HEAD
         ],
         // Menu Linear para o Orientador (sem sanfonas)
         orientador: [
@@ -96,21 +76,13 @@ const SidebarComponent = {
             { label: 'Sanções', icon: 'shield-alert', link: 'orientador/sancoes_orientador.html', roles: ['orientador'] }
         ]
     }, 
-=======
-        ]
-    },
->>>>>>> 4731ae5899e3a053812dd5ab3be04c6d889ba2b1
 
     getRelativePrefix: function() {
         const path = window.location.pathname;
         if (path.includes('/notas/') || path.includes('/pedagogico/') || path.includes('/administrativo/') || path.includes('/principal/')) {
             return '../../';
         }
-<<<<<<< HEAD
         if (path.includes('/professor/') || path.includes('/orientador/') || (path.includes('/coordenador/') && !path.includes('/', path.indexOf('/coordenador/') + 13))) {
-=======
-        if (path.includes('/professor/') || (path.includes('/coordenador/') && !path.includes('/', path.indexOf('/coordenador/') + 13))) {
->>>>>>> 4731ae5899e3a053812dd5ab3be04c6d889ba2b1
             return '../';
         }
         return './';
@@ -129,11 +101,7 @@ const SidebarComponent = {
     },
 
     render: async function(containerId) {
-<<<<<<< HEAD
         this.injectStyles(); 
-=======
-        this.injectStyles(); // Garante o CSS correto
->>>>>>> 4731ae5899e3a053812dd5ab3be04c6d889ba2b1
         const prefix = this.getRelativePrefix();
         const container = document.getElementById(containerId);
         if (!container) return;
@@ -155,12 +123,9 @@ const SidebarComponent = {
         if (userRole === 'professor') {
             const docenteItems = this.filterItemsByRole(this.menuItems.docente, userRole);
             navHTML += this.buildSimpleCategory('Portal do Docente', docenteItems, activePage, prefix);
-<<<<<<< HEAD
         } else if (userRole === 'orientador') {
             const orientadorItems = this.filterItemsByRole(this.menuItems.orientador, userRole);
             navHTML += this.buildSimpleCategory('Serviço de Orientação', orientadorItems, activePage, prefix);
-=======
->>>>>>> 4731ae5899e3a053812dd5ab3be04c6d889ba2b1
         } else {
             const principalItems = this.filterItemsByRole(this.menuItems.principal, userRole);
             const admItems = this.filterItemsByRole(this.menuItems.administrativo, userRole);
