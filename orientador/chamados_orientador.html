@@ -48,6 +48,7 @@
         .list-row:hover { background-color: #f8fafc; }
         .list-row:last-child { border-bottom: none; }
 
+        /* Status Dropdown Pill - Ultra Visual */
         .status-select-pill {
             appearance: none;
             padding: 6px 32px 6px 12px;
@@ -71,6 +72,9 @@
         .status-select-pill.status-finished { background-color: #f0fdf4; color: #166534; border-color: #dcfce7; }
         .status-select-pill.status-ignored { background-color: #f8fafc; color: #64748b; border-color: #f1f5f9; }
 
+        .status-select-pill:focus { ring: 4px; ring-color: rgba(0,0,0,0.05); transform: scale(1.02); }
+
+        /* Botão Atribuir */
         .assign-btn {
             display: flex; align-items: center; gap: 6px;
             padding: 6px 12px; border-radius: 10px; font-size: 9px; font-weight: 800;
@@ -91,6 +95,11 @@
             outline: none; transition: all 0.2s;
         }
         .form-control:focus { border-color: #00638f; background-color: white; box-shadow: 0 0 0 4px rgba(0, 99, 143, 0.08); }
+
+        .student-result-card {
+            padding: 12px; border-radius: 16px; border: 1px solid #f1f5f9; transition: all 0.2s; cursor: pointer;
+        }
+        .student-result-card:hover { border-color: #00638f; background: #f0f9ff; }
     </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden">
@@ -102,21 +111,27 @@
         <header class="bg-white h-20 border-b flex items-center justify-between px-10 z-10 shadow-sm flex-shrink-0">
             <div class="flex items-center gap-5">
                 <div class="w-10 h-10 bg-fmm-dark rounded-xl flex items-center justify-center text-white shadow-lg">
-                    <i data-lucide="layers" class="w-5 h-5"></i>
+                    <i data-lucide="layers" class="w-5 h-5 text-fmm-lime"></i>
                 </div>
                 <div class="flex flex-col">
-                    <h1 class="text-lg font-black text-fmm-dark tracking-tight uppercase">Fila de Atendimento</h1>
-                    <p class="text-[9px] text-fmm-blue font-bold uppercase tracking-[0.2em] opacity-50">Triagem de chamados institucionais</p>
+                    <h1 class="text-lg font-black text-fmm-dark tracking-tight uppercase leading-none">Fila de Atendimento</h1>
+                    <p class="text-[9px] text-fmm-blue font-bold uppercase tracking-[0.2em] opacity-50 mt-1">Gestão de chamados e demandas</p>
                 </div>
             </div>
 
             <div class="flex items-center gap-4">
                 <div id="sync-indicator" class="hidden items-center gap-2 px-3 py-1.5 bg-fmm-blue/5 rounded-full border border-fmm-blue/10 animate-pulse">
                     <i data-lucide="refresh-ccw" class="w-3.5 h-3.5 text-fmm-blue"></i>
-                    <span class="text-[9px] font-black text-fmm-blue uppercase">Sincronizando</span>
+                    <span class="text-[9px] font-black text-fmm-blue uppercase">Sinc...</span>
                 </div>
+                
+                <button onclick="openNewCallModal()" class="bg-fmm-dark hover:bg-fmm-blue text-white px-5 py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg active:scale-95">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    Novo Chamado
+                </button>
+
                 <div class="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
-                    <span class="text-[9px] font-black text-slate-400 uppercase">Filtrar</span>
+                    <span class="text-[9px] font-black text-slate-400 uppercase">Status</span>
                     <select id="filterStatus" onchange="fetchCalls()" class="bg-transparent text-[10px] font-black text-fmm-dark uppercase outline-none cursor-pointer">
                         <option value="all">Todos</option>
                         <option value="pending">Pendentes</option>
@@ -126,7 +141,7 @@
                 </div>
                 <div class="relative group">
                     <i data-lucide="search" class="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400"></i>
-                    <input type="text" id="searchInput" onkeyup="renderCalls()" placeholder="RA ou Nome..." class="pl-9 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-fmm-blue outline-none transition-all w-60">
+                    <input type="text" id="searchInput" onkeyup="renderCalls()" placeholder="RA ou Nome..." class="pl-9 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-fmm-blue outline-none transition-all w-48">
                 </div>
             </div>
         </header>
@@ -161,7 +176,7 @@
         </div>
     </main>
 
-    <!-- MODAL DE DETALHES -->
+    <!-- MODAL DE DETALHES (VIEW/EDIT) -->
     <div id="callModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center modal-backdrop p-6">
         <div class="bg-white rounded-[40px] shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col animate-ui overflow-hidden border-[8px] border-white">
             
@@ -189,7 +204,6 @@
                             <label class="text-[9px] font-black text-fmm-blue uppercase tracking-widest">Origem do Chamado</label>
                             <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 rounded-lg bg-fmm-blue text-white flex items-center justify-center font-black text-[10px]" id="modalCoordInitials">--</div>
-                                <!-- O NOME DE QUEM FEZ O CHAMADO SERÁ EXIBIDO AQUI -->
                                 <span class="text-xs font-black text-fmm-dark uppercase" id="modalCoordName">Carregando...</span>
                             </div>
                             <p class="text-[9px] text-slate-400 font-bold" id="modalCallDate">Abertura: --/--/----</p>
@@ -236,10 +250,66 @@
         </div>
     </div>
 
+    <!-- MODAL DE NOVO CHAMADO (CRIAÇÃO) -->
+    <div id="newCallModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-fmm-dark/80 backdrop-blur-sm p-6">
+        <div class="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-ui overflow-hidden border-[8px] border-white">
+            
+            <div class="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-fmm-dark rounded-2xl flex items-center justify-center text-white shadow-lg">
+                        <i data-lucide="message-square-plus" class="w-6 h-6 text-fmm-lime"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none mb-1">Abrir Chamado</h2>
+                        <p class="text-[10px] text-fmm-blue font-bold uppercase tracking-widest">Nova Demanda de Orientação</p>
+                    </div>
+                </div>
+                <button onclick="closeNewCallModal()" class="text-slate-300 hover:text-red-500 transition-all p-2 rounded-full hover:bg-white shadow-sm">
+                    <i data-lucide="x" class="w-7 h-7"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-10 space-y-8 custom-scrollbar">
+                <div class="space-y-3">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">1. Localizar Estudante</label>
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-4 top-3.5 w-4 h-4 text-slate-400"></i>
+                        <input type="text" id="studentSearchInput" onkeyup="searchStudents(this.value)" placeholder="Digite o Nome ou RA..." class="form-control pl-12">
+                        <div id="studentResults" class="absolute z-20 left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 max-h-48 overflow-y-auto hidden custom-scrollbar"></div>
+                    </div>
+                    <div id="selectedStudentPreview" class="hidden p-4 bg-fmm-blue/5 rounded-2xl border border-fmm-blue/10 flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <img id="selAvatar" src="" class="w-12 h-12 rounded-xl object-cover border-2 border-white shadow-sm bg-slate-200">
+                            <div>
+                                <h4 id="selName" class="text-sm font-black text-fmm-dark uppercase leading-none mb-1">---</h4>
+                                <p id="selRA" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">RA: 000000</p>
+                            </div>
+                        </div>
+                        <button onclick="clearSelectedStudent()" class="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                    <input type="hidden" id="selectedRA">
+                </div>
+
+                <div class="space-y-3">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">2. Motivação da Solicitação</label>
+                    <textarea id="callReason" class="form-control min-h-[180px] leading-relaxed text-sm p-6" placeholder="Descreva os motivos que levaram à abertura desta demanda..."></textarea>
+                </div>
+            </div>
+
+            <div class="p-8 border-t bg-slate-50/30 flex justify-end gap-3">
+                <button onclick="closeNewCallModal()" class="px-8 py-3 text-slate-400 font-black text-[10px] uppercase tracking-widest">Cancelar</button>
+                <button id="btnSubmitCall" onclick="submitCall()" class="px-12 py-3 bg-fmm-dark text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-xl shadow-xl shadow-fmm-dark/20 hover:bg-fmm-blue transition-all flex items-center gap-2">
+                    <i data-lucide="send" class="w-3.5 h-3.5"></i> Registrar Chamado
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentUser = null;
         let orientadoresList = [];
         let globalCalls = [];
+        let searchTimeout = null;
 
         async function init() {
             if (window.SidebarComponent) await SidebarComponent.render('sidebar-container');
@@ -311,7 +381,6 @@
                 const avatar = formatDriveUrl(c.alunos?.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(c.alunos?.nome_completo || 'User')}&background=random&color=fff&bold=true`;
                 const dateShort = ManausTime.format(c.data_abertura).substring(0, 5);
                 
-                // NOME DE QUEM FEZ (COORDENADOR)
                 const authorName = c.coordenador?.nome_completo || "FMM";
                 const assignedName = c.orientador?.nome_completo || 'Pendente';
                 const isMeAssigned = c.id_orientador_designado === currentUser?.id;
@@ -389,7 +458,6 @@
             const avatarUrl = formatDriveUrl(call.alunos?.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(call.alunos?.nome_completo || 'User')}&background=random&color=fff&bold=true`;
             document.getElementById('modalStudentAvatar').src = avatarUrl;
             
-            // ATUALIZAÇÃO DO NOME DO COORDENADOR NO MODAL
             const coordName = call.coordenador?.nome_completo || "FMM - Sistema";
             document.getElementById('modalCoordName').innerText = coordName;
             document.getElementById('modalCoordInitials').innerText = coordName.charAt(0);
@@ -429,6 +497,109 @@
             sessionStorage.setItem('fmm_referral_context', JSON.stringify({ ra: call.alunos?.ra, callId: call.id, pre_reason: call.motivo }));
             showToast("Vinculando ao prontuário...");
             setTimeout(() => { location.href = 'atendimento_orientador.html'; }, 800);
+        }
+
+        // --- LÓGICA DE CRIAÇÃO DE CHAMADO (ORIENTADOR ORIGEM) ---
+
+        function openNewCallModal() {
+            clearSelectedStudent();
+            document.getElementById('callReason').value = '';
+            document.getElementById('newCallModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeNewCallModal() { document.getElementById('newCallModal').classList.add('hidden'); }
+
+        function searchStudents(val) {
+            clearTimeout(searchTimeout);
+            const results = document.getElementById('studentResults');
+            if(!val || val.length < 3) { results.classList.add('hidden'); return; }
+
+            searchTimeout = setTimeout(async () => {
+                const { data, error } = await window.supabaseClient
+                    .from('alunos')
+                    .select('ra, nome_completo, url_foto, turmas(nome)')
+                    .or(`nome_completo.ilike.%${val}%,ra.ilike.%${val}%`)
+                    .limit(5);
+
+                if (error || !data || data.length === 0) {
+                    results.innerHTML = `<div class="p-4 text-xs text-slate-400 italic">Nenhum aluno encontrado.</div>`;
+                    results.classList.remove('hidden');
+                    return;
+                }
+
+                results.innerHTML = data.map(s => `
+                    <div onclick="selectStudentForCall('${s.ra}', '${s.nome_completo.replace(/'/g, "\\'")}', '${s.url_foto}')" class="student-result-card flex items-center gap-3 border-b border-slate-50 last:border-0">
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-400">
+                            ${s.nome_completo.charAt(0)}
+                        </div>
+                        <div class="flex flex-col overflow-hidden">
+                            <span class="text-[11px] font-black text-fmm-dark uppercase truncate">${s.nome_completo}</span>
+                            <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">RA: ${s.ra} • ${s.turmas?.nome || 'Sem Turma'}</span>
+                        </div>
+                    </div>
+                `).join('');
+                results.classList.remove('hidden');
+            }, 400);
+        }
+
+        function selectStudentForCall(ra, name, photo) {
+            document.getElementById('selectedRA').value = ra;
+            document.getElementById('selName').innerText = name;
+            document.getElementById('selRA').innerText = `RA: ${ra}`;
+            
+            const avatar = document.getElementById('selAvatar');
+            avatar.src = formatDriveUrl(photo) || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff&bold=true`;
+            
+            document.getElementById('studentSearchInput').classList.add('hidden');
+            document.getElementById('studentResults').classList.add('hidden');
+            document.getElementById('selectedStudentPreview').classList.remove('hidden');
+        }
+
+        function clearSelectedStudent() {
+            document.getElementById('selectedRA').value = '';
+            document.getElementById('selectedStudentPreview').classList.add('hidden');
+            document.getElementById('studentSearchInput').classList.remove('hidden');
+            document.getElementById('studentSearchInput').value = '';
+            document.getElementById('studentSearchInput').focus();
+        }
+
+        async function submitCall() {
+            const ra = document.getElementById('selectedRA').value;
+            const reason = document.getElementById('callReason').value;
+            const btn = document.getElementById('btnSubmitCall');
+
+            if(!ra) return alert("Selecione um aluno.");
+            if(!reason || reason.trim().length < 5) return alert("Descreva o motivo da solicitação.");
+
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> Registrando...';
+            lucide.createIcons();
+
+            try {
+                // No chamado aberto pelo orientador, ele é o coordenador (origem) e já pode se autoatribuir
+                const { error } = await window.supabaseClient
+                    .from('orientacao_chamados')
+                    .insert({ 
+                        ra_aluno: ra, 
+                        id_coordenador: currentUser.id, 
+                        id_orientador_designado: currentUser.id,
+                        motivo: reason,
+                        status: 'ongoing'
+                    });
+
+                if (error) throw error;
+
+                showToast("Chamado registrado!");
+                closeNewCallModal();
+                fetchCalls();
+            } catch (err) {
+                alert("Erro: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-lucide="send" class="w-3.5 h-3.5"></i> Registrar Chamado';
+                lucide.createIcons();
+            }
         }
 
         function showToast(msg) {
