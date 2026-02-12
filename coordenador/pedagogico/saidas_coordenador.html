@@ -56,7 +56,7 @@
         .student-item:hover { background-color: #f8fafc; border-color: #e2e8f0; }
         .student-item.active { background-color: #00638f10; border-color: #00638f30; }
 
-        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-slide { animation: slideIn 0.3s ease-out forwards; }
         
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -112,8 +112,8 @@
                 <div class="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-2" id="studentList">
                     <!-- Lista de Alunos (Injetado via JS) -->
                     <div class="flex flex-col items-center justify-center h-full text-slate-300">
-                        <i data-lucide="users" class="w-8 h-8 mb-2 opacity-20"></i>
-                        <p class="text-xs italic">Carregando lista...</p>
+                        <i data-lucide="search" class="w-8 h-8 mb-2 opacity-20"></i>
+                        <p class="text-xs italic">Digite para buscar...</p>
                     </div>
                 </div>
             </div>
@@ -148,6 +148,11 @@
                         <button onclick="openRecordModal()" class="bg-fmm-dark hover:bg-slate-800 text-white px-6 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 shadow-xl shadow-fmm-dark/20 transition-all transform hover:scale-105">
                             <i data-lucide="plus-circle" class="w-5 h-5"></i> Registar Saída
                         </button>
+                    </div>
+
+                    <!-- Alerta Local (Topo do Histórico) -->
+                    <div id="localAlertContainer" class="hidden px-8 pt-6">
+                        <!-- Injetado se o aluno tiver >= 10 saídas -->
                     </div>
 
                     <!-- Timeline de Saídas -->
@@ -294,9 +299,6 @@
     </div>
 
     <script>
-        // CONFIGURAÇÃO SUPABASE
-        
-
         const EXIT_REASONS = ["Particular", "Médico", "Dentista", "Mal Estar", "Cursinho", "Sinetram", "Fisioterapia", "Psicólogo", "Exército", "Outro"];
         const TRANSPORT_OPTIONS = ["Ônibus", "Lotação", "Condução", "Uber", "Andando", "Com os pais", "Sozinho", "Outro"];
 
@@ -305,15 +307,14 @@
         let selectedStudent = null;
         let currentRecords = [];
         let globalAlertsList = []; 
-        let userLevels = []; // Níveis permitidos ao coordenador
+        let userLevels = []; 
+        let searchTimeout = null;
 
         function formatDriveUrl(url) {
             if (!url) return null;
             if (url.includes('drive.google.com') && url.includes('/file/d/')) {
                 const idMatch = url.match(/\/d\/(.*?)\//);
-                if (idMatch && idMatch[1]) {
-                    return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
-                }
+                if (idMatch && idMatch[1]) return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
             }
             return url;
         }
@@ -324,26 +325,21 @@
             if(user) {
                 const { data: profile } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).single();
                 currentUser = profile;
-
-                // --- CAPTURA DE CONTEXTO DO USUÁRIO ---
-                if (profile.cargo === 'diretor') {
-                    userLevels = ['EF1', 'EF2', 'EMT'];
-                } else {
-                    userLevels = profile.niveis_acesso || [];
-                }
+                userLevels = profile.cargo === 'diretor' ? ['EF1', 'EF2', 'EMT'] : (profile.niveis_acesso || []);
             }
 
             populateSelects();
             document.getElementById('recDate').valueAsDate = new Date();
-            await fetchAllStudents();
-            checkGlobalExitAlerts(false); // Verifica em background
+            
+            // Carregar primeiros 10 alunos por padrão para não ficar vazio
+            await fetchInitialStudents();
+            checkGlobalExitAlerts(false); 
             lucide.createIcons();
         }
 
         function populateSelects() {
             const reasonSel = document.getElementById('recReason');
             const transSel = document.getElementById('recTransport');
-            
             reasonSel.innerHTML = '<option value="">Selecione...</option>' + EXIT_REASONS.map(o => `<option value="${o}">${o}</option>`).join('');
             transSel.innerHTML = '<option value="">Selecione...</option>' + TRANSPORT_OPTIONS.map(o => `<option value="${o}">${o}</option>`).join('');
         }
@@ -355,40 +351,71 @@
             else inp.classList.add('hidden');
         }
 
-        async function fetchAllStudents() {
-            // --- LÓGICA DE FILTRAGEM POR NÍVEL AUTORIZADO ---
+        // Busca inicial limitada para performance
+        async function fetchInitialStudents() {
             let query = window.supabaseClient
                 .from('alunos')
                 .select('ra, nome_completo, url_foto, turmas!inner(nome, nivel)')
-                .order('nome_completo');
+                .order('nome_completo')
+                .limit(20);
             
-            if (userLevels.length > 0) {
-                query = query.in('turmas.nivel', userLevels);
-            }
+            if (userLevels.length > 0) query = query.in('turmas.nivel', userLevels);
 
             const { data, error } = await query;
-            
-            if (error) return console.error(error);
-            allStudents = data || [];
-            renderStudentList();
+            if (!error) {
+                allStudents = data || [];
+                renderStudentListUI();
+            }
         }
 
-        function renderStudentList(filterVal = '') {
+        // --- MOTOR DE BUSCA DINÂMICO (CORREÇÃO PARA > 2.000 ALUNOS) ---
+        async function renderStudentList(filterVal = '') {
+            const list = document.getElementById('studentList');
+            
+            if (!filterVal || filterVal.length < 2) {
+                // Se a busca for pequena, mantém o estado atual ou volta para o inicial
+                if (!filterVal) await fetchInitialStudents();
+                return;
+            }
+
+            clearTimeout(searchTimeout);
+            
+            // Feedback visual de carregamento discreto
+            list.innerHTML = `<div class="flex flex-col items-center justify-center py-10 text-slate-300"><i data-lucide="loader-2" class="w-5 h-5 animate-spin mb-2 opacity-50"></i></div>`;
+            lucide.createIcons();
+
+            searchTimeout = setTimeout(async () => {
+                let query = window.supabaseClient
+                    .from('alunos')
+                    .select('ra, nome_completo, url_foto, turmas!inner(nome, nivel)')
+                    .or(`nome_completo.ilike.%${filterVal}%,ra.ilike.%${filterVal}%`)
+                    .limit(25); // Limite de visualização para não pesar o DOM
+
+                if (userLevels.length > 0) query = query.in('turmas.nivel', userLevels);
+
+                const { data, error } = await query.order('nome_completo');
+                
+                if (error) {
+                    list.innerHTML = `<p class="text-center text-xs text-red-400 py-4 italic">Erro na busca.</p>`;
+                    return;
+                }
+
+                allStudents = data || [];
+                renderStudentListUI();
+            }, 400); // Delay de 400ms para evitar requisições a cada tecla
+        }
+
+        function renderStudentListUI() {
             const list = document.getElementById('studentList');
             list.innerHTML = '';
 
-            const filtered = allStudents.filter(s => 
-                s.nome_completo.toLowerCase().includes(filterVal.toLowerCase()) || 
-                s.ra.includes(filterVal)
-            );
-
-            if(filtered.length === 0) {
+            if(allStudents.length === 0) {
                 list.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-300 py-10"><i data-lucide="search-x" class="w-8 h-8 mb-2 opacity-50"></i><p class="text-xs italic">Nenhum aluno encontrado.</p></div>`;
                 lucide.createIcons();
                 return;
             }
 
-            filtered.slice(0, 50).forEach(s => {
+            allStudents.forEach(s => {
                 const isActive = selectedStudent && selectedStudent.ra === s.ra;
                 const avatar = formatDriveUrl(s.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=random`;
 
@@ -399,7 +426,7 @@
                 item.innerHTML = `
                     <img src="${avatar}" class="w-10 h-10 rounded-xl object-cover bg-slate-200 border border-slate-100">
                     <div class="overflow-hidden">
-                        <h4 class="text-xs font-bold text-fmm-dark truncate">${s.nome_completo}</h4>
+                        <h4 class="text-xs font-bold text-fmm-dark truncate uppercase">${s.nome_completo}</h4>
                         <p class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">${s.turmas?.nome || 'Sem Turma'}</p>
                     </div>
                 `;
@@ -419,7 +446,7 @@
             document.getElementById('profileTurma').innerText = student.turmas?.nome || 'Sem Turma';
             document.getElementById('profileAvatar').src = formatDriveUrl(student.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.nome_completo)}`;
 
-            renderStudentList(document.getElementById('studentSearch').value); 
+            renderStudentListUI(); 
             await fetchHistory();
         }
 
@@ -444,8 +471,7 @@
             }
 
             currentRecords.forEach(rec => {
-                const dateParts = rec.data_saida.split('-');
-                const displayDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+                const displayDate = rec.data_saida.split('-').reverse().join('/');
                 const time = rec.hora_saida.substring(0, 5);
                 const author = rec.perfis?.nome_completo || 'Sistema';
 
@@ -494,31 +520,27 @@
             const alertCount = document.getElementById('alertCount');
             const listContainer = document.getElementById('alertsList');
             
-            // --- LÓGICA DE FILTRAGEM POR NÍVEL AUTORIZADO ---
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+
             let query = window.supabaseClient
                 .from('saidas')
-                .select('aluno_ra, data_saida, alunos!inner(nome_completo, turmas!inner(nome, nivel))');
+                .select('aluno_ra, data_saida, alunos!inner(nome_completo, turmas!inner(nome, nivel))')
+                .gte('data_saida', startOfMonth);
 
-            if (userLevels.length > 0) {
-                query = query.in('alunos.turmas.nivel', userLevels);
-            }
+            if (userLevels.length > 0) query = query.in('alunos.turmas.nivel', userLevels);
 
             const { data: allExits, error } = await query;
-
             if (error || !allExits) return;
 
             const alertsMap = {}; 
             allExits.forEach(ex => {
-                const datePart = ex.data_saida.split('T')[0];
-                const [year, month] = datePart.split('-');
-                const key = `${ex.aluno_ra}|${year}-${month}`;
-                
+                const key = ex.aluno_ra;
                 if (!alertsMap[key]) {
                     alertsMap[key] = {
                         ra: ex.aluno_ra,
                         nome: ex.alunos?.nome_completo || 'Aluno Desconhecido',
                         turma: ex.alunos?.turmas?.nome || 'Sem Turma',
-                        month: `${month}/${year}`,
                         count: 0
                     };
                 }
@@ -544,16 +566,10 @@
                         <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-2 hover:border-orange-200 transition-colors cursor-pointer" onclick="selectStudent('${alert.ra}'); document.getElementById('alertsModal').classList.add('hidden')">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <h4 class="text-sm font-black text-fmm-dark">${alert.nome}</h4>
+                                    <h4 class="text-sm font-black text-fmm-dark uppercase">${alert.nome}</h4>
                                     <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">${alert.turma} • RA: ${alert.ra}</p>
                                 </div>
-                                <div class="bg-orange-50 text-orange-600 px-3 py-1 rounded-lg text-xs font-black">
-                                    ${alert.count} Saídas
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2 pt-2 border-t border-slate-50">
-                                <i data-lucide="calendar" class="w-3 h-3 text-slate-400"></i>
-                                <span class="text-[10px] font-bold text-slate-500 uppercase">Mês: ${alert.month}</span>
+                                <div class="bg-orange-50 text-orange-600 px-3 py-1 rounded-lg text-xs font-black">${alert.count} Saídas</div>
                             </div>
                         </div>`;
                         listContainer.innerHTML += html;
@@ -564,13 +580,9 @@
             }
         }
 
-        function openNewRecordModal() { openRecordModal(null); }
-
         function openRecordModal(record) {
             const modal = document.getElementById('recordModal');
             const btnDelete = document.getElementById('btnDelete');
-            const title = modal.querySelector('h2');
-            
             document.getElementById('recDate').valueAsDate = new Date();
             document.getElementById('recTime').value = new Date().toTimeString().substring(0, 5);
             document.getElementById('recAuth').value = '';
@@ -587,33 +599,16 @@
                 document.getElementById('recDate').value = record.data_saida;
                 document.getElementById('recTime').value = record.hora_saida;
                 document.getElementById('recAuth').value = record.autorizado_por;
-                
-                if (EXIT_REASONS.includes(record.motivo)) {
-                    document.getElementById('recReason').value = record.motivo;
-                } else {
-                    document.getElementById('recReason').value = 'Outro';
-                    document.getElementById('recReasonOther').value = record.motivo;
-                    document.getElementById('recReasonOther').classList.remove('hidden');
-                }
-
-                if (TRANSPORT_OPTIONS.includes(record.transporte)) {
-                    document.getElementById('recTransport').value = record.transporte;
-                } else {
-                    document.getElementById('recTransport').value = 'Outro';
-                    document.getElementById('recTransportOther').value = record.transporte;
-                    document.getElementById('recTransportOther').classList.remove('hidden');
-                }
-
+                if (EXIT_REASONS.includes(record.motivo)) document.getElementById('recReason').value = record.motivo;
+                else { document.getElementById('recReason').value = 'Outro'; document.getElementById('recReasonOther').value = record.motivo; document.getElementById('recReasonOther').classList.remove('hidden'); }
+                if (TRANSPORT_OPTIONS.includes(record.transporte)) document.getElementById('recTransport').value = record.transporte;
+                else { document.getElementById('recTransport').value = 'Outro'; document.getElementById('recTransportOther').value = record.transporte; document.getElementById('recTransportOther').classList.remove('hidden'); }
                 document.querySelector(`input[name="retorno"][value="${record.retorno}"]`).checked = true;
-                
-                title.innerHTML = `<i data-lucide="edit" class="w-5 h-5 text-fmm-blue mr-2"></i> Editar Saída`;
                 btnDelete.classList.remove('hidden');
             } else {
                 document.getElementById('recordId').value = '';
-                title.innerHTML = `<span class="w-8 h-8 rounded-lg bg-fmm-blue/10 flex items-center justify-center text-fmm-blue mr-2"><i data-lucide="log-out" class="w-4 h-4"></i></span> Registar Saída`;
                 btnDelete.classList.add('hidden');
             }
-
             modal.classList.remove('hidden');
             lucide.createIcons();
         }
@@ -625,83 +620,46 @@
             const data_saida = document.getElementById('recDate').value;
             const hora_saida = document.getElementById('recTime').value;
             const autorizado_por = document.getElementById('recAuth').value;
-            
             let motivo = document.getElementById('recReason').value;
             if(motivo === 'Outro') motivo = document.getElementById('recReasonOther').value;
-
             let transporte = document.getElementById('recTransport').value;
             if(transporte === 'Outro') transporte = document.getElementById('recTransportOther').value;
-
             const retorno = document.querySelector('input[name="retorno"]:checked').value === 'true';
 
-            if (!data_saida || !hora_saida || !autorizado_por || !motivo || !transporte) {
-                return alert("Preencha todos os campos obrigatórios.");
-            }
+            if (!data_saida || !hora_saida || !autorizado_por || !motivo || !transporte) return alert("Preencha todos os campos.");
 
-            const payload = {
-                aluno_ra: selectedStudent.ra,
-                usuario_id: currentUser.id,
-                data_saida, hora_saida, autorizado_por, motivo, transporte, retorno
-            };
-
+            const payload = { aluno_ra: selectedStudent.ra, usuario_id: currentUser.id, data_saida, hora_saida, autorizado_por, motivo, transporte, retorno };
             const btn = document.getElementById('btnSave');
-            btn.disabled = true;
-            btn.innerText = "Salvando...";
+            btn.disabled = true; btn.innerText = "Salvando...";
 
             try {
                 let error;
-                if (id) {
-                    ({ error } = await window.supabaseClient.from('saidas').update(payload).eq('id', id));
-                } else {
-                    ({ error } = await window.supabaseClient.from('saidas').insert(payload));
-                }
-
+                if (id) ({ error } = await window.supabaseClient.from('saidas').update(payload).eq('id', id));
+                else ({ error } = await window.supabaseClient.from('saidas').insert(payload));
                 if (error) throw error;
-                
-                showToast("Saída registada com sucesso!");
-                closeRecordModal();
-                fetchHistory();
-                checkGlobalExitAlerts(false); 
-            } catch (err) {
-                console.error(err);
-                alert("Erro ao salvar: " + err.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> Salvar`;
-                lucide.createIcons();
-            }
+                showToast("Saída registada!");
+                closeRecordModal(); fetchHistory();
+            } catch (err) { alert(err.message); } 
+            finally { btn.disabled = false; btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> Salvar`; lucide.createIcons(); }
         }
 
         async function deleteRecord() {
             const id = document.getElementById('recordId').value;
-            if (!id || !confirm("Tem certeza que deseja excluir este registo?")) return;
-
+            if (!id || !confirm("Remover este registo?")) return;
             const { error } = await window.supabaseClient.from('saidas').delete().eq('id', id);
-            if (error) return alert(error.message);
-
-            showToast("Registo removido");
-            closeRecordModal();
-            fetchHistory();
-            checkGlobalExitAlerts(false);
+            if (!error) { showToast("Registo removido"); closeRecordModal(); fetchHistory(); }
         }
 
         function openPhotoZoom() {
             if(!selectedStudent) return;
-            const modal = document.getElementById('photoModal');
             document.getElementById('enlargedPhoto').src = document.getElementById('profileAvatar').src;
             document.getElementById('enlargedName').innerText = selectedStudent.nome_completo;
-            modal.classList.remove('hidden');
+            document.getElementById('photoModal').classList.remove('hidden');
         }
         function closePhotoModal() { document.getElementById('photoModal').classList.add('hidden'); }
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            document.getElementById('toast-msg').innerText = msg;
-            t.classList.replace('opacity-0', 'opacity-100'); t.classList.replace('translate-y-20', 'translate-y-0');
-            setTimeout(() => { t.classList.replace('opacity-100', 'opacity-0'); t.classList.replace('translate-y-0', 'translate-y-20'); }, 2500);
-        }
+        function showToast(msg) { const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = msg; t.classList.replace('opacity-0', 'opacity-100'); t.classList.replace('translate-y-20', 'translate-y-0'); setTimeout(() => { t.classList.replace('opacity-100', 'opacity-0'); t.classList.replace('translate-y-0', 'translate-y-20'); }, 2500); }
         function toggleSidebar() { if(window.SidebarComponent) SidebarComponent.toggleSidebar(); }
-        function toggleCategory(id) { if(window.SidebarComponent) SidebarComponent.toggleCategory(id); }
-        async function logout() { if(window.SidebarComponent) SidebarComponent.logout(); }
+        async function logout() { if(confirm("Sair?")) { await window.supabaseClient.auth.signOut(); window.location.href = "../../index.html"; } }
 
         window.onload = init;
     </script>
