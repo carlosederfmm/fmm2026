@@ -1,17 +1,15 @@
 <!DOCTYPE html>
 <html lang="pt-pt">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sanções Disciplinares | SME FMM</title>
+    <title>Gestão Disciplinar | SME FMM</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-
-    <!-- TASK 3.2.1: Cliente Supabase Global e Localização (Manaus) -->
     <script src="../../assets/js/supabase_client.js"></script>
-    <!-- TASK 2.3.1: Componente de Sidebar -->
     <script src="../../sidebar.js"></script>
 
     <script>
@@ -25,10 +23,10 @@
                             green: '#80a51b',
                             lime: '#c8d400',
                             bg: '#f8fafc',
-                            level1: '#3b82f6', 
-                            level2: '#eab308', 
-                            level3: '#f97316', 
-                            level4: '#ef4444'  
+                            level1: '#3b82f6',
+                            level2: '#eab308',
+                            level3: '#f97316',
+                            level4: '#ef4444'
                         }
                     }
                 }
@@ -38,568 +36,764 @@
 
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
-        
-        /* Estilos da Sidebar */
         .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .sidebar-collapsed .sidebar-text, .sidebar-collapsed .sidebar-category-header, .sidebar-collapsed .chevron-icon, .sidebar-collapsed .sidebar-category-title { display: none; }
-        .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
-        .sidebar-collapsed .logo-full { display: none; }
-        .sidebar-collapsed .logo-short { display: block; }
-        .logo-short { display: none; }
         
-        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.05); }
-        .category-content.open { max-height: 1000px; }
-        .rotate-180 { transform: rotate(180deg); }
-        .sidebar-item-active { background-color: rgba(200, 212, 0, 0.15); border-left: 4px solid #c8d400; color: #ffffff !important; }
-
-        .drawer {
-            position: fixed; top: 0; right: 0; bottom: 0; width: 500px;
-            background: white; z-index: 50;
-            transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: -4px 0 24px rgba(0,0,0,0.1); display: flex; flex-direction: column;
-        }
-        .drawer.open { transform: translateX(0); }
-
         .level-dot { width: 6px; height: 6px; border-radius: 50%; background-color: #e2e8f0; transition: all 0.3s; }
         .level-dot.active-1 { background-color: #3b82f6; box-shadow: 0 0 6px rgba(59, 130, 246, 0.4); }
         .level-dot.active-2 { background-color: #eab308; box-shadow: 0 0 6px rgba(234, 179, 8, 0.4); }
         .level-dot.active-3 { background-color: #f97316; box-shadow: 0 0 6px rgba(249, 115, 22, 0.4); }
         .level-dot.active-4 { background-color: #ef4444; box-shadow: 0 0 6px rgba(239, 68, 68, 0.4); }
-
+        
+        .coordination-alert { background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%); border: 2px solid #feb2b2; border-radius: 24px; padding: 24px; box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.15); }
+        
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-
+        
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
-        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+        
+        .view-transition { transition: opacity 0.3s ease, transform 0.3s ease; }
+        .hidden-view { opacity: 0; transform: scale(0.98); pointer-events: none; position: absolute; width: 100%; }
+
+        .details-hero-photo {
+            width: 180px;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 40px;
+            border: 4px solid white;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        .details-hero-photo:hover { transform: scale(1.05); }
     </style>
 </head>
+
 <body class="flex h-screen w-screen overflow-hidden">
 
-    <!-- SIDEBAR CONTAINER -->
     <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
 
-    <!-- CONTEÚDO PRINCIPAL -->
     <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden relative">
-        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0">
-            <div class="flex flex-col">
-                <h1 class="text-xl font-bold text-fmm-dark flex items-center gap-2">
-                    <i data-lucide="shield-alert" class="w-5 h-5 text-fmm-lime"></i>
-                    Gestão Disciplinar
-                </h1>
-                <p class="text-xs text-slate-400 font-medium">Controlo de sanções e ocorrências</p>
-            </div>
-            
-            <div class="flex items-center gap-4">
-                <!-- FILTRO POR TURMA -->
-                <div class="relative w-48">
-                    <select id="classFilter" onchange="handleClassChange()" class="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all font-bold text-xs text-slate-600 appearance-none cursor-pointer">
-                        <option value="all">Todas as Turmas</option>
+        
+        <!-- VISUALIZAÇÃO: LISTA PRINCIPAL -->
+        <div id="listView" class="flex-1 flex flex-col min-h-0 view-transition">
+            <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0 gap-4">
+                <div class="flex flex-col min-w-fit">
+                    <h1 class="text-xl font-bold text-fmm-dark flex items-center gap-2">
+                        <i data-lucide="gavel" class="w-5 h-5 text-fmm-lime"></i>
+                        Gestão Disciplinar
+                    </h1>
+                    <p class="text-xs text-slate-400 font-medium">Validação de Ocorrências e Sanções</p>
+                </div>
+
+                <div class="flex items-center gap-3 flex-1 justify-end">
+                    <select id="turmaFilter" onchange="handleTurmaFilter(this.value)" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-xs font-bold text-fmm-dark uppercase">
+                        <option value="">Todas as Turmas</option>
                     </select>
-                    <i data-lucide="chevron-down" class="absolute right-4 top-3 w-4 h-4 text-slate-400 pointer-events-none"></i>
-                </div>
 
-                <div class="relative w-80">
-                    <i data-lucide="search" class="absolute left-4 top-3 w-4 h-4 text-slate-400"></i>
-                    <input type="text" id="studentSearch" oninput="handleSearch(this.value)" placeholder="Buscar por Nome ou RA..." class="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all font-medium text-sm">
+                    <button onclick="toggleAlertFilter()" id="btnAlertFilter" class="relative p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl transition-all group" title="Alunos com chamados pendentes">
+                        <i data-lucide="bell" class="w-5 h-5 text-slate-400 group-hover:text-fmm-blue transition-colors"></i>
+                        <span id="alertCountBadge" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-sm">0</span>
+                    </button>
+                    
+                    <div class="relative w-72">
+                        <i data-lucide="search" class="absolute left-4 top-3 w-4 h-4 text-slate-400"></i>
+                        <input type="text" id="studentSearch" oninput="handleSearch(this.value)" placeholder="Buscar Aluno..." class="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm">
+                    </div>
                 </div>
-            </div>
-        </header>
+            </header>
 
-        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
-            <div id="studentsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"></div>
-            <div id="emptyState" class="hidden col-span-full py-20 flex flex-col items-center justify-center text-slate-300">
-                <i data-lucide="search-x" class="w-12 h-12 mb-4 opacity-20"></i>
-                <p class="text-sm italic">Nenhum aluno encontrado.</p>
-            </div>
-            <div id="loadingState" class="hidden col-span-full py-20 flex flex-col items-center justify-center text-slate-400">
-                <i data-lucide="loader-2" class="w-8 h-8 mb-4 animate-spin text-fmm-blue"></i>
-                <p class="text-xs font-bold uppercase tracking-widest">Carregando Alunos...</p>
+            <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                <div id="studentsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"></div>
+                <div id="loadingState" class="col-span-full py-20 flex flex-col items-center justify-center text-slate-400">
+                    <i data-lucide="loader-2" class="w-8 h-8 mb-4 animate-spin text-fmm-blue"></i>
+                    <p class="text-xs font-bold uppercase tracking-widest">Sincronizando...</p>
+                </div>
             </div>
         </div>
 
-        <!-- DRAWER E HISTÓRICO -->
-        <div id="studentDrawer" class="drawer border-l border-slate-100 flex flex-col">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-start bg-slate-50 flex-shrink-0">
-                <div class="flex gap-4 items-start">
-                    <div class="relative group cursor-pointer flex-shrink-0" onclick="openPhotoZoom()">
-                        <img id="drawerAvatar" src="" class="w-16 h-16 rounded-xl object-cover border-2 border-white shadow-sm bg-white hover:scale-105 transition-transform">
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <h2 id="drawerName" class="text-lg font-black text-fmm-dark leading-tight line-clamp-2">Nome do Aluno</h2>
-                        <span id="drawerRA" class="text-xs font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200 mt-1 inline-block">RA: 0000</span>
-                    </div>
+        <!-- VISUALIZAÇÃO: DETALHES DO ALUNO -->
+        <div id="detailsView" class="hidden flex-1 flex flex-col min-h-0 view-transition bg-white">
+            <header class="bg-white h-20 border-b flex items-center px-8 z-10 shadow-sm flex-shrink-0 gap-6">
+                <button onclick="hideDetails()" class="p-2.5 hover:bg-slate-100 rounded-2xl text-slate-500 transition-all flex items-center gap-2 group">
+                    <i data-lucide="arrow-left" class="w-5 h-5 group-hover:-translate-x-1 transition-transform"></i>
+                    <span class="text-sm font-bold">Voltar</span>
+                </button>
+                <div class="h-8 w-px bg-slate-200"></div>
+                <div class="flex items-center gap-4">
+                    <h2 class="text-lg font-black text-fmm-dark uppercase tracking-tight">Ficha Disciplinar Individual</h2>
                 </div>
-                <button onclick="closeDrawer()" class="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400"><i data-lucide="x" class="w-5 h-5"></i></button>
-            </div>
-            <div class="flex-1 overflow-y-auto p-6 custom-scrollbar space-y-6">
-                <!-- ALERTA DE LIMITE (3/3) -->
-                <div id="parentAlertContainer" class="hidden flex flex-col gap-3"></div>
-                
-                <div class="flex items-center justify-between pt-2">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Histórico Disciplinar</h3>
-                    <button onclick="openNewSanctionModal()" class="bg-fmm-blue hover:bg-fmm-dark text-white px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-fmm-blue/20 transform hover:scale-105 active:scale-95">
-                        <i data-lucide="gavel" class="w-3.5 h-3.5"></i> Nova Sanção
-                    </button>
+            </header>
+
+            <div class="flex-1 overflow-y-auto custom-scrollbar bg-slate-50/50">
+                <div class="max-w-5xl mx-auto p-8 md:p-12 space-y-10">
+                    
+                    <!-- HERO: Perfil em Destaque -->
+                    <div class="bg-white p-8 rounded-[48px] shadow-sm border border-slate-100 flex flex-col md:flex-row items-center gap-8 animate-fade-in-up">
+                        <div class="relative group">
+                            <img id="detailsHeroAvatar" src="" class="details-hero-photo" onclick="openPhotoZoom(this.src)">
+                            <div class="absolute bottom-2 right-2 bg-fmm-lime p-2 rounded-2xl shadow-lg border-2 border-white text-fmm-dark pointer-events-none">
+                                <i data-lucide="maximize-2" class="w-4 h-4"></i>
+                            </div>
+                        </div>
+                        <div class="flex flex-col text-center md:text-left gap-2">
+                            <h2 id="detailsName" class="text-3xl font-black text-fmm-dark uppercase tracking-tight leading-tight">...</h2>
+                            <div class="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                                <span id="detailsRA" class="px-4 py-1.5 bg-slate-100 text-slate-500 rounded-full text-xs font-bold border border-slate-200">RA: ...</span>
+                                <span id="detailsTurma" class="px-4 py-1.5 bg-fmm-blue/10 text-fmm-blue rounded-full text-xs font-black border border-fmm-blue/10 uppercase">TURMA: ...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Área de Alertas de E-mail (Limite 3/3) -->
+                    <div id="parentAlertContainer" class="hidden flex flex-col gap-4"></div>
+
+                    <!-- Área de Chamados Pendentes -->
+                    <div id="coordinatorDecisionArea" class="hidden space-y-4"></div>
+                    
+                    <!-- Seção de Histórico -->
+                    <div class="space-y-6">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                                <i data-lucide="history" class="w-4 h-4"></i>
+                                Histórico Disciplinar Completo
+                            </h3>
+                            <div class="h-px flex-1 bg-slate-200 mx-6"></div>
+                            <button onclick="prepararNovaSancao()" class="bg-fmm-blue hover:bg-fmm-dark text-white px-5 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-fmm-blue/20 transform active:scale-95">
+                                <i data-lucide="plus-circle" class="w-4 h-4"></i> Nova Sanção
+                            </button>
+                        </div>
+                        
+                        <div id="historyList" class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-12"></div>
+                    </div>
+
                 </div>
-                <div id="historyList" class="space-y-6"></div>
             </div>
         </div>
 
         <!-- MODAL DE SANÇÃO -->
         <div id="sanctionModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
-            <div class="bg-white w-full max-w-lg rounded-[32px] shadow-2xl flex flex-col animate-fade-in-up overflow-hidden max-h-[90vh]">
+            <div class="bg-white w-full max-w-lg rounded-[32px] shadow-2xl flex flex-col animate-fade-in-up">
                 <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                    <h2 class="text-lg font-bold text-fmm-dark flex items-center gap-2" id="modalSanctionTitle"><i data-lucide="file-warning" class="w-5 h-5 text-red-500"></i> Registar Sanção</h2>
+                    <h2 id="modalSanctionTitle" class="text-lg font-bold text-fmm-dark">Aplicar Sanção</h2>
                     <button onclick="closeSanctionModal()" class="text-slate-400 hover:text-red-500"><i data-lucide="x" class="w-5 h-5"></i></button>
                 </div>
-                <div class="p-8 space-y-5 overflow-y-auto custom-scrollbar">
-                    <div class="space-y-1.5">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Nível da Sanção</label>
-                        <select id="sanctionLevel" class="w-full px-5 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue font-bold text-slate-700 transition-all">
-                            <option value="">Selecione o nível...</option>
-                            <option value="1" id="opt-lvl-1" class="text-blue-600 font-bold">Nível 1: Notificação</option>
-                            <option value="2" id="opt-lvl-2" class="text-yellow-600 font-bold">Nível 2: Advertência Verbal</option>
-                            <option value="3" id="opt-lvl-3" class="text-orange-600 font-bold">Nível 3: Advertência Escrita</option>
-                            <option value="4" id="opt-lvl-4" class="text-red-600 font-bold">Nível 4: Suspensão</option>
-                        </select>
-                        <p class="text-[10px] text-red-400 hidden mt-1 flex items-center gap-1" id="lockMessage"><i data-lucide="lock" class="w-3 h-3"></i> Limite de nível atingido (3/3). Opção bloqueada.</p>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="space-y-1.5 hidden"><input type="text" id="sanctionCode"></div>
-                        <div class="space-y-1.5 col-span-2">
-                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Data</label>
-                            <input type="date" id="sanctionDate" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm">
+                <div class="p-8 space-y-5">
+                    <div id="escalationNotice" class="p-4 bg-blue-50 rounded-xl border border-blue-100 flex gap-3">
+                        <i data-lucide="trending-up" class="w-5 h-5 text-blue-500 flex-shrink-0"></i>
+                        <div>
+                            <p class="text-[10px] text-blue-400 font-bold uppercase mb-1">Status Disciplinar Atual</p>
+                            <p id="escalationText" class="text-xs font-bold text-blue-800">...</p>
                         </div>
                     </div>
+                    
                     <div class="space-y-1.5">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Registrado Por</label>
-                        <select id="sanctionAuthor" class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-sm font-medium text-slate-500"></select>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Nível da Sanção</label>
+                        <select id="sanctionLevel" class="w-full px-5 py-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue font-bold text-fmm-dark"></select>
                     </div>
-                    <div class="space-y-1.5">
+
+                    <div id="manualReasonArea" class="space-y-1.5">
                         <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Infração (Manual do Aluno)</label>
-                        <select id="sanctionReason" class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-xs font-medium text-slate-600 custom-scrollbar"></select>
+                        <select id="sanctionReason" class="w-full px-5 py-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm font-medium text-slate-700 custom-scrollbar">
+                        </select>
                     </div>
+
                     <div class="space-y-1.5">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Observações Adicionais</label>
-                        <textarea id="sanctionObs" rows="2" class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm resize-none" placeholder="Detalhes específicos do ocorrido..."></textarea>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Parecer da Coordenação / Observações</label>
+                        <textarea id="sanctionObs" rows="3" class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm resize-none" placeholder="Adicione detalhes sobre a decisão..."></textarea>
                     </div>
                 </div>
                 <div class="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-                    <button onclick="closeSanctionModal()" class="px-6 py-2.5 text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors">Cancelar</button>
-                    <button onclick="saveSanction()" id="btnSaveSanction" class="px-8 py-2.5 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 transform hover:scale-105 active:scale-95"><i data-lucide="check" class="w-4 h-4"></i> Confirmar</button>
-                    <button id="btnDeleteSanction" onclick="deleteSanction()" class="hidden px-6 py-2.5 bg-red-50 text-red-600 rounded-2xl text-xs font-bold hover:bg-red-100 transition-all flex items-center gap-2"><i data-lucide="trash-2" class="w-4 h-4"></i> Excluir</button>
+                    <button onclick="closeSanctionModal()" class="px-6 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-200 rounded-xl transition-colors">Cancelar</button>
+                    <button onclick="saveSanction()" id="btnConfirmSanction" class="px-8 py-2.5 bg-fmm-green text-white text-xs font-bold rounded-xl shadow-lg hover:bg-opacity-90 transition-colors">Confirmar Aplicação</button>
                 </div>
             </div>
         </div>
 
-        <!-- COMUNICADO AOS RESPONSÁVEIS -->
-        <div id="emailModal" class="hidden fixed inset-0 z-[70] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div class="bg-white w-full max-w-lg rounded-[24px] shadow-2xl p-6 animate-fade-in-up">
-                <h3 class="text-lg font-bold text-fmm-dark mb-4">Comunicado aos Responsáveis</h3>
-                <textarea id="emailBody" readonly class="w-full h-48 p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 mb-4 focus:outline-none resize-none font-mono"></textarea>
+        <!-- Modal de Sugestão de E-mail -->
+        <div id="emailModal" class="hidden fixed inset-0 z-[70] flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
+            <div class="bg-white w-full max-w-lg rounded-[32px] shadow-2xl p-8 animate-fade-in-up">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-black text-fmm-dark uppercase tracking-tight">Sugestão de Comunicado</h3>
+                    <button onclick="document.getElementById('emailModal').classList.add('hidden')" class="text-slate-400 hover:text-red-500"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+                <textarea id="emailBody" readonly class="w-full h-64 p-5 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-600 mb-6 focus:outline-none resize-none font-mono leading-relaxed"></textarea>
                 <div class="flex justify-end gap-3">
-                    <button onclick="document.getElementById('emailModal').classList.add('hidden')" class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors">Fechar</button>
-                    <button onclick="copyToClipboard()" class="px-6 py-2 bg-fmm-blue text-white rounded-xl text-xs font-bold shadow-md hover:bg-fmm-dark transition-all transform hover:scale-105 active:scale-95">Copiar Texto</button>
+                    <button onclick="copyEmailToClipboard()" class="flex-1 py-3 bg-fmm-blue text-white rounded-xl text-xs font-black shadow-lg hover:brightness-110 transition-all flex items-center justify-center gap-2">
+                        <i data-lucide="copy" class="w-4 h-4"></i> Copiar Texto para E-mail
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- ZOOM FOTO -->
-        <div id="photoModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onclick="closePhotoZoom()">
-            <div class="relative animate-fade-in-up" onclick="event.stopPropagation()">
-                <button onclick="closePhotoZoom()" class="absolute -top-12 -right-4 text-white hover:text-fmm-lime transition-colors"><i data-lucide="x" class="w-8 h-8"></i></button>
-                <img id="enlargedPhoto" src="" class="max-w-[90vw] max-h-[80vh] rounded-[40px] shadow-2xl border-4 border-white/10 object-contain">
-                <div id="enlargedName" class="mt-4 text-center text-white font-bold text-lg tracking-tight"></div>
+        <!-- MODAL DE ZOOM DA FOTO -->
+        <div id="photoZoomModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-fmm-dark/95 backdrop-blur-xl p-8" onclick="closePhotoZoom()">
+            <button class="absolute top-8 right-8 p-4 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all">
+                <i data-lucide="x" class="w-8 h-8"></i>
+            </button>
+            <div class="max-w-4xl w-full flex flex-col items-center gap-6 animate-fade-in-up" onclick="event.stopPropagation()">
+                <img id="zoomedImage" src="" class="max-w-full max-h-[80vh] rounded-[40px] shadow-2xl border-8 border-white/5 object-contain">
+                <div id="zoomedName" class="text-white text-2xl font-black uppercase tracking-widest bg-black/40 px-8 py-3 rounded-2xl backdrop-blur-md">...</div>
             </div>
         </div>
+
     </main>
 
     <script>
-        const INFRACTIONS = [
-            "1. Entrar na instituição sem uniforme completo",
-            "2. Praticar atitudes ou brincadeiras desrespeitosas ou agressivas",
-            "3. Usar acessórios proibidos ou tatuagens aparentes",
-            "4. Usar cabelo fora do padrão institucional",
-            "5. Manter unhas longas, sujas ou com esmalte",
-            "6. Usar maquiagem ou cílios postiços",
-            "7. Mascar chiclete nas dependências da instituição",
-            "8. Utilizar celular ou eletrônicos sem autorização",
-            "9. Portar ou consumir alimentos fora do refeitório",
-            "10. Comparecer às aulas sem material necessário",
-            "11. Receber encomendas na portaria ou secretaria",
-            "12. Trazer materiais estranhos às atividades escolares",
-            "13. Deixar de realizar tarefas escolares",
-            "14. Realizar atividades alheias durante a aula",
-            "15. Entrar ou sair da sala sem autorização",
-            "16. Prejudicar o andamento das atividades escolares",
-            "17. Portar ou usar eletrônicos pessoais sem autorização",
-            "18. Promover jogos, vendas ou campanhas sem autorização",
-            "19. Causar algazarra ou correr nas dependências da instituição",
-            "20. Deixar pertences pessoais em áreas comuns",
-            "21. Furar fila no refeitório",
-            "22. Utilizar a imagem da instituição sem autorização",
-            "23. Usar a mesa do professor ou a lousa sem autorização",
-            "24. Desperdiçar alimentos",
-            "25. Desperdiçar materiais de uso comum",
-            "26. Customizar ou descaracterizar o uniforme",
-            "27. Trazer ou praticar jogos de azar",
-            "28. Manter contato físico íntimo na escola",
-            "29. Impedir a entrada de colegas ou incentivar ausência coletiva",
-            "30. Usar palavrões nas dependências da escola",
-            "31. Praticar atos ofensivos à moral e aos bons costumes",
-            "32. Praticar discriminação ou desrespeito a características pessoais",
-            "33. Importunar ou constranger membros da comunidade escolar",
-            "34. Circular pela escola em horário de aula",
-            "35. Injuriar, caluniar ou praticar violência",
-            "36. Agredir verbal ou fisicamente qualquer membro da comunidade escolar",
-            "37. Divulgar conteúdo que prejudique a imagem da instituição",
-            "38. Danificar bens da instituição ou de terceiros",
-            "39. Furtar ou apropriar-se de objetos alheios",
-            "40. Portar armas ou objetos perigosos",
-            "41. Portar ou usar drogas lícitas ou ilícitas",
-            "42. Alterar ou falsificar documentos escolares",
-            "43. Emprestar o uniforme escolar a terceiros",
-            "44. Usar o uniforme em ambientes inadequados",
-            "45. Namorar com o uniforme no entorno da instituição",
-            "46. Ausentar-se da escola sem autorização",
-            "47. Adulterar ou invalidar informações do crachá",
-            "48. Escovar os dentes circulando pelos corredores",
-            "49. Utilizar meios ilícitos ou fraudulentos em avaliações"
-        ];
+        // Mapeamento de Infrações (Curto -> Completo com Numeração)
+        const INFRACTIONS_MAP = {
+            "1. Entrar na instituição sem uniforme completo": "1. Entrar na instituição sem estar devidamente uniformizado",
+            "2. Praticar atitudes ou brincadeiras desrespeitosas ou agressivas": "2. Fazer brincadeiras e/ou ter atitudes inadequadas, desrespeitosas que possam ferir outros colegas moral e fisicamente",
+            "3. Usar acessórios proibidos ou tatuagens aparentes": "3. Fazer uso de: brincos, alargador, piercing, tatuagens aparentes, pulseiras, cordões, desenhos nos cabelos e sobrancelhas, acessórios no cabelo que tenham partes metálicas e presilhas de garra (estilo piranha) durante toda permanência na fundação, evitando assim acidentes",
+            "4. Usar cabelo fora do padrão institucional": "4. Uso do cabelos em desconformidade com as orientações seguintes: Homem: estilo social, sem tintura (cor natural) ou cortes que sigam tendências: mullet, americano, undercut, repicado, com riscos, fluffy edgar, moicano, entre outros); não será permitido o uso de barba, bigode, costeletas e cavanhaque. Mulher: sem tintura (cor natural), sem mechas, sem frisagem e, se compridos, mantê-los TOTALMENTE presos, no estilo rabo de cavalo ou coque, durante todo o período de permanência na instituição.",
+            "5. Manter unhas longas, sujas ou com esmalte": "5. Unhas que não estejam curtas, limpas e com qualquer tipo de esmalte",
+            "6. Usar maquiagem ou cílios postiços": "6. Uso de qualquer tipo de maquiagem, incluindo cílios postiços",
+            "7. Mascar chiclete nas dependências da instituição": "7. Mascar chicletes em sala de aula, laboratórios e demais dependências da Fundação",
+            "8. Utilizar celular ou eletrônicos sem autorização": "8. Uso de celular e outros aparelhos eletrônicos, conforme a Lei 15.100/25, durante todo seu período de permanência na Fundação, salvo casos deliberados pela coordenação",
+            "9. Portar ou consumir alimentos fora do refeitório": "9. Portar e consumir alimentos fora do refeitório",
+            "10. Comparecer às aulas sem material necessário": "10. Deixar de trazer o material necessário às aulas incluindo o uniforme de educação física",
+            "11. Receber encomendas na portaria ou secretaria": "11. Recebimento de encomendas na portaria e/ou secretaria",
+            "12. Trazer materiais estranhos às atividades escolares": "12. Trazer para a escola material de qualquer natureza, estranho às atividades escolares",
+            "13. Deixar de realizar tarefas escolares": "13. Deixar de realizar as tarefas escolares",
+            "14. Realizar atividades alheias durante a aula": "14. Ocupar-se, durante as aulas com atividades e trabalhos alheios e irrelevantes às mesmas e que possibilitem a sua distração e a dos colegas",
+            "15. Entrar ou sair da sala sem autorização": "15. Entrar na sala ou sair dela, durante a aula, sem permissão do professor",
+            "16. Prejudicar o andamento das atividades escolares": "16. Prejudicar o andamento das atividades escolares seja em sala de aula ou fora dela",
+            "17. Portar ou usar eletrônicos pessoais sem autorização": "17. Portar ou fazer uso de equipamentos eletrônicos (caixas de som, mp3, câmeras fotográficas, entre outros), e portáteis pessoais (dispositivos móveis de propriedade dos estudantes, incluindo, mas não se limitando a, smartphones, tablets e notebooks) durante sua permanência na fundação, salvo casos deliberados pela coordenação",
+            "18. Promover jogos, vendas ou campanhas sem autorização": "18. Promover jogos (de qualquer natureza), vendas (de qualquer natureza), excursões, coletas, listas de pedido ou campanhas de qualquer natureza, sem a prévia autorização da Direção bem como comemorações festivas e aniversários",
+            "19. Causar algazarra ou correr nas dependências da instituição": "19. Promover algazarras, distúrbios nos corredores, pátios e nas imediações da escola, durante o período de aulas ou fora dele, bem como correr pela instituição, especialmente nos horários de intervalos",
+            "20. Deixar pertences pessoais em áreas comuns": "20. Deixar pertences pessoais como (mochila, garrafas de água, agasalhos, etc) em corredores, bancos e áreas comuns da instituição",
+            "21. Furar fila no refeitório": "21. Furar fila para acesso ao refeitório",
+            "22. Utilizar a imagem da instituição sem autorização": "22. Fazer uso da imagem da Instituição sem autorização prévia",
+            "23. Usar a mesa do professor ou a lousa sem autorização": "23. Uso da mesa do professor e/ou lousa, sem expressa autorização",
+            "24. Desperdiçar alimentos": "24. Desperdício de alimentos",
+            "25. Desperdiçar materiais de uso comum": "25. Desperdício de itens de materiais de uso comum",
+            "26. Customizar ou descaracterizar o uniforme": "26. Descaracterização e/ou customização do uniforme",
+            "27. Trazer ou praticar jogos de azar": "27. Trazer ou praticar jogos de azar dentro da instituição",
+            "28. Manter contato físico íntimo na escola": "28. Contato físico de caráter íntimo nas dependências da escola",
+            "29. Impedir a entrada de colegas ou incentivar ausência coletiva": "29. Impedir a entrada de colegas no estabelecimento ou incitá-los à ausência coletiva",
+            "30. Usar palavrões nas dependências da escola": "30. Falar palavras chulas em sala de aula e nas dependências da escola",
+            "31. Praticar atos ofensivos à moral e aos bons costumes": "31. Praticar atos ofensivos à moral e aos bons costumes",
+            "32. Praticar discriminação ou desrespeito a características pessoais": "32. Desrespeito à crença, raça, orientação sexual, gênero, deficiência, idade ou qualquer outra característica pessoal de alunos, professores e funcionários",
+            "33. Importunar ou constranger membros da comunidade escolar": "33. Importunar, expor ou causar constrangimento aos colegas, professores e demais colaboradores da instituição",
+            "34. Circular pela escola em horário de aula": "34. Transitar pela escola nos horários destinados às aulas",
+            "35. Injuriar, caluniar ou praticar violência": "35. Injuriar ou caluniar colegas, professores ou funcionários da escola, bem como praticar atos de violência contra os mesmos",
+            "36. Agredir verbal ou fisicamente qualquer membro da comunidade escolar": "36. Agredir verbalmente ou fisicamente qualquer membro da comunidade escolar",
+            "37. Divulgar conteúdo que prejudique a imagem da instituição": "37. Divulgar negativamente, por qualquer meio de publicidade, assuntos que envolvam direta ou veladamente o nome da instituição, de professores ou funcionários",
+            "38. Danificar bens da instituição ou de terceiros": "38. Danificar os bens patrimoniais do estabelecimento de ensino ou dos colegas, tendo de ressarci-los",
+            "39. Furtar ou apropriar-se de objetos alheios": "39. Furtar ou apropriar-se de objetos alheios",
+            "40. Portar armas ou objetos perigosos": "40. Portar armas brancas ou de fogo, bem como instrumentos que impliquem perigo ou que possam ser utilizados para fins agressivos",
+            "41. Portar ou usar drogas lícitas ou ilícitas": "41. Portar ou fazer uso de drogas lícitas e/ou ilícitas nas dependências da escola e/ou nas redondezas usando o uniforme da escola",
+            "42. Alterar ou falsificar documentos escolares": "42. Alterar, rasurar, suprimir ou acrescentar anotações lançadas nos documentos escolares",
+            "43. Emprestar o uniforme escolar a terceiros": "43. É proibido o empréstimo do uniforme escolar para terceiros",
+            "44. Usar o uniforme em ambientes inadequados": "44. É proibido o uso do fardamento escolar em ambientes inapropriados",
+            "45. Namorar com o uniforme no entorno da instituição": "45. É proibido namorar com o fardamento da escola no entorno da Fundação",
+            "46. Ausentar-se da escola sem autorização": "46. Ausentar-se da escola em horário escolar, sem expressa autorização da Orientação/Coordenação Pedagógica",
+            "47. Adulterar ou invalidar informações do crachá": "47. Colocar adesivos no crachá ou portar crachá, invalidando a visão das informações",
+            "48. Escovar os dentes circulando pelos corredores": "48. Andar pelos corredores escovando os dentes",
+            "49. Utilizar meios ilícitos ou fraudulentos em avaliações": "49. É expressamente proibido o uso de meios ilícitos e /ou fraudulentos em atividades avaliativas, a violação desta norma será considerada uma falta grave sujeita à anulação da prova."
+        };
 
-        let currentUser = null;
-        let currentStudent = null;
-        let editingSanctionId = null;
-        let searchTimeout = null;
-        let latestRequestTimestamp = 0;
-        let userLevels = []; 
+        const MAP_NIVEIS_NOMES = {
+            1: "Notificação",
+            2: "Advertência Verbal",
+            3: "Advertência Escrita",
+            4: "Suspensão",
+            5: "Conselho"
+        };
+
+        const INFRACTIONS = Object.keys(INFRACTIONS_MAP);
+
+        let currentUser = null, allStudents = [], allSancoes = [], allChamados = [], allTurmas = [];
+        let isFilterActive = false, selectedTurma = '';
+        let currentCallData = null, currentStudent = null, editingSanctionId = null;
 
         function formatDriveUrl(url) {
             if (!url) return null;
-            if (url.includes('drive.google.com') && url.includes('/file/d/')) {
-                const idMatch = url.match(/\/d\/(.*?)\//);
-                if (idMatch && idMatch[1]) return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
+            if (url.includes('drive.google.com')) {
+                const id = url.match(/\/d\/(.*?)\//)?.[1] || url.split('id=')[1];
+                if (id) return `https://lh3.googleusercontent.com/d/${id}`;
             }
             return url;
         }
 
+        function getFullInfractionText(shortText) {
+            return INFRACTIONS_MAP[shortText] || shortText;
+        }
+
+        function safeDateFormat(dateStr) {
+            if(!dateStr) return '...';
+            const parts = dateStr.split('T')[0].split('-');
+            if(parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            return dateStr;
+        }
+
         async function init() {
-            if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            if (window.SidebarComponent) await SidebarComponent.render('sidebar-container');
             
             const { data: { user } } = await window.supabaseClient.auth.getUser();
-            if(user) {
-                 const { data: profile } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).single();
-                 currentUser = profile;
-                 if (profile.cargo === 'diretor') userLevels = ['EF1', 'EF2', 'EMT'];
-                 else userLevels = profile.niveis_acesso || [];
-            }
-
-            // Carregar Turmas para o Filtro
-            const { data: turmas } = await window.supabaseClient.from('turmas').select('id, nome').in('nivel', userLevels).order('nome');
-            const classFilter = document.getElementById('classFilter');
-            if(turmas) {
-                turmas.sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR', {numeric: true}));
-                turmas.forEach(t => {
-                    const opt = document.createElement('option');
-                    opt.value = t.id;
-                    opt.innerText = t.nome;
-                    classFilter.appendChild(opt);
-                });
+            if (user) {
+                const { data } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).single();
+                currentUser = data;
             }
 
             const reasonSelect = document.getElementById('sanctionReason');
             reasonSelect.innerHTML = '<option value="">Selecione a infração...</option>' + 
                 INFRACTIONS.map(inf => `<option value="${inf}">${inf}</option>`).join('');
-            
-            document.getElementById('sanctionDate').value = ManausTime.toISODate();
 
-            renderGrid();
-            lucide.createIcons();
+            await loadData();
         }
 
-        function handleSearch(val) { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => { renderGrid(val); }, 300); }
-        
-        function handleClassChange() { renderGrid(document.getElementById('studentSearch').value); }
-
-        async function renderGrid(filterVal = '') {
-            const thisRequestTime = Date.now();
-            latestRequestTimestamp = thisRequestTime;
-
-            const grid = document.getElementById('studentsGrid');
-            const loading = document.getElementById('loadingState');
-            const empty = document.getElementById('emptyState');
-            const classId = document.getElementById('classFilter').value;
-
-            loading.classList.remove('hidden');
-            grid.innerHTML = '';
-            if(empty) empty.classList.add('hidden');
-
-            // AJUSTADO: Selecionando o nome da turma para exibir no card
-            let query = window.supabaseClient.from('alunos').select('ra, nome_completo, url_foto, id_turma, turmas!inner(nome, nivel)').limit(150);
+        async function loadData() {
+            document.getElementById('loadingState').classList.remove('hidden');
             
-            if (userLevels.length > 0) query = query.in('turmas.nivel', userLevels);
-            if (classId !== 'all') query = query.eq('id_turma', classId);
-            if(filterVal && filterVal.length >= 2) query = query.or(`nome_completo.ilike.%${filterVal}%,ra.ilike.%${filterVal}%`);
+            const [alunos, sancoes, chamados, turmas] = await Promise.all([
+                window.supabaseClient.from('alunos').select('*, turmas(nome)'),
+                window.supabaseClient.from('sancoes_disciplinares').select('*'),
+                window.supabaseClient.from('chamados_inspetoria').select('*, perfis:inspetor_id(nome_completo)').eq('status', 'Pendente'),
+                window.supabaseClient.from('turmas').select('*').order('nome')
+            ]);
 
-            const { data: students, error } = await query.order('nome_completo');
-            if (thisRequestTime < latestRequestTimestamp) return;
+            allStudents = alunos.data || [];
+            allSancoes = sancoes.data || [];
+            allChamados = chamados.data || [];
+            allTurmas = turmas.data || [];
 
-            loading.classList.add('hidden');
+            populateTurmaFilter();
+            renderGrid();
+            document.getElementById('loadingState').classList.add('hidden');
+        }
 
-            if(error || !students || students.length === 0) {
-                 if(empty) empty.classList.remove('hidden');
-                 return;
-            }
+        function populateTurmaFilter() {
+            const select = document.getElementById('turmaFilter');
+            select.innerHTML = '<option value="">Todas as Turmas</option>';
+            allTurmas.forEach(t => {
+                const option = document.createElement('option');
+                option.value = t.id;
+                option.innerText = t.nome;
+                select.appendChild(option);
+            });
+        }
 
-            const { data: allSancoes } = await window.supabaseClient.from('sancoes_disciplinares').select('ra_aluno, nivel');
+        function getTotalCount(history, level) {
+            return history.filter(h => h.nivel === level).length;
+        }
 
-            for(const s of students) {
-                const sancoesAlu = allSancoes?.filter(sc => sc.ra_aluno === s.ra) || [];
-                const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
-                sancoesAlu.forEach(sc => counts[sc.nivel]++);
+        function calcularProximoNivel(ra) {
+            const history = allSancoes.filter(s => s.ra_aluno === ra);
+            const totalN1 = getTotalCount(history, 1);
+            const totalN2 = getTotalCount(history, 2);
+            const totalN3 = getTotalCount(history, 3);
+            const totalN4 = getTotalCount(history, 4);
 
+            if (totalN1 < 3) return { nivel: 1, nome: "Notificação", motivo: `Nível 1 ainda disponível (${totalN1}/3).` };
+            if (totalN2 < 3) return { nivel: 2, nome: "Adv. Verbal", motivo: `Nível 2 ainda disponível (${totalN2}/3).` };
+            if (totalN3 < 3) return { nivel: 3, nome: "Adv. Escrita", motivo: `Nível 3 ainda disponível (${totalN3}/3).` };
+            if (totalN4 < 3) return { nivel: 4, nome: "Suspensão", motivo: `Nível 4 ainda disponível (${totalN4}/3).` };
+
+            return { nivel: 5, nome: "Conselho", motivo: "Limite disciplinar atingido." };
+        }
+
+        function renderGrid(filterVal = '') {
+            const grid = document.getElementById('studentsGrid');
+            grid.innerHTML = '';
+            
+            let filtered = allStudents.filter(s => {
+                const searchMatch = s.nome_completo.toLowerCase().includes(filterVal.toLowerCase()) || s.ra.includes(filterVal);
+                const turmaMatch = selectedTurma === '' || s.id_turma === selectedTurma;
+                return searchMatch && turmaMatch;
+            });
+
+            filtered.forEach(s => {
+                s._hasPendingCall = allChamados.some(c => c.aluno_ra === s.ra);
+                const history = allSancoes.filter(sc => sc.ra_aluno === s.ra);
+                s._disciplineScore = history.length;
+            });
+
+            if (isFilterActive) filtered = filtered.filter(s => s._hasPendingCall);
+
+            filtered.sort((a, b) => {
+                if (b._hasPendingCall !== a._hasPendingCall) return b._hasPendingCall - a._hasPendingCall;
+                return b._disciplineScore - a._disciplineScore;
+            }).slice(0, 40)
+            .forEach(s => {
+                const history = allSancoes.filter(sc => sc.ra_aluno === s.ra);
                 const avatar = formatDriveUrl(s.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=random&size=256&color=fff&bold=true`;
+                const turmaNome = s.turmas?.nome || 'FMM';
 
                 const card = document.createElement('div');
                 card.className = "bg-white rounded-[28px] border border-slate-100 shadow-sm card-hover cursor-pointer transition-all animate-fade-in-up overflow-hidden group";
-                card.onclick = () => openDrawer(s.ra);
+                card.onclick = () => showDetails(s.ra);
 
                 let dotsHTML = '';
                 [1, 2, 3, 4].forEach(lvl => {
-                    const filled = Math.min(counts[lvl], 3);
+                    const filled = Math.min(getTotalCount(history, lvl), 3);
                     let dots = '';
                     for(let i=0; i<3; i++) dots += `<div class="level-dot ${i < filled ? 'active-'+lvl : ''}"></div>`;
                     const label = lvl === 1 ? 'Notif' : lvl === 2 ? 'Adv V' : lvl === 3 ? 'Adv E' : 'Susp';
                     dotsHTML += `<div class="flex flex-col gap-1 items-center"><span class="text-[8px] font-black text-slate-400 uppercase tracking-tighter">${label}</span><div class="flex gap-0.5">${dots}</div></div>`;
                 });
 
-                // AJUSTADO: Card agora exibe foto em destaque e turma ao lado do RA
                 card.innerHTML = `
                     <div class="relative h-56 w-full bg-slate-100 overflow-hidden">
                         <img src="${avatar}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
                         <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90"></div>
-                        <div class="absolute bottom-0 left-0 right-0 p-4">
-                            <h3 class="font-black text-white text-sm leading-tight uppercase tracking-tight line-clamp-1" title="${s.nome_completo}">${s.nome_completo}</h3>
+                        ${s._hasPendingCall ? `
+                            <div class="absolute top-4 right-4">
+                                <div class="bg-red-500 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest shadow-xl flex items-center gap-1 animate-pulse">
+                                    <i data-lucide="bell" class="w-3 h-3"></i> Ocorrência
+                                </div>
+                            </div>
+                        ` : ''}
+                        <div class="absolute bottom-0 left-0 right-0 p-4 text-white">
+                            <h3 class="font-black text-sm leading-tight uppercase tracking-tight line-clamp-1">${s.nome_completo}</h3>
                             <div class="flex items-center gap-2 mt-1">
                                 <span class="text-[9px] font-black text-fmm-lime uppercase tracking-widest">RA: ${s.ra}</span>
                                 <span class="text-white/30 mx-0.5">•</span>
-                                <span class="text-[9px] font-black text-white uppercase tracking-widest">${s.turmas?.nome || 'FMM'}</span>
+                                <span class="text-[9px] font-black text-white uppercase tracking-widest">${turmaNome}</span>
                             </div>
                         </div>
                     </div>
                     <div class="p-4 bg-white flex justify-between items-center">${dotsHTML}</div>
                 `;
                 grid.appendChild(card);
-            }
-            lucide.createIcons();
-        }
-
-        async function openDrawer(ra) {
-            const { data: student } = await window.supabaseClient.from('alunos').select('*').eq('ra', ra).single();
-            if(!student) return;
-            currentStudent = student;
-            if(!currentStudent.emailSent) currentStudent.emailSent = {};
-
-            document.getElementById('drawerName').innerText = student.nome_completo;
-            document.getElementById('drawerRA').innerText = `RA: ${student.ra}`;
-            document.getElementById('drawerAvatar').src = formatDriveUrl(student.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.nome_completo)}`;
-            await renderHistory();
-            await checkAlerts(); 
-            document.getElementById('studentDrawer').classList.add('open');
-        }
-
-        function closeDrawer() { document.getElementById('studentDrawer').classList.remove('open'); currentStudent = null; }
-
-        async function renderHistory() {
-            const container = document.getElementById('historyList');
-            container.innerHTML = '<div class="text-center py-4"><i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto text-slate-300"></i></div>';
-            lucide.createIcons();
-
-            const { data: history } = await window.supabaseClient.from('sancoes_disciplinares').select('*, perfis(nome_completo)').eq('ra_aluno', currentStudent.ra).order('data_sancao', { ascending: false });
-            container.innerHTML = '';
-            if (!history || history.length === 0) {
-                container.innerHTML = `<p class="text-center text-slate-400 text-xs italic py-4">Nenhuma sanção registrada.</p>`; return;
-            }
-
-            currentStudent.history = history.map(h => ({ id: h.id, level: h.nivel, code: h.codigo, date: h.data_sancao, reason: h.infracao, author: h.perfis?.nome_completo || 'Sistema', observacao: h.observacao }));
-
-            const groupedHistory = { 1: [], 2: [], 3: [], 4: [] };
-            history.forEach(h => { groupedHistory[h.nivel].push(h); });
-            const colors = { 1: 'bg-blue-100 text-blue-700', 2: 'bg-yellow-100 text-yellow-700', 3: 'bg-orange-100 text-orange-700', 4: 'bg-red-100 text-red-700' };
-            const levelLabels = { 1: 'Notificações', 2: 'Advertências Verbais', 3: 'Advertências Escritas', 4: 'Suspensões' };
-
-            [4, 3, 2, 1].forEach(level => {
-                if (groupedHistory[level].length > 0) {
-                    const levelSection = document.createElement('div');
-                    levelSection.className = "mb-6";
-                    levelSection.innerHTML = `<h4 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 border-b border-slate-100 pb-1">${levelLabels[level]}</h4>`;
-                    groupedHistory[level].forEach(h => {
-                        const displayDate = ManausTime.format(h.data_sancao); 
-                        const authorName = h.perfis?.nome_completo || 'Sistema';
-                        const obsHTML = h.observacao ? `<p class="text-[10px] text-slate-500 mt-2 bg-white/50 p-2 rounded border border-slate-100 italic">Obs: "${h.observacao}"</p>` : '';
-                        levelSection.innerHTML += `
-                            <div class="relative pl-4 pb-4 transition-opacity group">
-                                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm hover:border-fmm-blue/30 transition-all">
-                                    <div class="flex justify-between items-start mb-1">
-                                        <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded ${colors[h.nivel]}">Nível ${h.nivel}</span>
-                                        <span class="text-[10px] font-bold text-slate-400">${displayDate}</span>
-                                    </div>
-                                    <p class="text-xs font-bold text-slate-700 mb-1 leading-snug">${h.infracao}</p>
-                                    ${obsHTML}
-                                    <div class="flex justify-between items-center mt-2 pt-2 border-t border-slate-100/50">
-                                        <div class="flex gap-2"><span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Cód: ${h.codigo}</span><span class="text-[9px] font-bold text-slate-400">Por: ${authorName.split(' ')[0]}</span></div>
-                                        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onclick='openSanctionModal(${JSON.stringify(h).replace(/'/g, "&#39;")})' class="p-1.5 text-slate-400 hover:text-fmm-blue hover:bg-white rounded-lg transition-all" title="Editar"><i data-lucide="edit-2" class="w-3.5 h-3.5"></i></button>
-                                            <button onclick="quickDeleteSanction('${h.id}')" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-white rounded-lg transition-all" title="Excluir"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>`;
-                    });
-                    container.appendChild(levelSection);
-                }
             });
             lucide.createIcons();
+        }
+
+        async function showDetails(ra) {
+            currentStudent = allStudents.find(s => s.ra === ra);
+            const avatar = formatDriveUrl(currentStudent.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentStudent.nome_completo)}&background=003c5b&color=fff&size=512`;
+            
+            document.getElementById('detailsName').innerText = currentStudent.nome_completo;
+            document.getElementById('detailsRA').innerText = `RA: ${currentStudent.ra}`;
+            document.getElementById('detailsTurma').innerText = `TURMA: ${currentStudent.turmas?.nome || 'FMM'}`;
+            document.getElementById('detailsHeroAvatar').src = avatar;
+
+            document.getElementById('listView').classList.add('hidden-view');
+            setTimeout(() => {
+                document.getElementById('listView').classList.add('hidden');
+                document.getElementById('detailsView').classList.remove('hidden');
+                setTimeout(() => {
+                    document.getElementById('detailsView').classList.remove('hidden-view');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }, 50);
+            }, 300);
+
+            await renderHistory();
+            await checkAlerts();
+        }
+
+        function hideDetails() {
+            document.getElementById('detailsView').classList.add('hidden-view');
+            setTimeout(() => {
+                document.getElementById('detailsView').classList.add('hidden');
+                document.getElementById('listView').classList.remove('hidden');
+                setTimeout(() => {
+                    document.getElementById('listView').classList.remove('hidden-view');
+                }, 50);
+            }, 300);
+            currentStudent = null;
         }
 
         async function checkAlerts() {
             const container = document.getElementById('parentAlertContainer');
             container.innerHTML = '';
-            const { data: alerts } = await window.supabaseClient.from('sancoes_alertas').select('*').eq('ra_aluno', currentStudent.ra);
-            if(alerts) alerts.forEach(a => { currentStudent.emailSent[a.nivel] = (a.status_email === 'enviado'); });
+            
+            const { data: alertsStatus } = await window.supabaseClient.from('sancoes_alertas').select('*').eq('ra_aluno', currentStudent.ra);
+            const emailStatusMap = {};
+            if(alertsStatus) alertsStatus.forEach(a => emailStatusMap[a.nivel] = a.status_email);
+
             const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
-            if(currentStudent.history) currentStudent.history.forEach(h => counts[h.level]++);
+            const { data: sancoes } = await window.supabaseClient.from('sancoes_disciplinares').select('nivel').eq('ra_aluno', currentStudent.ra);
+            if(sancoes) sancoes.forEach(s => counts[s.nivel]++);
+
             let hasAlert = false;
-            for(let level=1; level<=4; level++) {
-                if (counts[level] >= 3) {
+            const labels = { 1: 'Notificações', 2: 'Adv. Verbais', 3: 'Adv. Escritas', 4: 'Suspensões' };
+
+            for(let lvl=1; lvl<=3; lvl++) {
+                if(counts[lvl] >= 3) {
                     hasAlert = true;
-                    const labels = { 1: 'Notificações', 2: 'Adv. Verbais', 3: 'Adv. Escritas', 4: 'Suspensões' };
-                    const isSent = currentStudent.emailSent[level];
-                    const html = `
-                    <div class="p-4 bg-red-50 border border-red-100 rounded-2xl flex flex-col gap-3 animate-fade-in-up">
-                        <div class="flex items-start gap-3">
-                            <div class="p-2 bg-red-100 rounded-full text-red-600"><i data-lucide="siren" class="w-5 h-5"></i></div>
-                            <div><h4 class="text-sm font-bold text-red-700">Limite de ${labels[level]} Atingido</h4><p class="text-xs text-red-600 mt-1 leading-relaxed">O aluno acumulou 3 ocorrências deste nível.</p></div>
-                        </div>
-                        <div class="flex items-center justify-between bg-white p-2 rounded-xl border border-red-100">
-                            <div class="flex items-center gap-2 pl-2 cursor-pointer" onclick="toggleEmailStatus(${level}, '${isSent ? 'pendente' : 'enviado'}')">
-                                <div class="w-2 h-2 rounded-full ${isSent ? 'bg-green-500' : 'bg-orange-400'}"></div>
-                                <span class="text-[10px] font-bold text-slate-500 uppercase">${isSent ? 'Enviado' : 'Pendente'}</span>
+                    const status = emailStatusMap[lvl] || 'pendente';
+                    const isSent = status === 'enviado';
+                    
+                    container.innerHTML += `
+                        <div class="p-5 bg-red-50 border border-red-100 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 animate-fade-in-up mb-2">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center shadow-inner">
+                                    <i data-lucide="mail-warning" class="w-6 h-6"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-sm font-black text-red-900 uppercase">Comunicar Responsáveis</h4>
+                                    <p class="text-[10px] text-red-600 font-bold uppercase tracking-wider">Limite de 3 ${labels[lvl]} atingido</p>
+                                </div>
                             </div>
-                            <button onclick="openEmailModal(${level})" class="text-[10px] font-bold text-fmm-blue hover:underline flex items-center gap-1 transition-colors"><i data-lucide="mail-plus" class="w-3 h-3"></i> Sugerir E-mail</button>
-                        </div>
-                    </div>`;
-                    container.innerHTML += html;
+                            <div class="flex items-center gap-3">
+                                <button onclick="openEmailModal(${lvl})" class="px-4 py-2 bg-white border border-red-200 text-red-600 text-[10px] font-black rounded-xl uppercase hover:bg-red-100 transition-all">
+                                    Sugerir E-mail
+                                </button>
+                                <div class="h-8 w-px bg-red-200"></div>
+                                <button onclick="toggleEmailStatus(${lvl}, '${isSent ? 'pendente' : 'enviado'}')" 
+                                    class="px-4 py-2 ${isSent ? 'bg-green-500 text-white shadow-green-100 shadow-lg' : 'bg-slate-200 text-slate-500'} text-[10px] font-black rounded-xl uppercase transition-all flex items-center gap-2">
+                                    <i data-lucide="${isSent ? 'check-circle' : 'circle'}" class="w-3 h-3"></i>
+                                    ${isSent ? 'Enviado' : 'Pendente'}
+                                </button>
+                            </div>
+                        </div>`;
                 }
             }
-            if(hasAlert) { container.classList.remove('hidden'); lucide.createIcons(); } else container.classList.add('hidden');
-        }
-
-        async function toggleEmailStatus(level, newStatus) {
-            await window.supabaseClient.from('sancoes_alertas').upsert({ ra_aluno: currentStudent.ra, nivel: level, status_email: newStatus, enviado_por: currentUser.id, data_envio: newStatus === 'enviado' ? new Date() : null }, { onConflict: 'ra_aluno, nivel' });
-            checkAlerts();
-        }
-
-        async function openSanctionModal(existingSanction = null) {
-            let dataToLoad = {};
-            if (existingSanction) {
-                editingSanctionId = existingSanction.id;
-                dataToLoad = { level: existingSanction.nivel, date: existingSanction.data_sancao, reason: existingSanction.infracao, observacao: existingSanction.observacao, code: existingSanction.codigo };
-            } else editingSanctionId = null;
-            
-            const title = document.getElementById('modalSanctionTitle');
-            const btnDelete = document.getElementById('btnDeleteSanction');
-            const authorSelect = document.getElementById('sanctionAuthor');
-
-            document.getElementById('sanctionLevel').value = '';
-            document.getElementById('sanctionDate').value = ManausTime.toISODate();
-            document.getElementById('sanctionReason').value = '';
-            document.getElementById('sanctionObs').value = '';
-            authorSelect.innerHTML = `<option value="${currentUser.id}">${currentUser.nome_completo} (Eu)</option>`;
-
-            const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
-            if(currentStudent.history) currentStudent.history.forEach(h => counts[h.level]++);
-
-            for(let i=1; i<=4; i++) {
-                const opt = document.getElementById(`opt-lvl-${i}`);
-                opt.innerText = opt.innerText.replace(" (Bloqueado 3/3)", "");
-                const isEditingThisLevel = dataToLoad.level === i;
-                if (counts[i] >= 3 && !isEditingThisLevel) { opt.disabled = true; opt.innerText += " (Bloqueado 3/3)"; } else opt.disabled = false;
-            }
-
-            if(existingSanction) {
-                title.innerHTML = '<i data-lucide="edit" class="w-5 h-5 text-fmm-blue"></i> Editar Sanção';
-                btnDelete.classList.remove('hidden');
-                document.getElementById('sanctionLevel').value = dataToLoad.level;
-                document.getElementById('sanctionDate').value = dataToLoad.date;
-                document.getElementById('sanctionReason').value = dataToLoad.reason;
-                document.getElementById('sanctionObs').value = dataToLoad.observacao || '';
-            } else {
-                title.innerHTML = '<i data-lucide="file-warning" class="w-5 h-5 text-red-500"></i> Registar Sanção';
-                btnDelete.classList.add('hidden');
-            }
-            document.getElementById('sanctionModal').classList.remove('hidden');
+            if(hasAlert) container.classList.remove('hidden'); else container.classList.add('hidden');
             lucide.createIcons();
         }
 
-        function closeSanctionModal() { document.getElementById('sanctionModal').classList.add('hidden'); }
-        function openNewSanctionModal() { openSanctionModal(); }
-
-        async function saveSanction() {
-            const level = parseInt(document.getElementById('sanctionLevel').value);
-            const reason = document.getElementById('sanctionReason').value;
-            const date = document.getElementById('sanctionDate').value;
-            const obs = document.getElementById('sanctionObs').value;
-            if(!level || !reason || !date) return alert("Preencha todos os campos obrigatórios.");
-            const payload = { ra_aluno: currentStudent.ra, id_autor: currentUser.id, nivel: level, infracao: reason, data_sancao: date, observacao: obs, codigo: editingSanctionId ? undefined : `${new Date().getFullYear()}/${Math.floor(Math.random() * 10000)}` };
-            if(!payload.codigo) delete payload.codigo;
-            let error;
-            if(editingSanctionId) ({ error } = await window.supabaseClient.from('sancoes_disciplinares').update(payload).eq('id', editingSanctionId));
-            else ({ error } = await window.supabaseClient.from('sancoes_disciplinares').insert(payload));
-            if(error) alert("Erro: " + error.message);
-            else { closeSanctionModal(); await renderHistory(); await checkAlerts(); renderGrid(document.getElementById('studentSearch').value); }
-        }
-
-        async function deleteSanction() {
-            if(!confirm("Excluir esta sanção permanentemente?")) return;
-            const { error } = await window.supabaseClient.from('sancoes_disciplinares').delete().eq('id', editingSanctionId);
-            if(error) alert(error.message);
-            else { closeSanctionModal(); await renderHistory(); await checkAlerts(); renderGrid(document.getElementById('studentSearch').value); }
-        }
-
-        async function quickDeleteSanction(id) {
-            if(!confirm("Excluir esta sanção rapidamente?")) return;
-            const { error } = await window.supabaseClient.from('sancoes_disciplinares').delete().eq('id', id);
-            if(error) alert(error.message); else { await renderHistory(); await checkAlerts(); renderGrid(document.getElementById('studentSearch').value); }
+        async function toggleEmailStatus(level, newStatus) {
+            await window.supabaseClient.from('sancoes_alertas').upsert({ 
+                ra_aluno: currentStudent.ra, 
+                nivel: level, 
+                status_email: newStatus, 
+                enviado_por: currentUser.id, 
+                data_envio: newStatus === 'enviado' ? new Date() : null 
+            }, { onConflict: 'ra_aluno, nivel' });
+            await checkAlerts();
         }
 
         async function openEmailModal(level) {
-            const labels = { 1: 'Notificações', 2: 'Advertências Verbais', 3: 'Advertências Escritas', 4: 'Suspensões' };
-            const nextLevel = level < 4 ? labels[level + 1] : "medidas extremas";
-            const listText = currentStudent.history.filter(h => h.level === level).map(s => `- ${ManausTime.format(s.date)}: ${s.reason}`).join('\n');
-            const body = `Prezados Responsáveis,\n\nInformamos que o aluno(a) ${currentStudent.nome_completo} (RA: ${currentStudent.ra}) atingiu o limite de 3 ${labels[level]} previstas no manual do aluno.\n\nHistórico de ocorrências deste nível:\n${listText}\n\nAlertamos que a reincidência levará à aplicação de ${nextLevel}.\n\nAtenciosamente,\nCoordenação Pedagógica FMM`;
+            const labels = { 1: 'Notificações', 2: 'Advertências Verbais', 3: 'Advertências Escritas' };
+            const nextLevelMap = { 1: 'Advertência Verbal', 2: 'Advertência Escrita', 3: 'Suspensão' };
+            const { data: sancoes } = await window.supabaseClient.from('sancoes_disciplinares').select('*').eq('ra_aluno', currentStudent.ra).eq('nivel', level);
+            
+            const listText = sancoes.map(s => `- ${safeDateFormat(s.data_sancao)}: ${getFullInfractionText(s.infracao)}`).join('\n');
+            const body = `Prezados Responsáveis,\n\nInformamos que o aluno(a) ${currentStudent.nome_completo} (RA: ${currentStudent.ra}) atingiu o limite de 3 ${labels[level]} previstas no manual do aluno.\n\nHistórico de ocorrências deste nível:\n${listText}\n\nAlertamos que a reincidência neste ou em outros níveis disciplinares levará à aplicação de ${nextLevelMap[level]}.\n\nAtenciosamente,\nCoordenação Pedagógica FMM`;
             document.getElementById('emailBody').value = body;
             document.getElementById('emailModal').classList.remove('hidden');
         }
 
-        function copyToClipboard() {
+        function copyEmailToClipboard() {
             const copyText = document.getElementById("emailBody");
             copyText.select();
             document.execCommand("copy");
-            alert("Texto copiado!");
+            alert("Texto copiado para a área de transferência!");
         }
 
-        function openPhotoZoom() {
-            if(!currentStudent) return;
-            const modal = document.getElementById('photoModal');
-            document.getElementById('enlargedPhoto').src = document.getElementById('drawerAvatar').src;
-            document.getElementById('enlargedName').innerText = currentStudent.nome_completo;
-            modal.classList.remove('hidden');
+        async function renderHistory() {
+            const container = document.getElementById('historyList');
+            const decisionArea = document.getElementById('coordinatorDecisionArea');
+
+            decisionArea.innerHTML = '';
+            decisionArea.classList.add('hidden');
+
+            const pendingCalls = allChamados.filter(c => c.aluno_ra === currentStudent.ra);
+            
+            if (pendingCalls.length > 0) {
+                decisionArea.classList.remove('hidden');
+                decisionArea.innerHTML = pendingCalls.map(pendingCall => {
+                    const safeMotivo = pendingCall.motivo.replace(/'/g, "\\'");
+                    const inspetorNome = pendingCall.perfis ? pendingCall.perfis.nome_completo : 'Inspetoria';
+                    const dataAbertura = safeDateFormat(pendingCall.data_abertura);
+
+                    return `
+                    <div class="coordination-alert animate-fade-in-up mb-6">
+                        <div class="flex items-start justify-between mb-6">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center shadow-inner">
+                                    <i data-lucide="alert-octagon" class="w-7 h-7"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-base font-black text-red-900 uppercase tracking-tight">Validação Pendente</h4>
+                                    <p class="text-xs text-red-500 font-bold uppercase">Solicitado por ${inspetorNome} em ${dataAbertura}</p>
+                                </div>
+                            </div>
+                            <div class="px-4 py-2 bg-red-100/50 rounded-xl text-red-700 text-[10px] font-black uppercase tracking-widest">Urgente</div>
+                        </div>
+                        <div class="bg-white/90 p-6 rounded-2xl mb-6 border border-red-100 shadow-sm">
+                            <h5 class="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-2">Motivo da Ocorrência</h5>
+                            <p class="text-base font-bold text-slate-800 leading-snug">${pendingCall.motivo}</p>
+                            ${pendingCall.observacoes ? `<div class="mt-4 p-3 bg-slate-50 rounded-lg border-l-4 border-red-200 text-xs text-slate-500 italic">"${pendingCall.observacoes}"</div>` : ''}
+                        </div>
+                        <div class="flex gap-4">
+                            <button onclick="decidirArquivar('${pendingCall.id}')" class="flex-1 py-4 bg-white border-2 border-slate-100 text-slate-400 text-xs font-black rounded-2xl uppercase hover:bg-slate-50 transition-all active:scale-95">Recusar</button>
+                            <button onclick="prepararValidacao('${pendingCall.id}', '${safeMotivo}')" class="flex-[2] py-4 bg-fmm-green text-white text-xs font-black rounded-2xl shadow-xl shadow-fmm-green/20 uppercase hover:brightness-110 transition-all active:scale-95">Validar e Aplicar</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+
+            const { data: history, error } = await window.supabaseClient.from('sancoes_disciplinares').select('*, perfis:id_autor(nome_completo)').eq('ra_aluno', currentStudent.ra);
+            if (error) return;
+            const sortedHistory = history.sort((a, b) => new Date(b.data_sancao) - new Date(a.data_sancao));
+
+            container.innerHTML = sortedHistory.length
+                ? sortedHistory.map(h => {
+                    const colors = { 1: 'bg-blue-50 text-blue-700 border-blue-100', 2: 'bg-yellow-50 text-yellow-700 border-yellow-100', 3: 'bg-orange-50 text-orange-700 border-orange-100', 4: 'bg-red-50 text-red-700 border-red-100' };
+                    const authorName = h.perfis ? h.perfis.nome_completo : 'Sistema';
+                    const dataDisplay = safeDateFormat(h.data_sancao);
+                    const fullText = getFullInfractionText(h.infracao);
+                    const labelSancao = MAP_NIVEIS_NOMES[h.nivel] || `Nível ${h.nivel}`;
+
+                    return `
+                    <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col group animate-fade-in-up">
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="text-[10px] font-black uppercase px-3 py-1 rounded-full border ${colors[h.nivel] || 'bg-gray-100'}">${labelSancao}</span>
+                            <span class="text-[10px] font-bold text-slate-300">${dataDisplay}</span>
+                        </div>
+                        <div class="mb-4">
+                            <p class="text-sm font-black text-slate-700 uppercase leading-tight mb-2">${fullText}</p>
+                            ${h.observacao ? `<p class="text-xs text-slate-400 italic leading-relaxed bg-slate-50/50 p-3 rounded-xl border border-dashed border-slate-100">"${h.observacao}"</p>` : ''}
+                        </div>
+                        <div class="flex justify-between items-center pt-4 border-t border-slate-50 mt-auto">
+                            <div class="flex flex-col">
+                                <span class="text-[8px] font-black text-slate-300 uppercase tracking-widest">Registrado por</span>
+                                <span class="text-[10px] font-bold text-fmm-blue uppercase">${authorName}</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick='prepararEdicaoSancao(${JSON.stringify(h).replace(/'/g, "&apos;")})' class="p-2 text-slate-300 hover:text-fmm-blue hover:bg-fmm-blue/5 rounded-xl transition-all" title="Editar"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                                <button onclick="deleteSanction('${h.id}')" class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="Excluir"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('')
+                : '<div class="col-span-full py-20 text-center"><p class="text-slate-300 italic text-sm">Nenhum registro no histórico disciplinar.</p></div>';
+            lucide.createIcons();
         }
-        function closePhotoZoom() { document.getElementById('photoModal').classList.add('hidden'); }
-        function toggleSidebar() { if(window.SidebarComponent) SidebarComponent.toggleSidebar(); }
-        async function logout() { if(confirm("Deseja sair do sistema?")) { await window.supabaseClient.auth.signOut(); window.location.href = "../../index.html"; } }
+
+        async function deleteSanction(id) {
+            if(confirm("Deseja realmente excluir esta sanção?")) {
+                try {
+                    const { error } = await window.supabaseClient.from('sancoes_disciplinares').delete().eq('id', id);
+                    if(error) throw error;
+                    await loadData();
+                    if(currentStudent) { await renderHistory(); await checkAlerts(); }
+                } catch(err) { alert("Erro ao excluir: " + err.message); }
+            }
+        }
+
+        async function decidirArquivar(id) {
+            if (confirm("Deseja RECUSAR este chamado?")) {
+                try {
+                    const { error } = await window.supabaseClient.from('chamados_inspetoria').update({ status: 'Recusado' }).eq('id', id);
+                    if (error) throw error;
+                    await loadData();
+                    if(currentStudent) await renderHistory();
+                } catch (err) { alert("Erro: " + err.message); }
+            }
+        }
+
+        function prepararValidacao(idChamado, motivoOriginal) {
+            currentCallData = { id: idChamado, motivo: motivoOriginal };
+            editingSanctionId = null;
+            abrirModalSanction("Validar Ocorrência da Inspetoria");
+            document.getElementById('manualReasonArea').classList.add('hidden');
+        }
+
+        function prepararNovaSancao() {
+            currentCallData = null;
+            editingSanctionId = null;
+            abrirModalSanction("Registrar Nova Sanção Manual");
+            document.getElementById('manualReasonArea').classList.remove('hidden');
+            document.getElementById('sanctionReason').value = "";
+        }
+
+        function prepararEdicaoSancao(sancao) {
+            currentCallData = null;
+            editingSanctionId = sancao.id;
+            abrirModalSanction("Editar Sanção Registrada");
+            
+            document.getElementById('manualReasonArea').classList.remove('hidden');
+            document.getElementById('sanctionLevel').value = sancao.nivel;
+            document.getElementById('sanctionObs').value = sancao.observacao || "";
+            
+            const reasonSelect = document.getElementById('sanctionReason');
+            if (!INFRACTIONS.includes(sancao.infracao)) {
+                reasonSelect.innerHTML += `<option value="${sancao.infracao}" selected>${sancao.infracao}</option>`;
+            }
+            reasonSelect.value = sancao.infracao;
+        }
+
+        function abrirModalSanction(titulo) {
+            const calculo = calcularProximoNivel(currentStudent.ra);
+            const minLevel = calculo.nivel;
+            document.getElementById('modalSanctionTitle').innerText = titulo;
+            document.getElementById('escalationText').innerText = calculo.motivo;
+            
+            const select = document.getElementById('sanctionLevel');
+            select.innerHTML = '';
+            
+            let start = editingSanctionId ? 1 : (currentCallData ? (minLevel < 2 ? 2 : minLevel) : minLevel);
+            for(let i = start; i <= 4; i++) {
+                const selected = i === (editingSanctionId ? 0 : start) ? 'selected' : '';
+                select.innerHTML += `<option value="${i}" ${selected}>${MAP_NIVEIS_NOMES[i]}</option>`;
+            }
+            
+            if(!editingSanctionId) document.getElementById('sanctionObs').value = "";
+            document.getElementById('sanctionModal').classList.remove('hidden');
+        }
+
+        async function saveSanction() {
+            const nivelEscolhido = parseInt(document.getElementById('sanctionLevel').value);
+            const obsCoord = document.getElementById('sanctionObs').value;
+            const motivoManual = document.getElementById('sanctionReason').value;
+            
+            const infracao = currentCallData ? currentCallData.motivo : motivoManual;
+
+            if(!infracao) return alert("Por favor, selecione a infração cometida.");
+
+            const btn = document.getElementById('btnConfirmSanction');
+            btn.disabled = true;
+            btn.innerText = "Salvando...";
+
+            try {
+                const dataSancao = ManausTime.toISODate();
+                const payload = {
+                    nivel: nivelEscolhido,
+                    infracao: infracao,
+                    observacao: obsCoord
+                };
+
+                let error;
+                if (editingSanctionId) {
+                    ({ error } = await window.supabaseClient
+                        .from('sancoes_disciplinares')
+                        .update(payload)
+                        .eq('id', editingSanctionId));
+                } else {
+                    payload.ra_aluno = currentStudent.ra;
+                    payload.id_autor = currentUser.id;
+                    payload.data_sancao = dataSancao;
+                    payload.codigo = `${new Date().getFullYear()}/${Math.floor(Math.random() * 10000)}`;
+                    
+                    ({ error: error } = await window.supabaseClient
+                        .from('sancoes_disciplinares')
+                        .insert(payload));
+                }
+
+                if (error) throw error;
+
+                if(currentCallData && !editingSanctionId) {
+                    await window.supabaseClient.from('chamados_inspetoria').update({ status: 'Aprovado' }).eq('id', currentCallData.id);
+                }
+
+                closeSanctionModal();
+                await loadData();
+                if(currentStudent) { await renderHistory(); await checkAlerts(); }
+            } catch (err) { alert("Erro ao salvar: " + err.message); } 
+            finally { btn.disabled = false; btn.innerText = "Confirmar Aplicação"; currentCallData = null; editingSanctionId = null; }
+        }
+
+        function openPhotoZoom(src) {
+            const modal = document.getElementById('photoZoomModal');
+            document.getElementById('zoomedImage').src = src;
+            document.getElementById('zoomedName').innerText = currentStudent ? currentStudent.nome_completo : "Visualização";
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closePhotoZoom() { document.getElementById('photoZoomModal').classList.add('hidden'); }
+        function closeSanctionModal() { document.getElementById('sanctionModal').classList.add('hidden'); }
+        function toggleAlertFilter() { isFilterActive = !isFilterActive; renderGrid(); }
+        function handleSearch(val) { renderGrid(val); }
+        function handleTurmaFilter(val) { selectedTurma = val; renderGrid(); }
+        
         window.onload = init;
     </script>
 </body>

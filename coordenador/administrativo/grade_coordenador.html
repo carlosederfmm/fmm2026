@@ -33,23 +33,19 @@
 
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
-        
-        /* Estilos da Sidebar (necessários para o container e animações do JS) */
         .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .sidebar-collapsed .sidebar-text, .sidebar-collapsed .sidebar-category-header, .sidebar-collapsed .chevron-icon, .sidebar-collapsed .sidebar-category-title { display: none; }
         .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
         .sidebar-collapsed .logo-full { display: none; }
         .sidebar-collapsed .logo-short { display: block; }
         .logo-short { display: none; }
-
         .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.05); }
         .category-content.open { max-height: 1000px; }
         .rotate-180 { transform: rotate(180deg); }
 
-        /* Estilos da Grade com Colunas Iguais */
         .grid-container {
             display: grid;
-            grid-template-columns: 100px repeat(5, minmax(0, 1fr)); /* Força colunas de tamanho idêntico */
+            grid-template-columns: 100px repeat(5, minmax(0, 1fr));
             border: 1px solid #e2e8f0;
             background: white;
             border-radius: 1.5rem;
@@ -81,7 +77,7 @@
             border-right: 1px solid #e2e8f0;
         }
         .slot-cell {
-            min-height: 70px; /* Reduzido para evitar scroll excessivo */
+            min-height: 65px;
             padding: 0.35rem;
             border-bottom: 1px solid #e2e8f0;
             border-right: 1px solid #e2e8f0;
@@ -131,31 +127,21 @@
 
         .mode-switch { display: flex; background: #f1f5f9; padding: 4px; border-radius: 12px; gap: 4px; }
         .mode-btn { padding: 6px 12px; border-radius: 8px; font-size: 0.7rem; font-weight: 700; color: #64748b; transition: all 0.2s; }
-        .mode-btn.active { background: white; color: #003c5b; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .mode-btn.active { background: white; color: #003c5b; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05); }
 
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
 
-        /* Estilos do Buscador de Professor */
-        .finder-result-item {
-            transition: all 0.2s;
-            border: 1px solid #f1f5f9;
-        }
-        .finder-result-item:hover {
-            border-color: #c8d400;
-            background: #fdfdea;
-            transform: translateX(4px);
-        }
+        .finder-result-item { transition: all 0.2s; border: 1px solid #f1f5f9; }
+        .finder-result-item:hover { border-color: #c8d400; background: #fdfdea; transform: translateX(4px); }
     </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden">
 
     <!-- SIDEBAR CONTAINER -->
-    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20">
-        <!-- Carregando... -->
-    </aside>
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
 
     <!-- CONTEÚDO PRINCIPAL -->
     <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
@@ -166,7 +152,6 @@
             </div>
             
             <div class="flex items-center gap-4">
-                <!-- Buscador de Professor -->
                 <button onclick="openFinderModal()" class="bg-white border-2 border-fmm-lime text-fmm-dark px-5 py-2.5 rounded-xl font-black text-xs flex items-center gap-2 transition-all hover:bg-fmm-lime/10 shadow-sm">
                     <i data-lucide="search" class="w-4 h-4 text-fmm-lime"></i> Localizar Professor
                 </button>
@@ -200,7 +185,7 @@
         </div>
     </main>
 
-    <!-- MODAL DE ATRIBUIÇÃO (CONTÉM EXCLUSÃO) -->
+    <!-- MODAL DE ATRIBUIÇÃO -->
     <div id="assignModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
         <div class="bg-white w-full max-w-md rounded-[32px] shadow-2xl flex flex-col animate-fade-in-up">
             <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
@@ -217,7 +202,6 @@
                     </select>
                 </div>
 
-                <!-- CAMPO NORMAL -->
                 <div id="divStandard" class="space-y-1.5">
                     <label class="text-[11px] font-bold text-slate-400 uppercase ml-1" id="labelSecondary">Responsável</label>
                     <select id="modalSecondary" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm font-medium">
@@ -225,7 +209,6 @@
                     </select>
                 </div>
 
-                <!-- CAMPO INGLÊS DIVIDIDO -->
                 <div id="divEnglish" class="hidden space-y-4 p-4 bg-fmm-blue/5 rounded-2xl border border-fmm-blue/10">
                     <div class="flex items-center gap-2 mb-1">
                         <i data-lucide="split" class="w-3.5 h-3.5 text-fmm-blue"></i>
@@ -277,9 +260,7 @@
                 </div>
             </div>
 
-            <div class="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar bg-white" id="finderResults">
-                <!-- Resultados injetados via JS -->
-            </div>
+            <div class="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar bg-white" id="finderResults"></div>
 
             <div class="p-6 border-t bg-slate-50 flex justify-between items-center">
                 <span id="finderStatusLabel" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">A aguardar pesquisa...</span>
@@ -289,54 +270,65 @@
     </div>
 
     <script>
+        // TASK: Novos horários definidos por segmento
+        const SEGMENT_SCHEDULES = {
+            'EMT': [
+                { p: 1, start: "07:00", end: "07:50" },
+                { p: 2, start: "07:50", end: "08:40" },
+                { p: 3, start: "08:40", end: "09:30" },
+                { break: "09:30 às 09:50 - Lanche da Manhã" },
+                { p: 4, start: "09:50", end: "10:35" },
+                { p: 5, start: "10:35", end: "11:20" },
+                { lunch: "11:20 às 12:50 - Almoço" },
+                { p: 6, start: "12:50", end: "13:40" },
+                { p: 7, start: "13:40", end: "14:30" },
+                { break: "14:30 às 15:00 - Lanche da tarde" },
+                { p: 8, start: "15:00", end: "15:50" },
+                { p: 9, start: "15:50", end: "16:40" },
+                { p: 10, start: "16:40", end: "17:30"}
+            ],
+            'EF': [ // Aplica-se a EF1 e EF2
+                { p: 1, start: "07:30", end: "08:20" },
+                { p: 2, start: "08:20", end: "09:10" },
+                { p: 3, start: "09:10", end: "10:00" },
+                { break: "10:00 às 10:20 - Lanche da Manhã" },
+                { p: 4, start: "10:20", end: "11:10" },
+                { p: 5, start: "11:10", end: "12:00" },
+                { p: 6, start: "12:00", end: "12:50" },
+                { lunch: "12:50 às 14:20 - Almoço" },
+                { p: 7, start: "14:20", end: "15:10" },
+                { p: 8, start: "15:10", end: "16:00"}
+            ]
+        };
+
         let currentMode = 'turma'; 
         let currentTargetCell = null, currentDay = null, currentPeriod = null;
         let localScheduleState = []; 
         let listProfessores = [], listTurmas = [], listVinculos = [], listDisciplinasRegular = [], listSubturmas = [];
         let userLevels = [];
-        let finderCurrentData = []; // Cache do snapshot atual para o buscador
-
-        // Mapeamento de Séries por Nível
-        const seriesByLevel = {
-            'EF1': ['5º Ano'],
-            'EF2': ['6º Ano', '7º Ano', '8º Ano', '9º Ano'],
-            'EMT': ['1ª Série', '2ª Série', '3ª Série']
-        };
+        let finderCurrentData = [];
 
         async function initGrade() {
             const { data: { user } } = await supabaseClient.auth.getUser();
             if (!user) return window.location.href = '../../index.html'; 
             
-            // --- CAPTURA DE CONTEXTO DO USUÁRIO ---
             const { data: profile } = await supabaseClient.from('perfis').select('cargo, niveis_acesso').eq('id', user.id).single();
-            
             if (profile) {
-                if (profile.cargo === 'diretor') {
-                    userLevels = ['EF1', 'EF2', 'EMT'];
-                } else {
-                    userLevels = profile.niveis_acesso || [];
-                }
-            } else {
-                userLevels = ['EF1', 'EF2', 'EMT'];
+                userLevels = profile.cargo === 'diretor' ? ['EF1', 'EF2', 'EMT'] : (profile.niveis_acesso || []);
             }
 
             await SidebarComponent.render('sidebar-container');
-            renderGradeSkeleton();
+            renderGradeSkeleton('EMT'); // Default Médio
 
             try {
-                // Filtra turmas pelo nível autorizado
                 const { data: turmas } = await supabaseClient.from('turmas').select('*').order('nome');
                 listTurmas = turmas ? turmas.filter(t => userLevels.includes(t.nivel)) : [];
-
                 const { data: discs } = await supabaseClient.from('disciplinas').select('*').order('nome');
                 listDisciplinasRegular = discs || [];
-
                 const { data: profs } = await supabaseClient.from('perfis').select('id, nome_completo').eq('cargo', 'professor').order('nome_completo');
                 listProfessores = profs || [];
-                
                 const { data: vinculos } = await supabaseClient.from('professor_disciplinas').select('*');
                 listVinculos = vinculos || [];
-
                 const { data: subs } = await supabaseClient.from('subturmas').select('*');
                 listSubturmas = subs || [];
 
@@ -346,130 +338,13 @@
             lucide.createIcons();
         }
 
-        function populateModalDisciplines() {
-             let optionsHTML = '<option value="">Selecionar Disciplina...</option>';
-             optionsHTML += listDisciplinasRegular.map(d => `<option value="${d.sigla}">${d.nome} (${d.sigla})</option>`).join('');
-             document.getElementById('modalDisc').innerHTML = optionsHTML;
-        }
-
-        function setMode(mode) {
-            currentMode = mode;
-            document.getElementById('btn-mode-turma').classList.toggle('active', mode === 'turma');
-            document.getElementById('btn-mode-professor').classList.toggle('active', mode === 'professor');
-            updatePrincipalSelector();
-            clearGridUI();
-            localScheduleState = [];
-        }
-
-        function updatePrincipalSelector() {
-            const select = document.getElementById('selectPrincipal');
-            select.innerHTML = '<option value="">Selecionar...</option>';
-            
-            if (currentMode === 'turma') {
-                listTurmas.forEach(t => {
-                    const opt = document.createElement('option');
-                    opt.value = t.id;
-                    opt.innerText = `${t.nome} (${t.serie})`;
-                    select.appendChild(opt);
-                });
-            } else {
-                // --- LÓGICA DE FILTRAGEM DE PROFESSORES POR NÍVEL ---
-                
-                // 1. Identifica quais séries são permitidas
-                let allowedSeries = [];
-                userLevels.forEach(lvl => {
-                    if (seriesByLevel[lvl]) allowedSeries = allowedSeries.concat(seriesByLevel[lvl]);
-                });
-
-                // 2. Identifica quais disciplinas pertencem aos níveis permitidos
-                const allowedDisciplinasSiglas = listDisciplinasRegular
-                    .filter(d => d.series && d.series.some(s => allowedSeries.includes(s)))
-                    .map(d => d.sigla);
-
-                // 3. Identifica quais professores estão vinculados a essas disciplinas permitidas
-                const allowedProfIds = listVinculos
-                    .filter(v => allowedDisciplinasSiglas.includes(v.sigla_disciplina))
-                    .map(v => v.id_professor);
-
-                // 4. Filtra a lista mestre de professores
-                const filteredProfs = listProfessores.filter(p => allowedProfIds.includes(p.id));
-
-                filteredProfs.forEach(p => {
-                    const opt = document.createElement('option');
-                    opt.value = p.id;
-                    opt.innerText = p.nome_completo;
-                    select.appendChild(opt);
-                });
-            }
-        }
-
-        function checkIsIngles(sigla, nome) {
-            const normalizedNome = nome ? nome.toUpperCase() : "";
-            return sigla === 'L.ING' || normalizedNome === 'LÍNGUA INGLESA' || normalizedNome.includes('INGLÊS');
-        }
-
-        function handleModalDiscChange() {
-            const sigla = document.getElementById('modalDisc').value;
-            const principalId = document.getElementById('selectPrincipal').value;
-            const disc = listDisciplinasRegular.find(d => d.sigla === sigla);
-            const isIngles = checkIsIngles(sigla, disc?.nome);
-
-            const divStd = document.getElementById('divStandard');
-            const divEng = document.getElementById('divEnglish');
-
-            if (currentMode === 'turma' && isIngles) {
-                const subs = listSubturmas.filter(s => s.id_turma_origem === principalId);
-                if (subs.length >= 2) {
-                    divStd.classList.add('hidden');
-                    divEng.classList.remove('hidden');
-                    document.getElementById('lblSubA').innerText = subs[0].nome;
-                    document.getElementById('lblSubB').innerText = subs[1].nome;
-                    document.getElementById('readProfA').value = listProfessores.find(p => p.id === subs[0].id_professor)?.nome_completo || "Sem Professor";
-                    document.getElementById('readProfB').value = listProfessores.find(p => p.id === subs[1].id_professor)?.nome_completo || "Sem Professor";
-                    lucide.createIcons();
-                    return;
-                }
-            }
-            divStd.classList.remove('hidden');
-            divEng.classList.add('hidden');
-            filterSecondaryOptions();
-        }
-
-        function filterSecondaryOptions() {
-            const sigla = document.getElementById('modalDisc').value;
-            const selectSec = document.getElementById('modalSecondary');
-            const labelSec = document.getElementById('labelSecondary');
-            if (!sigla) { selectSec.innerHTML = '<option value="">Selecione a disciplina...</option>'; selectSec.disabled = true; return; }
-            if (currentMode === 'turma') {
-                labelSec.innerText = "Professor Responsável"; selectSec.disabled = false;
-                const idsPermitidos = listVinculos.filter(v => v.sigla_disciplina === sigla).map(v => v.id_professor);
-                const profsFiltrados = listProfessores.filter(p => idsPermitidos.includes(p.id));
-                selectSec.innerHTML = profsFiltrados.length === 0 ? '<option value="">Sem vínculos</option>' : '<option value="">Selecionar Professor...</option>' + profsFiltrados.map(p => `<option value="${p.id}">${p.nome_completo}</option>`).join('');
-            } else {
-                labelSec.innerText = "Turma"; selectSec.disabled = false;
-                selectSec.innerHTML = '<option value="">Selecionar Turma...</option>' + listTurmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
-            }
-        }
-
-        function renderGradeSkeleton() {
+        function renderGradeSkeleton(segment = 'EMT') {
             const container = document.getElementById('grade-rows-container');
-            const times = [
-                { start: "07:00", end: "07:50", p: 1 },
-                { start: "07:50", end: "08:40", p: 2 },
-                { start: "08:40", end: "09:30", p: 3 },
-                { break: "09:30 às 09:50 - Lanche da Manhã" },
-                { start: "09:50", end: "10:40", p: 4 },
-                { start: "10:40", end: "11:30", p: 5 },
-                { lunch: "11:30 às 13:00 - Almoço" },
-                { start: "13:00", end: "13:50", p: 6 },
-                { start: "13:50", end: "14:40", p: 7 },
-                { start: "14:40", end: "15:30", p: 8 },
-                { break: "15:30 às 15:50 - Lanche da tarde" },
-                { start: "15:50", end: "16:40", p: 9 },
-                { start: "16:40", end: "17:30", p: 10}
-            ];
+            const key = segment.startsWith('EF') ? 'EF' : 'EMT';
+            const times = SEGMENT_SCHEDULES[key];
             const days = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
             let html = '';
+            
             times.forEach(item => {
                 if (item.break) html += `<div class="break-row">${item.break}</div>`;
                 else if (item.lunch) html += `<div class="lunch-row">${item.lunch}</div>`;
@@ -483,21 +358,27 @@
 
         async function handleSelectionChange() {
             const principalId = document.getElementById('selectPrincipal').value;
+            if (!principalId) { clearGridUI(); return; }
+
+            // Detectar nível da turma para adaptar horários
+            if (currentMode === 'turma') {
+                const selectedTurma = listTurmas.find(t => t.id === principalId);
+                if (selectedTurma) renderGradeSkeleton(selectedTurma.nivel);
+            } else {
+                renderGradeSkeleton('EMT'); // Professores usam grid completa (EMT) por default
+            }
+
             clearGridUI(); localScheduleState = []; 
-            if (!principalId) return;
             let query = supabaseClient.from('grade_horaria').select('*, perfis(nome_completo), disciplinas(nome, cor, tipo, sigla), turmas(nome), subturmas(nome)');
             if (currentMode === 'turma') query = query.eq('id_turma', principalId);
             else query = query.eq('id_professor', principalId);
+            
             const { data, error } = await query;
             if (error) return console.error(error);
             
             localScheduleState = data.map(item => ({ 
-                id_turma: item.id_turma, 
-                dia_semana: item.dia_semana, 
-                numero_tempo: item.numero_tempo, 
-                sigla_disciplina: item.sigla_disciplina, 
-                id_professor: item.id_professor,
-                id_subturma: item.id_subturma
+                id_turma: item.id_turma, dia_semana: item.dia_semana, numero_tempo: item.numero_tempo, 
+                sigla_disciplina: item.sigla_disciplina, id_professor: item.id_professor, id_subturma: item.id_subturma
             }));
 
             const grouped = {};
@@ -522,11 +403,41 @@
             });
         }
 
+        function updatePrincipalSelector() {
+            const select = document.getElementById('selectPrincipal');
+            select.innerHTML = '<option value="">Selecionar...</option>';
+            if (currentMode === 'turma') {
+                listTurmas.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id;
+                    opt.innerText = `${t.nome} (${t.serie})`;
+                    select.appendChild(opt);
+                });
+            } else {
+                listProfessores.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.innerText = p.nome_completo;
+                    select.appendChild(opt);
+                });
+            }
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('btn-mode-turma').classList.toggle('active', mode === 'turma');
+            document.getElementById('btn-mode-professor').classList.toggle('active', mode === 'professor');
+            updatePrincipalSelector();
+            clearGridUI();
+            localScheduleState = [];
+            renderGradeSkeleton('EMT');
+        }
+
         function updateCellUI(cell, line1, line2, cor) {
             const card = document.createElement('div');
             card.className = "class-card animate-fade-in-up";
             card.style.borderLeftColor = cor;
-            card.style.backgroundColor = cor + '10';
+            card.style.backgroundColor = cor + '15';
             card.innerHTML = `
                 <span class="text-[9px] font-black uppercase truncate leading-tight" style="color: ${cor}">${line1}</span>
                 <span class="text-[8px] text-slate-400 font-bold truncate mt-0.5">${line2}</span>
@@ -536,8 +447,62 @@
 
         function clearGridUI() { document.querySelectorAll('.slot-cell').forEach(c => c.innerHTML = ''); }
 
+        function checkIsIngles(sigla, nome) {
+            const normalizedNome = nome ? nome.toUpperCase() : "";
+            return sigla === 'L.ING' || normalizedNome === 'LÍNGUA INGLESA' || normalizedNome.includes('INGLÊS');
+        }
+
+        function handleModalDiscChange() {
+            const sigla = document.getElementById('modalDisc').value;
+            const principalId = document.getElementById('selectPrincipal').value;
+            const disc = listDisciplinasRegular.find(d => d.sigla === sigla);
+            const isIngles = checkIsIngles(sigla, disc?.nome);
+
+            const divStd = document.getElementById('divStandard');
+            const divEng = document.getElementById('divEnglish');
+
+            if (currentMode === 'turma' && isIngles) {
+                const subs = listSubturmas.filter(s => s.id_turma_origem === principalId);
+                if (subs.length >= 2) {
+                    divStd.classList.add('hidden');
+                    divEng.classList.remove('hidden');
+                    document.getElementById('lblSubA').innerText = subs[0].nome;
+                    document.getElementById('lblSubB').innerText = subs[1].nome;
+                    document.getElementById('readProfA').value = listProfessores.find(p => p.id === subs[0].id_professor)?.nome_completo || "Sem Professor";
+                    document.getElementById('readProfB').value = listProfessores.find(p => p.id === subs[1].id_professor)?.nome_completo || "Sem Professor";
+                    return;
+                }
+            }
+            divStd.classList.remove('hidden');
+            divEng.classList.add('hidden');
+            filterSecondaryOptions();
+        }
+
+        function populateModalDisciplines() {
+            let optionsHTML = '<option value="">Selecionar Disciplina...</option>';
+            optionsHTML += listDisciplinasRegular.map(d => `<option value="${d.sigla}">${d.nome} (${d.sigla})</option>`).join('');
+            document.getElementById('modalDisc').innerHTML = optionsHTML;
+        }
+
+        function filterSecondaryOptions() {
+            const sigla = document.getElementById('modalDisc').value;
+            const selectSec = document.getElementById('modalSecondary');
+            const labelSec = document.getElementById('labelSecondary');
+            if (!sigla) { selectSec.innerHTML = '<option value="">Selecione a disciplina...</option>'; return; }
+            if (currentMode === 'turma') {
+                labelSec.innerText = "Professor Responsável";
+                const idsPermitidos = listVinculos.filter(v => v.sigla_disciplina === sigla).map(v => v.id_professor);
+                const profsFiltrados = listProfessores.filter(p => idsPermitidos.includes(p.id));
+                selectSec.innerHTML = profsFiltrados.length === 0 ? '<option value="">Sem vínculos</option>' : '<option value="">Selecionar Professor...</option>' + profsFiltrados.map(p => `<option value="${p.id}">${p.nome_completo}</option>`).join('');
+            } else {
+                labelSec.innerText = "Turma";
+                selectSec.innerHTML = '<option value="">Selecionar Turma...</option>' + listTurmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
+            }
+        }
+
         function assignClass(cell, day, period) {
-            if (!document.getElementById('selectPrincipal').value) return alert("Selecione primeiro uma opção no topo.");
+            const principalId = document.getElementById('selectPrincipal').value;
+            if (!principalId) return alert("Selecione primeiro uma opção no topo.");
             currentTargetCell = cell; currentDay = day; currentPeriod = period;
             
             const existing = localScheduleState.filter(x => x.dia_semana === day && x.numero_tempo === period);
@@ -582,16 +547,11 @@
             if (!sigla) return alert("Selecione a disciplina.");
 
             const btn = document.getElementById('btnConfirmAtomic');
-            const originalText = btn.innerText;
             btn.disabled = true;
             btn.innerText = "Salvando...";
 
             try {
-                let deleteQuery = supabaseClient.from('grade_horaria')
-                    .delete()
-                    .eq('dia_semana', currentDay)
-                    .eq('numero_tempo', currentPeriod);
-
+                let deleteQuery = supabaseClient.from('grade_horaria').delete().eq('dia_semana', currentDay).eq('numero_tempo', currentPeriod);
                 if (currentMode === 'turma') deleteQuery = deleteQuery.eq('id_turma', principalId);
                 else deleteQuery = deleteQuery.eq('id_professor', principalId);
 
@@ -607,17 +567,11 @@
                     if (subs.length >= 2) {
                         subs.forEach(s => {
                             payload.push({ 
-                                id_turma: principalId, 
-                                dia_semana: currentDay, 
-                                numero_tempo: currentPeriod, 
-                                sigla_disciplina: sigla, 
-                                id_professor: s.id_professor,
-                                id_subturma: s.id
+                                id_turma: principalId, dia_semana: currentDay, numero_tempo: currentPeriod, 
+                                sigla_disciplina: sigla, id_professor: s.id_professor, id_subturma: s.id 
                             });
                         });
-                    } else {
-                        throw new Error("Subturmas não configuradas para esta turma.");
-                    }
+                    } else { throw new Error("Subturmas não configuradas."); }
                 } else {
                     const secondaryId = document.getElementById('modalSecondary').value;
                     if (!secondaryId) throw new Error("Selecione o responsável.");
@@ -633,123 +587,79 @@
                 await handleSelectionChange();
                 closeModal();
 
-            } catch (err) {
-                console.error(err);
-                alert("Erro ao salvar: " + err.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerText = originalText;
-            }
+            } catch (err) { alert("Erro ao salvar: " + err.message); } 
+            finally { btn.disabled = false; btn.innerText = "Confirmar"; }
         }
 
-        async function clearSlot() {
+        async function confirmRemoval() {
             if (!confirm("Remover esta aula da grade?")) return;
             const principalId = document.getElementById('selectPrincipal').value;
-            
             try {
-                let deleteQuery = supabaseClient.from('grade_horaria')
-                    .delete()
-                    .eq('dia_semana', currentDay)
-                    .eq('numero_tempo', currentPeriod);
-
+                let deleteQuery = supabaseClient.from('grade_horaria').delete().eq('dia_semana', currentDay).eq('numero_tempo', currentPeriod);
                 if (currentMode === 'turma') deleteQuery = deleteQuery.eq('id_turma', principalId);
                 else deleteQuery = deleteQuery.eq('id_professor', principalId);
 
                 const { error } = await deleteQuery;
                 if(error) throw error;
-                
                 await handleSelectionChange();
                 closeModal();
-            } catch (err) {
-                alert("Erro ao remover: " + err.message);
-            }
+            } catch (err) { alert("Erro ao remover: " + err.message); }
         }
 
-        function confirmRemoval() {
-            clearSlot();
-        }
-
+        // --- TASK: Lógica do Localizador com novos horários ---
         function getCurrentPeriod() {
             const now = new Date();
-            const timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+            const timeStr = now.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' });
             
-            const schedule = [
-                { p: 1, start: "07:00", end: "07:50" },
-                { p: 2, start: "07:50", end: "08:40" },
-                { p: 3, start: "08:40", end: "09:30" },
-                { break: "Lanche Manhã", start: "09:30", end: "09:50" },
-                { p: 4, start: "09:50", end: "10:40" },
-                { p: 5, start: "10:40", end: "11:30" },
-                { break: "Almoço", start: "11:30", end: "13:00" },
-                { p: 6, start: "13:00", end: "13:50" },
-                { p: 7, start: "13:50", end: "14:40" },
-                { p: 8, start: "14:40", end: "15:30" },
-                { break: "Lanche Tarde", start: "15:30", end: "15:50" },
-                { p: 9, start: "15:50", end: "16:40" },
-                { p:10, start: "16:40", end: "17:30"}
-            ];
-
-            const current = schedule.find(s => timeStr >= s.start && timeStr < s.end);
-            return current || { break: "Fora de Horário" };
+            // Decidir qual schedule usar (Fundamental vs Médio)
+            // No localizador, precisamos verificar os dois, mas como os horários se sobrepõem, 
+            // a consulta ao banco fará o filtro fino.
+            return { time: timeStr };
         }
 
         async function openFinderModal() {
             const modal = document.getElementById('finderModal');
             const results = document.getElementById('finderResults');
-            const status = document.getElementById('finderStatusLabel');
             const clock = document.getElementById('finderClock');
             
-            document.getElementById('finderSearchInput').value = '';
             results.innerHTML = '<div class="flex flex-col items-center py-10 opacity-30"><i data-lucide="loader-2" class="w-8 h-8 animate-spin mb-2"></i><span>Localizando...</span></div>';
             modal.classList.remove('hidden');
             lucide.createIcons();
 
-            const now = new Date();
-            const dayMap = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
-            const currentDay = dayMap[now.getDay()];
-            const timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
-            clock.innerText = `Agora: ${currentDay}, ${timeStr}`;
+            const manausNow = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit', weekday: 'short' }).formatToParts(new Date());
+            const currentDay = manausNow.find(p => p.type === 'weekday').value.toUpperCase();
+            const timeStr = getCurrentPeriod().time;
+            clock.innerText = `Agora em Manaus: ${currentDay}, ${timeStr}`;
 
-            if (currentDay === 'DOM' || currentDay === 'SAB') {
-                results.innerHTML = '<div class="py-10 text-center text-slate-400 italic">Fim de semana. Nenhuma aula ativa.</div>';
-                status.innerText = "Instituição Fechada";
-                return;
+            // Consultar em todos os níveis autorizados
+            let activeProfessors = [];
+            
+            for (const lvl of userLevels) {
+                const key = lvl.startsWith('EF') ? 'EF' : 'EMT';
+                const schedule = SEGMENT_SCHEDULES[key];
+                const period = schedule.find(s => !s.break && !s.lunch && timeStr >= s.start && timeStr < s.end);
+                
+                if (period) {
+                    const { data } = await supabaseClient.from('grade_horaria')
+                        .select('*, perfis(nome_completo), turmas!inner(nome, nivel), disciplinas(nome, sigla, tipo)')
+                        .eq('dia_semana', currentDay.replace('.', ''))
+                        .eq('numero_tempo', period.p)
+                        .eq('turmas.nivel', lvl);
+                    if (data) activeProfessors = activeProfessors.concat(data);
+                }
             }
 
-            const period = getCurrentPeriod();
-            if (period.break) {
-                results.innerHTML = `<div class="py-10 text-center text-amber-500 font-bold uppercase tracking-widest flex flex-col items-center gap-2"><i data-lucide="coffee" class="w-10 h-10"></i><span>${period.break}</span></div>`;
-                status.innerText = "Período de Intervalo";
-                lucide.createIcons();
-                return;
-            }
-
-            // --- LÓGICA DE FILTRAGEM POR NÍVEL NO FINDER ---
-            // Buscamos apenas aulas em turmas que pertençam ao nível autorizado
-            const { data, error } = await supabaseClient
-                .from('grade_horaria')
-                .select('*, perfis(nome_completo), turmas!inner(nome, nivel), disciplinas(nome, sigla, tipo)')
-                .eq('dia_semana', currentDay)
-                .eq('numero_tempo', period.p)
-                .in('turmas.nivel', userLevels);
-
-            if (error) {
-                results.innerHTML = '<p class="text-red-500">Erro ao consultar base.</p>';
-                return;
-            }
-
-            finderCurrentData = data || [];
+            finderCurrentData = activeProfessors;
             renderFinderResults(finderCurrentData);
-            status.innerText = `${finderCurrentData.length} Professores em sala agora`;
+            document.getElementById('finderStatusLabel').innerText = `${finderCurrentData.length} Professores em sala`;
         }
 
         function renderFinderResults(data) {
             const results = document.getElementById('finderResults');
             if (data.length === 0) {
-                results.innerHTML = '<p class="text-center text-slate-400 py-10 italic">Nenhuma aula registrada para este tempo.</p>';
+                results.innerHTML = '<p class="text-center text-slate-400 py-10 italic">Nenhuma aula ativa neste momento.</p>';
                 return;
             }
-
             results.innerHTML = data.map(item => {
                 const discName = item.disciplinas ? (item.disciplinas.tipo === 'BCC' ? item.disciplinas.nome : item.disciplinas.sigla) : item.sigla_disciplina;
                 return `

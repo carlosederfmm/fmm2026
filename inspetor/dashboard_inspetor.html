@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inspetoria | SME FMM</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Scripts do Projeto -->
+    <script src="../assets/js/supabase_client.js"></script>
+    <script src="../sidebar.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        /* Estilos de Nível de Sanção */
+        .level-badge-1 { color: #3b82f6; background: #eff6ff; border: 1px solid #dbeafe; }
+        .level-badge-2 { color: #eab308; background: #fefce8; border: 1px solid #fef08a; }
+        .level-badge-3 { color: #f97316; background: #fff7ed; border: 1px solid #ffedd5; }
+        .level-badge-4 { color: #ef4444; background: #fef2f2; border: 1px solid #fee2e2; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: fadeIn 0.4s ease-out forwards; }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        
+        <!-- HEADER DINÂMICO -->
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm">
+            <div class="flex flex-col">
+                <h1 class="text-xl font-bold text-fmm-dark">Painel da Inspetoria</h1>
+                <p class="text-xs text-slate-400">Monitoramento Disciplinar e Sanções</p>
+            </div>
+            
+            <!-- User Info Widget -->
+            <div class="flex items-center gap-6">
+                <div class="flex flex-col items-end">
+                    <span id="userName" class="text-xs font-black text-fmm-dark uppercase">...</span>
+                    <span id="userRoleLabel" class="text-[9px] text-fmm-blue font-black uppercase tracking-widest opacity-60">Inspetor de Alunos</span>
+                </div>
+                <div id="userInitials" class="w-11 h-11 rounded-[14px] bg-gradient-to-br from-fmm-blue to-fmm-dark text-white flex items-center justify-center font-black shadow-lg uppercase text-sm border-2 border-white">?</div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-8 bg-slate-50/50">
+            
+            <!-- ACESSO RÁPIDO -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-2xl font-black text-fmm-dark tracking-tight">Gestão Disciplinar</h2>
+                    <p class="text-sm text-slate-500 font-medium">Histórico de sanções e acompanhamento em tempo real.</p>
+                </div>
+                <a href="../inspetor/sancoes_inspetor.html" class="bg-fmm-dark hover:bg-slate-800 text-white px-8 py-3.5 rounded-2xl font-bold text-sm flex items-center gap-2 shadow-xl shadow-fmm-dark/20 transition-all transform hover:scale-105 active:scale-95">
+                    <i data-lucide="plus-circle" class="w-5 h-5"></i> Aplicar Sanção
+                </a>
+            </div>
+
+            <!-- CARDS DE ESTATÍSTICAS -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total de Sanções (Global)</h3>
+                    <p id="total-geral" class="text-3xl font-black text-fmm-dark mt-2">-</p>
+                </div>
+                <div class="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm border-l-4 border-l-fmm-blue">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Registradas por Mim</h3>
+                    <p id="total-meu" class="text-3xl font-black text-fmm-blue mt-2">-</p>
+                </div>
+                <div class="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm border-l-4 border-l-fmm-green">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Registradas Hoje</h3>
+                    <p id="total-hoje" class="text-3xl font-black text-fmm-green mt-2">-</p>
+                </div>
+            </div>
+
+            <!-- GRID DE GRÁFICOS E LISTAS -->
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                
+                <!-- ÚLTIMAS SANÇÕES (Lista 10) -->
+                <div class="xl:col-span-2 bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+                    <div class="p-6 border-b border-slate-50 flex justify-between items-center">
+                        <h3 class="font-bold text-fmm-dark text-sm uppercase flex items-center gap-2">
+                            <i data-lucide="clock" class="w-4 h-4 text-fmm-blue"></i> Últimas Sanções
+                        </h3>
+                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Toda a Instituição</span>
+                    </div>
+                    <div id="list-recent" class="p-4 space-y-3 min-h-[400px]">
+                        <!-- Populado via JS -->
+                    </div>
+                </div>
+
+                <!-- ANALYTICS: TOP 5 E MINHAS -->
+                <div class="space-y-8">
+                    <!-- GRÁFICO: TOP 5 FREQUÊNCIA -->
+                    <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                        <h3 class="text-xs font-black text-fmm-dark uppercase mb-6 flex items-center gap-2">
+                            <i data-lucide="bar-chart-2" class="w-4 h-4 text-fmm-green"></i> Infrações Recorrentes
+                        </h3>
+                        <div class="h-64">
+                            <canvas id="topMotivosChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- LISTA: MINHAS OCORRÊNCIAS -->
+                    <div class="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+                        <div class="p-6 border-b border-slate-50 bg-fmm-blue/5">
+                            <h3 class="font-bold text-fmm-blue text-xs uppercase tracking-widest flex items-center gap-2">
+                                <i data-lucide="user-check" class="w-4 h-4"></i> Meu Histórico Recente
+                            </h3>
+                        </div>
+                        <div id="list-mine" class="p-4 space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar">
+                            <!-- Populado via JS -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let charts = {};
+        let currentUserId = null;
+
+        async function init() {
+            if (window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) return window.location.href = '../index.html';
+            currentUserId = user.id;
+
+            loadData();
+        }
+
+        async function fetchAllWithPagination(tableName, selectQuery) {
+            let allRecords = [];
+            let page = 0;
+            const pageSize = 1000;
+            while (true) {
+                const { data, error } = await supabaseClient.from(tableName).select(selectQuery).range(page * pageSize, (page + 1) * pageSize - 1);
+                if (error) throw error;
+                if (data) allRecords.push(...data);
+                if (!data || data.length < pageSize) break;
+                page++;
+            }
+            return allRecords;
+        }
+
+        async function loadData() {
+            try {
+                // 1. Busca todas as sanções da tabela sancoes_disciplinares
+                const data = await fetchAllWithPagination('sancoes_disciplinares', '*, alunos(nome_completo, url_foto)');
+                
+                // 2. Processa Estatísticas
+                const today = new Date().toISOString().split('T')[0];
+                const minhas = data.filter(o => o.id_autor === currentUserId);
+                const hoje = data.filter(o => o.data_sancao === today);
+
+                document.getElementById('total-geral').innerText = data.length;
+                document.getElementById('total-meu').innerText = minhas.length;
+                document.getElementById('total-hoje').innerText = hoje.length;
+
+                // 3. Ordena para as listas (do mais novo para o mais antigo)
+                const sortedData = [...data].sort((a, b) => {
+                    return new Date(b.criado_em) - new Date(a.criado_em);
+                });
+
+                renderRecentList(sortedData.slice(0, 10)); 
+                renderMyList(minhas.sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em)).slice(0, 5));     
+
+                // 4. Gráfico Top 5 (Lógica baseada em infracao)
+                renderTop5Chart(data);
+
+            } catch (err) {
+                console.error("Erro ao carregar dashboard:", err);
+            }
+        }
+
+        function renderRecentList(records) {
+            const container = document.getElementById('list-recent');
+            if(!records.length) {
+                container.innerHTML = `<p class="text-center py-20 text-slate-300 italic text-xs">Sem registros</p>`;
+                return;
+            }
+
+            const levelLabels = { 1: 'Notificação', 2: 'Adv. Verbal', 3: 'Adv. Escrita', 4: 'Suspensão' };
+
+            container.innerHTML = records.map(rec => {
+                const date = new Date(rec.data_sancao + 'T12:00:00').toLocaleDateString('pt-BR');
+                const avatar = (rec.alunos?.url_foto) 
+                    ? `https://lh3.googleusercontent.com/d/${rec.alunos.url_foto.split('/d/')[1]?.split('/')[0]}`
+                    : `https://ui-avatars.com/api/?name=${encodeURIComponent(rec.alunos?.nome_completo || 'AL')}&background=random`;
+
+                return `
+                <div class="flex items-center gap-4 p-4 bg-slate-50/50 border border-slate-100 rounded-2xl animate-fade">
+                    <img src="${avatar}" class="w-12 h-12 rounded-xl object-cover border border-white shadow-sm flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=AL&background=003c5b&color=fff'">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-start">
+                            <span class="text-[10px] font-black text-fmm-dark uppercase truncate w-48">${rec.alunos?.nome_completo || 'Aluno'}</span>
+                            <span class="px-2 py-0.5 rounded-md text-[8px] font-black uppercase level-badge-${rec.nivel}">${levelLabels[rec.nivel]}</span>
+                        </div>
+                        <p class="text-sm font-bold text-slate-600 mt-0.5 truncate">${rec.infracao}</p>
+                        <div class="flex items-center gap-3 mt-1">
+                            <span class="text-[9px] text-slate-400 font-bold uppercase">${date}</span>
+                            <span class="text-[9px] text-slate-300 font-bold uppercase">• Cód: ${rec.codigo}</span>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function renderMyList(records) {
+            const container = document.getElementById('list-mine');
+            if(!records.length) {
+                container.innerHTML = `<p class="text-center text-slate-300 italic text-xs py-10">Nenhum registro seu.</p>`;
+                return;
+            }
+
+            container.innerHTML = records.map(rec => `
+                <div class="p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
+                    <p class="text-[9px] font-black text-fmm-dark uppercase truncate">${rec.alunos?.nome_completo}</p>
+                    <p class="text-[11px] text-slate-500 font-medium line-clamp-1">${rec.infracao}</p>
+                    <div class="flex justify-between items-center mt-2">
+                         <span class="text-[8px] font-black px-1.5 py-0.5 rounded level-badge-${rec.nivel}">Nível ${rec.nivel}</span>
+                         <span class="text-[8px] text-slate-300 font-bold uppercase">${new Date(rec.data_sancao + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderTop5Chart(data) {
+            // Agrupa e ordena infracoes
+            const counts = data.reduce((acc, curr) => {
+                acc[curr.infracao] = (acc[curr.infracao] || 0) + 1;
+                return acc;
+            }, {});
+
+            const sorted = Object.entries(counts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+
+            if (charts.topMotivos) charts.topMotivos.destroy();
+
+            const ctx = document.getElementById('topMotivosChart').getContext('2d');
+            charts.topMotivos = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sorted.map(i => {
+                        const label = i[0].replace(/^\d+\.\s*/, ''); // Remove o número inicial da infração
+                        return label.length > 20 ? label.substring(0, 17) + "..." : label;
+                    }),
+                    datasets: [{
+                        label: 'Ocorrências',
+                        data: sorted.map(i => i[1]),
+                        backgroundColor: '#00638f',
+                        borderRadius: 8,
+                        barThickness: 20
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' } } },
+                        y: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' } } }
+                    }
+                }
+            });
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

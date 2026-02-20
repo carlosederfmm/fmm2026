@@ -1,9 +1,8 @@
 /**
- * Componente de Sidebar Reutilizável SME FMM 2026
- * Versão Ultra-Blindada: Injeção automática de CSS e suporte aos cargos Orientador e Secretaria.
+ * Componente de Sidebar Reutilizável SME FMM 2026 - Versão Unificada 3.1
+ * Correção: Data Integrity + Guard Clauses para evitar erros de 'undefined'
  */
 const SidebarComponent = {
-    // Estilos internos injetados automaticamente para evitar quebras de layout
     styles: `
         .sidebar-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .sidebar-collapsed .sidebar-text, 
@@ -34,9 +33,12 @@ const SidebarComponent = {
     menuItems: {
         principal: [
             { label: 'Dashboard', icon: 'pie-chart', link: 'coordenador/principal/dashboard_coordenador.html', roles: ['coordenador', 'diretor'] },
+            { label: 'Dashboard', icon: 'pie-chart', link: 'orientador/dashboard_orientador.html', roles: ['orientador'] },
+            { label: 'Dashboard', icon: 'pie-chart', link: 'secretaria/dashboard_secretaria.html', roles: ['secretaria'] },
+            { label: 'Dashboard', icon: 'pie-chart', link: 'inspetor/dashboard_inspetor.html', roles: ['inspetor'] },
             { label: 'Tarefas (Scrum)', icon: 'check-square', link: 'coordenador/principal/tarefas_coordenador.html', roles: ['coordenador', 'diretor'] },
             { label: 'Requerimentos', icon: 'inbox', link: 'coordenador/principal/requerimentos.html', roles: ['coordenador', 'diretor'], badge: true },
-            { label: 'Meu Perfil', icon: 'user-circle', link: 'coordenador/principal/perfil_coordenador.html', roles: ['coordenador', 'diretor'] }
+            { label: 'Meu Perfil', icon: 'user-circle', link: 'coordenador/principal/perfil_coordenador.html', roles: ['coordenador', 'diretor', 'orientador', 'secretaria', 'inspetor'] }
         ],
         administrativo: [
             { label: 'Usuários / Staff', icon: 'shield-check', link: 'coordenador/administrativo/usuarios_coordenador.html', roles: ['diretor', 'coordenador'] },
@@ -49,10 +51,14 @@ const SidebarComponent = {
         ],
         pedagogico: [
             { label: 'Sanções', icon: 'shield-alert', link: 'coordenador/pedagogico/sancoes_coordenador.html', roles: ['diretor', 'coordenador'] },
+            { label: 'Sanções', icon: 'shield-alert', link: 'orientador/sancoes_orientador.html', roles: ['orientador'] },
+            { label: 'Sanções', icon: 'shield-alert', link: 'inspetor/sancoes_inspetor.html', roles: ['inspetor'] },
+            { label: 'Prontuários', icon: 'clipboard-list', link: 'orientador/atendimento_orientador.html', roles: ['orientador'] },
             { label: 'Atendimentos', icon: 'message-square', link: 'coordenador/pedagogico/atendimentos_coordenador.html', roles: ['diretor', 'coordenador'] },
-            { label: 'Chamados (Orientação)', icon: 'bell-plus', link: 'coordenador/pedagogico/chamados_coordenador.html', roles: ['diretor', 'coordenador'] },
-            { label: 'Saídas', icon: 'log-out', link: 'coordenador/pedagogico/saidas_coordenador.html', roles: ['diretor', 'coordenador'] },
-            { label: 'Atrasos', icon: 'clock', link: 'coordenador/pedagogico/atrasos_coordenador.html', roles: ['diretor', 'coordenador'] }
+            { label: 'Fila de Chamados', icon: 'bell', link: 'orientador/chamados_orientador.html', roles: ['orientador'] },
+            { label: 'Chamados', icon: 'bell-plus', link: 'coordenador/pedagogico/chamados_coordenador.html', roles: ['diretor', 'coordenador'] },
+            { label: 'Saídas', icon: 'log-out', link: 'coordenador/pedagogico/saidas_coordenador.html', roles: ['diretor', 'coordenador', 'secretaria'] },
+            { label: 'Atrasos', icon: 'clock', link: 'coordenador/pedagogico/atrasos_coordenador.html', roles: ['diretor', 'coordenador', 'secretaria'] }
         ],
         notas: [
             { label: 'Boletim Individual', icon: 'user', link: 'coordenador/notas/boletim_coordenador.html', roles: ['diretor', 'coordenador'] },
@@ -65,21 +71,7 @@ const SidebarComponent = {
             { label: 'Gestão Individual', icon: 'user-search', link: 'professor/individual_professor.html', roles: ['professor'] },
             { label: 'Conteúdo de Aula', icon: 'book-text', link: 'professor/conteudo_professor.html', roles: ['professor'] },
             { label: 'Neurodivergentes', icon: 'brain', link: 'professor/alunos_neurodivergentes.html', roles: ['professor'] },
-            { label: 'Meu Perfil', icon: 'user-cog', link: 'professor/perfil_professor.html', roles: ['professor'] }
-        ],
-        orientador: [
-            { label: 'Dashboard', icon: 'layout-grid', link: 'orientador/dashboard_orientador.html', roles: ['orientador'] },
-            { label: 'Prontuários', icon: 'clipboard-list', link: 'orientador/atendimento_orientador.html', roles: ['orientador'] },
-            { label: 'Fila de Chamados', icon: 'bell', link: 'orientador/chamados_orientador.html', roles: ['orientador'] },
-            { label: 'Meu Perfil', icon: 'user-circle', link: 'coordenador/principal/perfil_coordenador.html', roles: ['orientador'] },
-            { label: 'Sanções', icon: 'shield-alert', link: 'orientador/sancoes_orientador.html', roles: ['orientador'] }
-        ],
-        // NOVO: Menu Linear para a Secretaria
-        secretaria: [
-            { label: 'Dashboard', icon: 'pie-chart', link: 'secretaria/dashboard_secretaria.html', roles: ['secretaria'] },
-            { label: 'Saídas', icon: 'log-out', link: 'coordenador/pedagogico/saidas_coordenador.html', roles: ['secretaria'] },
-            { label: 'Atrasos', icon: 'clock', link: 'coordenador/pedagogico/atrasos_coordenador.html', roles: ['secretaria'] },
-            { label: 'Meu Perfil', icon: 'user-circle', link: 'coordenador/principal/perfil_coordenador.html', roles: ['secretaria'] }
+            { label: 'Meu Perfil', icon: 'user-circle', link: 'professor/perfil_professor.html', roles: ['professor'] }
         ]
     },
 
@@ -88,14 +80,41 @@ const SidebarComponent = {
         if (path.includes('/notas/') || path.includes('/pedagogico/') || path.includes('/administrativo/') || path.includes('/principal/')) {
             return '../../';
         }
-        if (path.includes('/professor/') || path.includes('/orientador/') || path.includes('/secretaria/') || (path.includes('/coordenador/') && !path.includes('/', path.indexOf('/coordenador/') + 13))) {
+        if (path.includes('/professor/') || path.includes('/orientador/') || path.includes('/secretaria/') || path.includes('/inspetor/') || path.includes('/inspetoria/') || (path.includes('/coordenador/') && !path.includes('/', path.indexOf('/coordenador/') + 13))) {
             return '../';
         }
         return './';
     },
 
+    updateUserUI: function(profile) {
+        if (!profile) return;
+        const nameEl = document.getElementById('userName');
+        const roleEl = document.getElementById('userRoleLabel');
+        const initialsEl = document.getElementById('userInitials');
+
+        if (nameEl) nameEl.innerText = profile.nome_completo || 'Utilizador';
+        if (roleEl) {
+            const roleLabels = {
+                'diretor': 'Diretor Académico',
+                'coordenador': 'Coordenador Académico',
+                'orientador': 'Orientador Pedagógico',
+                'professor': 'Docente',
+                'secretaria': 'Secretaria Académica',
+                'inspetor': 'Inspetor de Alunos'
+            };
+            roleEl.innerText = roleLabels[profile.cargo?.toLowerCase()] || profile.cargo || 'Colaborador';
+        }
+
+        if (initialsEl && profile.nome_completo) {
+            const names = profile.nome_completo.split(' ').filter(n => n.length > 2);
+            let initials = names.length >= 2 ? (names[0][0] + names[names.length - 1][0]).toUpperCase() : (names[0] ? names[0][0].toUpperCase() : "?");
+            initialsEl.innerText = initials;
+        }
+    },
+
     filterItemsByRole: function(items, role) {
-        return items.filter(item => item.roles.includes(role));
+        if (!items) return [];
+        return items.filter(item => item.roles && item.roles.includes(role));
     },
 
     injectStyles: function() {
@@ -117,25 +136,32 @@ const SidebarComponent = {
             if (window.supabaseClient) {
                 const { data: { user } } = await window.supabaseClient.auth.getUser();
                 if (user) {
-                    const { data: profile } = await window.supabaseClient.from('perfis').select('cargo').eq('id', user.id).maybeSingle();
-                    if (profile) userRole = profile.cargo?.toLowerCase() || 'professor';
+                    const { data: profile } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).maybeSingle();
+                    if (profile) {
+                        userRole = profile.cargo?.toLowerCase() || 'professor';
+                        this.updateUserUI(profile);
+                    }
                 }
             }
-        } catch (e) { console.warn("Erro ao buscar cargo.", e); }
+        } catch (e) { console.warn("Erro ao carregar perfil do utilizador.", e); }
 
         const activePage = window.location.pathname.split('/').pop();
         let navHTML = '';
 
         if (userRole === 'professor') {
-            const docenteItems = this.filterItemsByRole(this.menuItems.docente, userRole);
-            navHTML += this.buildSimpleCategory('Portal do Docente', docenteItems, activePage, prefix);
+            navHTML += this.buildSimpleCategory('Portal do Docente', this.filterItemsByRole(this.menuItems.docente, userRole), activePage, prefix);
+        } else if (userRole === 'secretaria' || userRole === 'inspetor') {
+            const items = [
+                ...this.filterItemsByRole(this.menuItems.principal, userRole),
+                ...this.filterItemsByRole(this.menuItems.pedagogico, userRole)
+            ];
+            navHTML += `<div class="py-4">` + items.map(i => this.buildLink(i, activePage, prefix)).join('') + `</div>`;
         } else if (userRole === 'orientador') {
-            const orientadorItems = this.filterItemsByRole(this.menuItems.orientador, userRole);
-            navHTML += this.buildSimpleCategory('Serviço de Orientação', orientadorItems, activePage, prefix);
-        } else if (userRole === 'secretaria') {
-            // RENDERIZAÇÃO LINEAR PARA SECRETARIA
-            const secretariaItems = this.filterItemsByRole(this.menuItems.secretaria, userRole);
-            navHTML += this.buildSimpleCategory('Secretaria Escolar', secretariaItems, activePage, prefix);
+             const items = [
+                ...this.filterItemsByRole(this.menuItems.principal, userRole),
+                ...this.filterItemsByRole(this.menuItems.pedagogico, userRole)
+            ];
+            navHTML += this.buildSimpleCategory('Serviço de Orientação', items, activePage, prefix);
         } else {
             const principalItems = this.filterItemsByRole(this.menuItems.principal, userRole);
             const admItems = this.filterItemsByRole(this.menuItems.administrativo, userRole);
@@ -151,7 +177,8 @@ const SidebarComponent = {
         container.innerHTML = `
             <div class="flex flex-col h-full overflow-hidden bg-[#003c5b]">
                 <div class="p-6 h-24 border-b border-white/5 flex items-center justify-center relative flex-shrink-0">
-                    <img src="${prefix}assets/logo-fmm-white.png" alt="FMM" class="logo-full h-10 object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+                    <img src="${prefix}assets/logo-fmm-white.png" alt="FMM" class="logo-full h-10 object-contain" 
+                         onerror="this.src='https://ui-avatars.com/api/?name=FMM&background=003c5b&color=fff&size=128'">
                     <div class="logo-short font-black text-2xl text-[#c8d400] hidden">M</div>
                     <button onclick="SidebarComponent.toggleSidebar()" class="absolute -right-3 top-20 bg-[#c8d400] text-[#003c5b] rounded-full p-1 shadow-lg hover:scale-110 transition-transform z-[60]">
                         <i id="sidebar-toggle-icon" data-lucide="chevron-left" class="w-4 h-4"></i>
@@ -185,7 +212,7 @@ const SidebarComponent = {
 
     buildAccordion: function(title, id, iconName, items, activePage, prefix) {
         if (!items || !items.length) return '';
-        const isActive = items.some(i => i.link.includes(activePage));
+        const isActive = items.some(i => i.link && i.link.includes(activePage));
         const contentClass = isActive ? 'category-content open' : 'category-content';
         const iconRotate = isActive ? 'rotate-180' : '';
         const initialHeight = isActive ? 'none' : '0';
@@ -207,13 +234,14 @@ const SidebarComponent = {
     },
 
     buildLink: function(item, activePage, prefix) {
-        const isActive = item.link.includes(activePage);
-        const activeClass = isActive ? 'sidebar-item-active text-white' : 'text-slate-400 hover:text-white hover:bg-white/5';
+        // Guard Clause: Verifica se item.link existe antes de chamar includes()
+        const isActive = item.link && item.link.includes(activePage);
+        const activeClass = isActive ? 'sidebar-item-active text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-white/5';
         
         return `
-            <a href="${prefix}${item.link}" class="sidebar-item flex items-center px-8 py-3 text-[13px] ${activeClass} transition-all relative">
+            <a href="${prefix}${item.link || '#'}" class="sidebar-item flex items-center px-8 py-3 text-[13px] ${activeClass} transition-all relative">
                 <i data-lucide="${item.icon}" class="w-4 h-4 flex-shrink-0 ${isActive ? 'text-[#c8d400]' : ''}"></i>
-                <span class="sidebar-text ml-3 font-medium">${item.label}</span>
+                <span class="sidebar-text ml-3">${item.label}</span>
                 ${item.badge ? `<span class="absolute right-4 w-2 h-2 rounded-full bg-red-500 sidebar-text"></span>` : ''}
             </a>
         `;
@@ -259,7 +287,7 @@ const SidebarComponent = {
     },
 
     logout: async function() {
-        if (confirm("Deseja realmente sair?")) {
+        if (confirm("Deseja realmente encerrar a sessão?")) {
             const prefix = this.getRelativePrefix();
             if (window.supabaseClient) await window.supabaseClient.auth.signOut();
             sessionStorage.clear();
@@ -292,7 +320,10 @@ const SidebarComponent = {
             const icon = document.getElementById(`icon-${id}`);
             if (!content) return;
 
-            const hasActivePage = Array.from(content.querySelectorAll('a')).some(a => a.getAttribute('href').includes(activePage));
+            const hasActivePage = Array.from(content.querySelectorAll('a')).some(a => {
+                const href = a.getAttribute('href');
+                return href && href.includes(activePage);
+            });
             
             if (hasActivePage || state[id]) {
                 content.classList.add('open');
@@ -301,7 +332,6 @@ const SidebarComponent = {
             } else {
                 content.classList.remove('open');
                 content.style.maxHeight = '0';
-                if (icon) icon.classList.remove('rotate-180');
             }
         });
         
