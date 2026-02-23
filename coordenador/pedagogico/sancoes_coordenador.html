@@ -89,8 +89,24 @@
                 </div>
 
                 <div class="flex items-center gap-3 flex-1 justify-end">
-                    <select id="turmaFilter" onchange="handleTurmaFilter(this.value)" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-xs font-bold text-fmm-dark uppercase">
+                    <select id="turmaFilter" onchange="handleTurmaFilter(this.value)" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-xs font-bold text-fmm-dark uppercase cursor-pointer">
                         <option value="">Todas as Turmas</option>
+                    </select>
+
+                    <select id="sancaoFilter" onchange="handleSancaoFilter(this.value)" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-xs font-bold text-fmm-dark uppercase cursor-pointer">
+                        <option value="">Filtro de Sanções</option>
+                        <option value="1-1">1 Notificação</option>
+                        <option value="2-1">2 Notificações</option>
+                        <option value="3-1">3 Notificações</option>
+                        <option value="1-2">1 Adv. Verbal</option>
+                        <option value="2-2">2 Adv. Verbais</option>
+                        <option value="3-2">3 Adv. Verbais</option>
+                        <option value="1-3">1 Adv. Escrita</option>
+                        <option value="2-3">2 Adv. Escritas</option>
+                        <option value="3-3">3 Adv. Escritas</option>
+                        <option value="1-4">1 Suspensão</option>
+                        <option value="2-4">2 Suspensões</option>
+                        <option value="3-4">3 Suspensões</option>
                     </select>
 
                     <button onclick="toggleAlertFilter()" id="btnAlertFilter" class="relative p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl transition-all group" title="Alunos com chamados pendentes">
@@ -306,7 +322,7 @@
         const INFRACTIONS = Object.keys(INFRACTIONS_MAP);
 
         let currentUser = null, allStudents = [], allSancoes = [], allChamados = [], allTurmas = [];
-        let isFilterActive = false, selectedTurma = '';
+        let isFilterActive = false, selectedTurma = '', selectedSancaoFilter = '';
         let currentCallData = null, currentStudent = null, editingSanctionId = null;
 
         function formatDriveUrl(url) {
@@ -345,24 +361,54 @@
             await loadData();
         }
 
+        // ✅ Bypass do limite ~1000 por request no Supabase: paginação real com range()
+        async function fetchAllRows(table, selectStr, pageSize = 1000) {
+            let from = 0;
+            let all = [];
+
+            while (true) {
+                const { data, error } = await window.supabaseClient
+                    .from(table)
+                    .select(selectStr)
+                    .range(from, from + pageSize - 1);
+
+                if (error) throw error;
+
+                const batch = data || [];
+                all = all.concat(batch);
+
+                if (batch.length < pageSize) break; // terminou
+                from += pageSize;
+            }
+
+            return all;
+        }
+
         async function loadData() {
             document.getElementById('loadingState').classList.remove('hidden');
-            
-            const [alunos, sancoes, chamados, turmas] = await Promise.all([
-                window.supabaseClient.from('alunos').select('*, turmas(nome)'),
-                window.supabaseClient.from('sancoes_disciplinares').select('*'),
-                window.supabaseClient.from('chamados_inspetoria').select('*, perfis:inspetor_id(nome_completo)').eq('status', 'Pendente'),
-                window.supabaseClient.from('turmas').select('*').order('nome')
-            ]);
 
-            allStudents = alunos.data || [];
-            allSancoes = sancoes.data || [];
-            allChamados = chamados.data || [];
-            allTurmas = turmas.data || [];
+            try {
+                // ✅ Carrega TODOS os 1500+ alunos (sem corte do limite padrão)
+                const alunosData = await fetchAllRows('alunos', '*, turmas(nome)', 1000);
 
-            populateTurmaFilter();
-            renderGrid();
-            document.getElementById('loadingState').classList.add('hidden');
+                const [sancoes, chamados, turmas] = await Promise.all([
+                    window.supabaseClient.from('sancoes_disciplinares').select('*').limit(10000),
+                    window.supabaseClient.from('chamados_inspetoria').select('*, perfis:inspetor_id(nome_completo)').eq('status', 'Pendente').limit(2000),
+                    window.supabaseClient.from('turmas').select('*').order('nome')
+                ]);
+
+                allStudents = alunosData || [];
+                allSancoes = sancoes.data || [];
+                allChamados = chamados.data || [];
+                allTurmas = turmas.data || [];
+
+                populateTurmaFilter();
+                renderGrid();
+            } catch (err) {
+                alert("Erro ao carregar dados: " + (err?.message || err));
+            } finally {
+                document.getElementById('loadingState').classList.add('hidden');
+            }
         }
 
         function populateTurmaFilter() {
@@ -402,7 +448,17 @@
             let filtered = allStudents.filter(s => {
                 const searchMatch = s.nome_completo.toLowerCase().includes(filterVal.toLowerCase()) || s.ra.includes(filterVal);
                 const turmaMatch = selectedTurma === '' || s.id_turma === selectedTurma;
-                return searchMatch && turmaMatch;
+                
+                // TASK: Lógica do filtro de quantidade de sanções
+                let sancaoMatch = true;
+                if (selectedSancaoFilter !== '') {
+                    const [qty, level] = selectedSancaoFilter.split('-');
+                    const studentHistory = allSancoes.filter(sc => sc.ra_aluno === s.ra);
+                    const count = getTotalCount(studentHistory, parseInt(level));
+                    sancaoMatch = count === parseInt(qty);
+                }
+                
+                return searchMatch && turmaMatch && sancaoMatch;
             });
 
             filtered.forEach(s => {
@@ -413,11 +469,20 @@
 
             if (isFilterActive) filtered = filtered.filter(s => s._hasPendingCall);
 
-            filtered.sort((a, b) => {
-                if (b._hasPendingCall !== a._hasPendingCall) return b._hasPendingCall - a._hasPendingCall;
-                return b._disciplineScore - a._disciplineScore;
-            }).slice(0, 40)
-            .forEach(s => {
+            // TASK: Ajustar ordenação e limite baseado nos filtros ativos (Turma, Sanção ou Busca)
+            if (selectedTurma !== '' || selectedSancaoFilter !== '' || filterVal !== '') {
+                // Se houver filtro ativo: Ordem Alfabética e mostra TODOS os correspondentes
+                filtered.sort((a, b) => a.nome_completo.localeCompare(b.nome_completo));
+            } else {
+                // Se não houver filtro: Mantém comportamento original de prioridade limitado aos 40 primeiros
+                filtered.sort((a, b) => {
+                    if (b._hasPendingCall !== a._hasPendingCall) return b._hasPendingCall - a._hasPendingCall;
+                    return b._disciplineScore - a._disciplineScore;
+                });
+                filtered = filtered.slice(0, 40);
+            }
+
+            filtered.forEach(s => {
                 const history = allSancoes.filter(sc => sc.ra_aluno === s.ra);
                 const avatar = formatDriveUrl(s.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=random&size=256&color=fff&bold=true`;
                 const turmaNome = s.turmas?.nome || 'FMM';
@@ -793,6 +858,7 @@
         function toggleAlertFilter() { isFilterActive = !isFilterActive; renderGrid(); }
         function handleSearch(val) { renderGrid(val); }
         function handleTurmaFilter(val) { selectedTurma = val; renderGrid(); }
+        function handleSancaoFilter(val) { selectedSancaoFilter = val; renderGrid(); }
         
         window.onload = init;
     </script>
