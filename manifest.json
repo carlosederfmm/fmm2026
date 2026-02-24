@@ -2,20 +2,20 @@
   "name": "SME FMM 2026",
   "short_name": "SME FMM",
   "description": "Sistema de Gestão Escolar - Fundação Matias Machline",
-  "start_url": "/index.html",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#003c5b",
   "theme_color": "#003c5b",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "assets/logo-fmm-color.png",
+      "src": "assets/icon_fmm.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "assets/logo-fmm-color.png",
+      "src": "assets/icon_fmm.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

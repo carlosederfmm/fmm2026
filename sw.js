@@ -1,10 +1,10 @@
 const CACHE_NAME = 'fmm-sme-v1';
 const ASSETS_TO_CACHE = [
   '/',
-  '/index.html',
+  'index.html',
   '/sidebar.js',
   '/assets/js/supabase_client.js',
-  '/assets/logo-fmm-white.png',
+  '/assets/icon_fmm.png',
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap'
 ];
 
