@@ -195,7 +195,6 @@ const SidebarComponent = {
     },
 
     render: async function(containerId) {
-        // Injetar estilos uma única vez
         if (!document.getElementById('sidebar-dynamic-styles')) {
             const styleTag = document.createElement('style');
             styleTag.id = 'sidebar-dynamic-styles';
@@ -208,7 +207,6 @@ const SidebarComponent = {
         if (!container) return;
 
         let userRole = 'professor'; 
-        let userProfile = null;
 
         try {
             if (window.supabaseClient) {
@@ -217,16 +215,14 @@ const SidebarComponent = {
                     const { data } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).maybeSingle();
                     if (data) {
                         userRole = data.cargo?.toLowerCase() || 'professor';
-                        userProfile = data;
                         this.updateUserUI(data);
                     }
                 }
             }
-        } catch (e) { console.warn("Supabase fetch failed, defaulting to professor role."); }
+        } catch (e) { console.warn("Supabase fetch failed."); }
 
         const activePage = window.location.pathname.split('/').pop();
         
-        // --- 1. RENDER DESKTOP SIDEBAR ---
         let navHTML = '';
         if (userRole === 'professor') {
             navHTML += this.buildSimpleCategory('Portal do Docente', this.filterItemsByRole(this.menuItems.docente, userRole), activePage, prefix);
@@ -258,8 +254,6 @@ const SidebarComponent = {
             </div>
         `;
 
-        // --- 2. RENDER MOBILE NAVIGATION (PWA SAFE) ---
-        // Prevenir duplicação se a função for chamada múltiplas vezes
         const existingNav = document.querySelector('.bottom-nav');
         const existingHub = document.getElementById('mobile-menu-hub');
         if (existingNav) existingNav.remove();
@@ -271,26 +265,14 @@ const SidebarComponent = {
         
         let bottomHTML = config.map(item => {
             const isActive = activePage && item.link.includes(activePage);
-            return `
-                <a href="${prefix}${item.link}" class="nav-item ${isActive ? 'active' : ''}">
-                    <i data-lucide="${item.icon}"></i>
-                    <span>${item.label}</span>
-                </a>
-            `;
+            return `<a href="${prefix}${item.link}" class="nav-item ${isActive ? 'active' : ''}"><i data-lucide="${item.icon}"></i><span>${item.label}</span></a>`;
         }).join('');
 
-        bottomHTML += `
-            <button onclick="SidebarComponent.toggleMobileHub()" class="nav-item">
-                <i data-lucide="more-horizontal"></i>
-                <span>Menu</span>
-            </button>
-        `;
-
+        bottomHTML += `<button onclick="SidebarComponent.toggleMobileHub()" class="nav-item"><i data-lucide="more-horizontal"></i><span>Menu</span></button>`;
         bottomNav.innerHTML = bottomHTML;
         document.body.appendChild(bottomNav);
         document.body.classList.add('mobile-nav-active');
 
-        // --- 3. RENDER MOBILE HUB MENU (PWA SAFE) ---
         const hub = document.createElement('div');
         hub.id = 'mobile-menu-hub';
         hub.innerHTML = `
@@ -299,72 +281,35 @@ const SidebarComponent = {
                 <button onclick="SidebarComponent.toggleMobileHub()" class="p-2 text-white/50"><i data-lucide="x" class="w-8 h-8"></i></button>
             </div>
             <div class="flex-1 p-6 space-y-8 custom-scrollbar">
-                <div class="grid grid-cols-2 gap-4">
-                    ${this.getAllItemsForRole(userRole).map(item => `
-                        <a href="${prefix}${item.link}" class="bg-white/5 p-4 rounded-3xl flex flex-col items-center gap-3 text-center transition-active">
-                            <div class="w-12 h-12 bg-[#c8d400]/10 rounded-2xl flex items-center justify-center text-[#c8d400]">
-                                <i data-lucide="${item.icon}" class="w-6 h-6"></i>
-                            </div>
-                            <span class="text-[10px] font-black text-white uppercase tracking-widest">${item.label}</span>
-                        </a>
-                    `).join('')}
-                </div>
-                <button onclick="SidebarComponent.logout()" class="w-full py-4 bg-red-500/20 text-red-400 rounded-3xl font-black uppercase text-xs tracking-[0.2em] flex items-center justify-center gap-2">
-                    <i data-lucide="log-out" class="w-4 h-4"></i> Encerrar Sessão
-                </button>
-            </div>
-        `;
+                <div class="grid grid-cols-2 gap-4">${this.getAllItemsForRole(userRole).map(item => `<a href="${prefix}${item.link}" class="bg-white/5 p-4 rounded-3xl flex flex-col items-center gap-3 text-center transition-active"><div class="w-12 h-12 bg-[#c8d400]/10 rounded-2xl flex items-center justify-center text-[#c8d400]"><i data-lucide="${item.icon}" class="w-6 h-6"></i></div><span class="text-[10px] font-black text-white uppercase tracking-widest">${item.label}</span></a>`).join('')}</div>
+                <button onclick="SidebarComponent.logout()" class="w-full py-4 bg-red-500/20 text-red-400 rounded-3xl font-black uppercase text-xs tracking-[0.2em] flex items-center justify-center gap-2"><i data-lucide="log-out" class="w-4 h-4"></i> Encerrar Sessão</button>
+            </div>`;
         document.body.appendChild(hub);
-
         if (window.lucide) lucide.createIcons();
     },
 
     getAllItemsForRole: function(role) {
         let items = [];
-        Object.values(this.menuItems).forEach(cat => {
-            items = items.concat(cat.filter(i => i.roles && i.roles.includes(role)));
-        });
-        // Remover duplicatas por link
+        Object.values(this.menuItems).forEach(cat => { items = items.concat(cat.filter(i => i.roles && i.roles.includes(role))); });
         return items.filter((v, i, a) => a.findIndex(t => (t.link === v.link)) === i);
     },
 
-    filterItemsByRole: function(items, role) {
-        return items ? items.filter(item => item.roles && item.roles.includes(role)) : [];
-    },
+    filterItemsByRole: function(items, role) { return items ? items.filter(item => item.roles && item.roles.includes(role)) : []; },
 
     buildLink: function(item, activePage, prefix) {
         const isActive = activePage && item.link && item.link.includes(activePage);
         const activeClass = isActive ? 'sidebar-item-active text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-white/5';
-        return `
-            <a href="${prefix}${item.link || '#'}" class="sidebar-item flex items-center px-8 py-3 text-[13px] ${activeClass} transition-all relative">
-                <i data-lucide="${item.icon}" class="w-4 h-4 flex-shrink-0 ${isActive ? 'text-[#c8d400]' : ''}"></i>
-                <span class="sidebar-text ml-3">${item.label}</span>
-            </a>
-        `;
+        return `<a href="${prefix}${item.link || '#'}" class="sidebar-item flex items-center px-8 py-3 text-[13px] ${activeClass} transition-all relative"><i data-lucide="${item.icon}" class="w-4 h-4 flex-shrink-0 ${isActive ? 'text-[#c8d400]' : ''}"></i><span class="sidebar-text ml-3">${item.label}</span></a>`;
     },
 
     buildAccordion: function(title, id, iconName, items, activePage, prefix) {
         if (!items.length) return '';
         const isActive = activePage && items.some(i => i.link.includes(activePage));
-        return `
-            <div class="category-group border-b border-white/5">
-                <button onclick="SidebarComponent.toggleCategory('${id}')" class="w-full flex items-center justify-between px-6 py-4 hover:bg-white/5 group text-left">
-                    <div class="flex items-center gap-3">
-                        <i data-lucide="${iconName}" class="w-4 h-4 text-slate-400 group-hover:text-white"></i>
-                        <span class="sidebar-text text-[10px] font-black text-slate-300 uppercase tracking-widest">${title}</span>
-                    </div>
-                    <i data-lucide="chevron-down" class="chevron-icon w-3.5 h-3.5 text-slate-500 ${isActive ? 'rotate-180' : ''}" id="icon-${id}"></i>
-                </button>
-                <div id="${id}" class="category-content ${isActive ? 'open' : ''}" style="max-height: ${isActive ? 'none' : '0'}">
-                    ${items.map(item => this.buildLink(item, activePage, prefix)).join('')}
-                </div>
-            </div>
-        `;
+        return `<div class="category-group border-b border-white/5"><button onclick="SidebarComponent.toggleCategory('${id}')" class="w-full flex items-center justify-between px-6 py-4 hover:bg-white/5 group text-left"><div class="flex items-center gap-3"><i data-lucide="${iconName}" class="w-4 h-4 text-slate-400 group-hover:text-white"></i><span class="sidebar-text text-[10px] font-black text-slate-300 uppercase tracking-widest">${title}</span></div><i data-lucide="chevron-down" class="chevron-icon w-3.5 h-3.5 text-slate-500 ${isActive ? 'rotate-180' : ''}" id="icon-${id}"></i></button><div id="${id}" class="category-content ${isActive ? 'open' : ''}" style="max-height: ${isActive ? 'none' : '0'}">${items.map(item => this.buildLink(item, activePage, prefix)).join('')}</div></div>`;
     },
 
     toggleCategory: function(id) {
-        const target = document.getElementById(id);
-        const icon = document.getElementById(`icon-${id}`);
+        const target = document.getElementById(id), icon = document.getElementById(`icon-${id}`);
         if (!target) return;
         const isOpen = target.classList.contains('open');
         target.classList.toggle('open');
@@ -374,14 +319,9 @@ const SidebarComponent = {
 
     toggleSidebar: function() {
         document.body.classList.toggle('sidebar-collapsed');
-        const isCollapsed = document.body.classList.contains('sidebar-collapsed');
-        const icon = document.getElementById('sidebar-toggle-icon');
-        const sidebar = document.getElementById('sidebar-container');
+        const isCollapsed = document.body.classList.contains('sidebar-collapsed'), icon = document.getElementById('sidebar-toggle-icon'), sidebar = document.getElementById('sidebar-container');
         if (sidebar) sidebar.style.width = isCollapsed ? '80px' : '288px';
-        if (icon) {
-            icon.setAttribute('data-lucide', isCollapsed ? 'chevron-right' : 'chevron-left');
-            lucide.createIcons();
-        }
+        if (icon) { icon.setAttribute('data-lucide', isCollapsed ? 'chevron-right' : 'chevron-left'); lucide.createIcons(); }
     },
 
     toggleMobileHub: function() {
