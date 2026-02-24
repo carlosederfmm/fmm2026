@@ -1,6 +1,6 @@
 /**
- * Componente de Sidebar Reutilizável SME FMM 2026 - Versão 4.1 (PWA Bottom Nav)
- * Mobile: Bottom Navigation Bar + Hub Menu
+ * Componente de Sidebar Reutilizável SME FMM 2026 - Versão 4.2 (PWA Stable)
+ * Mobile: Bottom Navigation Bar + Hub Menu (Anti-duplication)
  * Desktop: Sidebar Clássica
  */
 const SidebarComponent = {
@@ -51,10 +51,11 @@ const SidebarComponent = {
             background: none;
             border: none;
             cursor: pointer;
+            text-decoration: none;
         }
 
         .nav-item.active { color: #00638f; }
-        .nav-item i { width: 20px; height: 20px; }
+        .nav-item i, .nav-item svg { width: 20px; height: 20px; }
 
         /* Full Screen Menu Hub (PWA Style) */
         #mobile-menu-hub {
@@ -74,9 +75,10 @@ const SidebarComponent = {
         .category-content { overflow: hidden; transition: max-height 0.3s ease-out; background: rgba(0,0,0,0.05); }
         .category-content.open { max-height: 1000px; }
         .sidebar-item-active { background-color: rgba(255, 255, 255, 0.08); border-right: 4px solid #c8d400; color: #ffffff !important; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
     `,
 
-    // Mapeamento de itens principais para o Bottom Nav (por cargo)
     bottomNavConfig: {
         'coordenador': [
             { label: 'Início', icon: 'home', link: 'coordenador/principal/dashboard_coordenador.html' },
@@ -156,7 +158,44 @@ const SidebarComponent = {
         return './';
     },
 
+    updateUserUI: function(profile) {
+        if (!profile) return;
+        const nameEl = document.getElementById('userName');
+        const roleEl = document.getElementById('userRoleLabel');
+        const initialsEl = document.getElementById('userInitials');
+
+        if (nameEl) nameEl.innerText = profile.nome_completo || 'Utilizador';
+        if (roleEl) {
+            const roleLabels = {
+                'diretor': 'Diretor Académico',
+                'coordenador': 'Coordenador Académico',
+                'orientador': 'Orientador Pedagógico',
+                'professor': 'Docente',
+                'secretaria': 'Secretaria Académica',
+                'inspetor': 'Inspetor de Alunos'
+            };
+            roleEl.innerText = roleLabels[profile.cargo?.toLowerCase()] || profile.cargo || 'Colaborador';
+        }
+
+        if (initialsEl && profile.nome_completo) {
+            const names = profile.nome_completo.split(' ').filter(n => n.length > 2);
+            let initials = names.length >= 2 ? (names[0][0] + names[names.length - 1][0]).toUpperCase() : (names[0] ? names[0][0].toUpperCase() : "?");
+            initialsEl.innerText = initials;
+        }
+    },
+
+    buildSimpleCategory: function(title, items, activePage, prefix) {
+        if (!items || !items.length) return '';
+        return `
+            <div class="mb-6">
+                <p class="sidebar-category px-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3 sidebar-text">${title}</p>
+                ${items.map(item => this.buildLink(item, activePage, prefix)).join('')}
+            </div>
+        `;
+    },
+
     render: async function(containerId) {
+        // Injetar estilos uma única vez
         if (!document.getElementById('sidebar-dynamic-styles')) {
             const styleTag = document.createElement('style');
             styleTag.id = 'sidebar-dynamic-styles';
@@ -179,10 +218,11 @@ const SidebarComponent = {
                     if (data) {
                         userRole = data.cargo?.toLowerCase() || 'professor';
                         userProfile = data;
+                        this.updateUserUI(data);
                     }
                 }
             }
-        } catch (e) { console.warn(e); }
+        } catch (e) { console.warn("Supabase fetch failed, defaulting to professor role."); }
 
         const activePage = window.location.pathname.split('/').pop();
         
@@ -218,13 +258,19 @@ const SidebarComponent = {
             </div>
         `;
 
-        // --- 2. RENDER MOBILE BOTTOM NAV ---
+        // --- 2. RENDER MOBILE NAVIGATION (PWA SAFE) ---
+        // Prevenir duplicação se a função for chamada múltiplas vezes
+        const existingNav = document.querySelector('.bottom-nav');
+        const existingHub = document.getElementById('mobile-menu-hub');
+        if (existingNav) existingNav.remove();
+        if (existingHub) existingHub.remove();
+
         const config = this.bottomNavConfig[userRole] || this.bottomNavConfig['professor'];
         const bottomNav = document.createElement('div');
         bottomNav.className = 'bottom-nav';
         
         let bottomHTML = config.map(item => {
-            const isActive = item.link.includes(activePage);
+            const isActive = activePage && item.link.includes(activePage);
             return `
                 <a href="${prefix}${item.link}" class="nav-item ${isActive ? 'active' : ''}">
                     <i data-lucide="${item.icon}"></i>
@@ -244,7 +290,7 @@ const SidebarComponent = {
         document.body.appendChild(bottomNav);
         document.body.classList.add('mobile-nav-active');
 
-        // --- 3. RENDER MOBILE HUB MENU ---
+        // --- 3. RENDER MOBILE HUB MENU (PWA SAFE) ---
         const hub = document.createElement('div');
         hub.id = 'mobile-menu-hub';
         hub.innerHTML = `
@@ -276,7 +322,7 @@ const SidebarComponent = {
     getAllItemsForRole: function(role) {
         let items = [];
         Object.values(this.menuItems).forEach(cat => {
-            items = items.concat(cat.filter(i => i.roles.includes(role)));
+            items = items.concat(cat.filter(i => i.roles && i.roles.includes(role)));
         });
         // Remover duplicatas por link
         return items.filter((v, i, a) => a.findIndex(t => (t.link === v.link)) === i);
@@ -287,7 +333,7 @@ const SidebarComponent = {
     },
 
     buildLink: function(item, activePage, prefix) {
-        const isActive = item.link && item.link.includes(activePage);
+        const isActive = activePage && item.link && item.link.includes(activePage);
         const activeClass = isActive ? 'sidebar-item-active text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-white/5';
         return `
             <a href="${prefix}${item.link || '#'}" class="sidebar-item flex items-center px-8 py-3 text-[13px] ${activeClass} transition-all relative">
@@ -299,7 +345,7 @@ const SidebarComponent = {
 
     buildAccordion: function(title, id, iconName, items, activePage, prefix) {
         if (!items.length) return '';
-        const isActive = items.some(i => i.link.includes(activePage));
+        const isActive = activePage && items.some(i => i.link.includes(activePage));
         return `
             <div class="category-group border-b border-white/5">
                 <button onclick="SidebarComponent.toggleCategory('${id}')" class="w-full flex items-center justify-between px-6 py-4 hover:bg-white/5 group text-left">
@@ -339,7 +385,8 @@ const SidebarComponent = {
     },
 
     toggleMobileHub: function() {
-        document.getElementById('mobile-menu-hub').classList.toggle('open');
+        const hub = document.getElementById('mobile-menu-hub');
+        if (hub) hub.classList.toggle('open');
         if (window.lucide) lucide.createIcons();
     },
 
@@ -350,7 +397,7 @@ const SidebarComponent = {
         }
     },
 
-    restoreSidebarState: function() {} // Simplificado para evitar conflito com mobile
+    restoreSidebarState: function() {} 
 };
 
 window.SidebarComponent = SidebarComponent;
