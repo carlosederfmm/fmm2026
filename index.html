@@ -1,21 +1,31 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" class="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SME FMM | Acesso ao Sistema</title>
     
+    <!-- Meta Tags PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#003c5b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SME FMM">
+    <link rel="apple-touch-icon" href="assets/logo-fmm-color.png">
+
     <!-- Bibliotecas -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
 
     <!-- Infraestrutura SME FMM -->
     <script src="assets/js/supabase_client.js"></script>
 
     <script>
         tailwind.config = {
+            darkMode: "class",
             theme: {
                 extend: {
                     colors: {
@@ -25,15 +35,27 @@
                             green: '#80a51b',
                             lime: '#c8d400',
                             bg: '#f8fafc'
-                        }
-                    }
+                        },
+                        primary: "#00638f",
+                        secondary: "#003d5b",
+                        "background-light": "#f1f4f6",
+                        "background-dark": "#0f172a",
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.75rem",
+                        'xl': '1rem',
+                        '3xl': '2.5rem',
+                        '40': '2.5rem',
+                    },
                 }
             }
         }
     </script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        /* Estilos Desktop */
         .glass-effect {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(12px);
@@ -44,81 +66,151 @@
         }
         .animate-slide-up { animation: slideUp 0.4s ease-out forwards; }
         
+        /* Estilos Mobile */
+        .ios-notch { height: env(safe-area-inset-top); }
+        .mobile-height { min-height: max(884px, 100dvh); }
+        
+        /* Ajuste do Toast para PWA */
+        #toast {
+            bottom: calc(2rem + env(safe-area-inset-bottom));
+        }
+
         input:focus {
             box-shadow: 0 0 0 4px rgba(0, 99, 143, 0.1);
         }
 
-        /* Estilo customizado para o checkbox */
         input[type="checkbox"] {
             cursor: pointer;
             accent-color: #00638f;
         }
     </style>
 </head>
-<body class="bg-fmm-dark min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-    
-    <!-- Elementos Decorativos de Fundo -->
-    <div class="absolute top-0 left-0 w-[600px] h-[600px] bg-fmm-blue rounded-full filter blur-[120px] opacity-20 -translate-x-1/2 -translate-y-1/2"></div>
-    <div class="absolute bottom-0 right-0 w-[500px] h-[500px] bg-fmm-lime rounded-full filter blur-[120px] opacity-10 translate-x-1/2 translate-y-1/2"></div>
+<body class="antialiased">
 
-    <div class="w-full max-w-md z-10 animate-slide-up">
-        <div class="glass-effect p-10 rounded-[40px] shadow-2xl border border-white/20">
-            
-            <!-- Logo e Título -->
-            <div class="flex flex-col items-center mb-10">
-                <div class="bg-fmm-dark p-4 rounded-3xl mb-4 shadow-xl border border-white/5">
-                    <img src="assets/logo-fmm-white.png" alt="FMM Logo" class="h-10" onerror="this.src='https://ui-avatars.com/api/?name=FMM&background=003c5b&color=fff&size=128'">
-                </div>
-                <h1 class="text-2xl font-bold text-fmm-dark tracking-tight">Bem-vindo de volta</h1>
-                <p class="text-slate-500 text-sm font-medium mt-1">SME Matias Machline 2026</p>
-            </div>
+    <!-- ==========================================
+         VIEWPORT DESKTOP (md:flex)
+         ========================================== -->
+    <div id="desktop-container" class="hidden md:flex bg-fmm-dark min-h-screen items-center justify-center p-4 relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-[600px] h-[600px] bg-fmm-blue rounded-full filter blur-[120px] opacity-20 -translate-x-1/2 -translate-y-1/2"></div>
+        <div class="absolute bottom-0 right-0 w-[500px] h-[500px] bg-fmm-lime rounded-full filter blur-[120px] opacity-10 translate-x-1/2 translate-y-1/2"></div>
 
-            <!-- Formulário de Login -->
-            <form id="loginForm" class="space-y-5">
-                <div class="space-y-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">E-mail Institucional</label>
-                    <div class="relative group">
-                        <i data-lucide="mail" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
-                        <input type="email" id="loginEmail" required placeholder="usuario@fmm.org.br" 
-                               class="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-fmm-blue transition-all font-medium">
+        <div class="w-full max-w-md z-10 animate-slide-up">
+            <div class="glass-effect p-10 rounded-[40px] shadow-2xl border border-white/20">
+                <div class="flex flex-col items-center mb-10">
+                    <div class="bg-fmm-dark p-4 rounded-3xl mb-4 shadow-xl border border-white/5">
+                        <img src="assets/logo-fmm-white.png" alt="FMM Logo" class="h-10" onerror="this.src='https://ui-avatars.com/api/?name=FMM&background=003c5b&color=fff&size=128'">
                     </div>
+                    <h1 class="text-2xl font-bold text-fmm-dark tracking-tight">Bem-vindo de volta</h1>
+                    <p class="text-slate-500 text-sm font-medium mt-1">SME Matias Machline 2026</p>
                 </div>
 
-                <div class="space-y-2">
-                    <div class="flex justify-between items-center px-2">
-                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Senha de Acesso</label>
-                        <a href="#" class="text-[10px] font-black text-fmm-blue uppercase tracking-widest hover:underline">Esqueci a senha</a>
+                <form id="loginFormDesktop" class="space-y-5">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">E-mail Institucional</label>
+                        <div class="relative group">
+                            <i data-lucide="mail" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
+                            <input type="email" id="loginEmail" required placeholder="usuario@fmm.org.br" 
+                                   class="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-fmm-blue transition-all font-medium">
+                        </div>
                     </div>
-                    <div class="relative group">
-                        <i data-lucide="lock" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
-                        <input type="password" id="loginPassword" required placeholder="••••••••" 
-                               class="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-fmm-blue transition-all font-medium">
+
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center px-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Senha de Acesso</label>
+                            <a href="#" class="text-[10px] font-black text-fmm-blue uppercase tracking-widest hover:underline">Esqueci a senha</a>
+                        </div>
+                        <div class="relative group">
+                            <i data-lucide="lock" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
+                            <input type="password" id="loginPassword" required placeholder="••••••••" 
+                                   class="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-fmm-blue transition-all font-medium">
+                        </div>
                     </div>
+
+                    <div class="flex items-center justify-between px-2">
+                        <label class="flex items-center gap-2 cursor-pointer group">
+                            <input type="checkbox" id="keepConnected" class="w-4 h-4 rounded border-slate-200 text-fmm-blue focus:ring-fmm-blue transition-all">
+                            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wide group-hover:text-slate-600 transition-colors">Manter conectado</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" id="submitBtnDesktop" class="w-full bg-fmm-blue hover:bg-fmm-dark text-white py-4 rounded-2xl font-bold text-sm shadow-xl shadow-fmm-blue/20 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 mt-4">
+                        <span>Entrar no Sistema</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </form>
+
+                <div class="mt-8 pt-6 border-t border-slate-100 text-center">
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Acesso Restrito a Colaboradores</p>
                 </div>
-
-                <div class="flex items-center justify-between px-2">
-                    <label class="flex items-center gap-2 cursor-pointer group">
-                        <input type="checkbox" id="keepConnected" class="w-4 h-4 rounded border-slate-200 text-fmm-blue focus:ring-fmm-blue transition-all">
-                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wide group-hover:text-slate-600 transition-colors">Manter conectado</span>
-                    </label>
-                </div>
-
-                <button type="submit" id="submitBtn" class="w-full bg-fmm-blue hover:bg-fmm-dark text-white py-4 rounded-2xl font-bold text-sm shadow-xl shadow-fmm-blue/20 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 mt-4">
-                    <span>Entrar no Sistema</span>
-                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                </button>
-            </form>
-
-            <div class="mt-8 pt-6 border-t border-slate-100 text-center">
-                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Acesso Restrito a Colaboradores</p>
             </div>
         </div>
     </div>
 
-    <!-- Toast de Notificação -->
-    <div id="toast" class="hidden fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-slate-900 text-white p-5 rounded-3xl shadow-2xl flex items-center gap-4 animate-slide-up z-50 border border-white/10">
+    <!-- ==========================================
+         VIEWPORT MOBILE (block md:hidden)
+         ========================================== -->
+    <div id="mobile-container" class="block md:hidden bg-white dark:bg-background-dark text-slate-900 dark:text-white mobile-height">
+        <div class="max-w-md mx-auto min-h-screen relative flex flex-col overflow-hidden bg-background-light dark:bg-slate-950">
+            <div class="relative w-full h-[45vh] overflow-hidden">
+                <img alt="tela_inicial" class="w-full h-full object-cover" src="assets/tela_inicial.JPG"/>
+                <div class="absolute inset-0 bg-black/10"></div>
+            </div>
+            <div class="relative -mt-12 flex-1 bg-background-light dark:bg-slate-900 rounded-t-[40px] px-8 pt-8 pb-10 shadow-2xl flex flex-col items-center">
+                <div class="bg-secondary rounded-2xl px-6 py-3 mb-8 flex items-center justify-center gap-3">
+                    <img alt="Logo FMM" class="h-8" src="assets/logo-fmm-white.png"/>
+                </div>
+                <div class="text-center mb-8">
+                    <h1 class="text-secondary dark:text-blue-400 text-3xl font-bold mb-1">Bem-vindo de Volta</h1>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm">Acesse sua conta institucional</p>
+                </div>
+                <form id="loginFormMobile" class="w-full space-y-5">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1.5 ml-1 tracking-widest uppercase">
+                            E-mail Institucional
+                        </label>
+                        <div class="relative">
+                            <span class="material-icons-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xl">mail_outline</span>
+                            <input id="mobileEmail" class="w-full h-14 pl-12 pr-4 bg-white dark:bg-slate-800 border-none rounded-xl text-slate-700 dark:text-slate-200 placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:ring-2 focus:ring-primary shadow-sm" placeholder="usuario@fmm.org.br" type="email" required/>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-1.5 ml-1">
+                            <label class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-widest uppercase">
+                                Senha
+                            </label>
+                            <a class="text-[10px] font-bold text-primary dark:text-blue-400 tracking-tight hover:underline" href="#">
+                                Recuperar Senha
+                            </a>
+                        </div>
+                        <div class="relative">
+                            <span class="material-icons-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xl">lock_open</span>
+                            <input id="mobilePassword" class="w-full h-14 pl-12 pr-4 bg-white dark:bg-slate-800 border-none rounded-xl text-slate-700 dark:text-slate-200 placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:ring-2 focus:ring-primary shadow-sm" placeholder="digite sua senha" type="password" required/>
+                        </div>
+                    </div>
+                    <button id="submitBtnMobile" class="w-full h-14 bg-primary hover:bg-secondary text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-primary/20 mt-4" type="submit">
+                        <span>Acessar Sistema</span>
+                        <span class="material-icons-outlined text-xl">login</span>
+                    </button>
+                </form>
+                <div class="mt-auto pt-10 text-center space-y-2">
+                    <p class="text-[11px] font-semibold text-slate-400 dark:text-slate-600 tracking-widest uppercase">
+                        Acesso restrito ao staff acadêmico
+                    </p>
+                    <div class="space-y-0.5">
+                        <p class="text-[10px] text-slate-400/80 dark:text-slate-700">Sistema de Gestão Escolar © FMM 2026</p>
+                        <p class="text-[10px] text-slate-400/80 dark:text-slate-700">Equipe de Inteligência Educacional</p>
+                    </div>
+                </div>
+            </div>
+            <div class="h-1.5 w-32 bg-slate-300 dark:bg-slate-700 mx-auto rounded-full mb-2"></div>
+        </div>
+    </div>
+
+    <!-- Toast de Notificação (Global) -->
+    <div id="toast" class="hidden fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-slate-900 text-white p-5 rounded-3xl shadow-2xl flex items-center gap-4 animate-slide-up z-[100] border border-white/10">
         <div id="toastIconContainer" class="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0">
-            <i id="toastIcon" data-lucide="info" class="w-5 h-5"></i>
+            <!-- O ícone será inserido dinamicamente via script -->
+            <i id="toastIcon" class="w-5 h-5"></i>
         </div>
         <div class="flex flex-col">
             <span id="toastTitle" class="text-[10px] font-black uppercase tracking-widest opacity-60">Mensagem do Sistema</span>
@@ -127,66 +219,65 @@
     </div>
 
     <script>
-        // Função de Toast Aprimorada
+        // Registro do Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('PWA Service Worker Ativo'))
+                    .catch(err => console.log('Erro SW:', err));
+            });
+        }
+
+        // Função de Toast Corrigida para PWA
         function showToast(text, type = 'info') {
             const toast = document.getElementById('toast');
-            const icon = document.getElementById('toastIcon');
             const iconContainer = document.getElementById('toastIconContainer');
+            const toastText = document.getElementById('toastText');
             
-            document.getElementById('toastText').innerText = text;
+            toastText.innerText = text;
             
+            // Re-insere o elemento <i> para evitar bug de substituição do Lucide
             if (type === 'error') {
-                icon.setAttribute('data-lucide', 'alert-circle');
+                iconContainer.innerHTML = '<i data-lucide="alert-circle" class="w-5 h-5"></i>';
                 iconContainer.className = "w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 bg-red-500/20 text-red-500";
             } else {
-                icon.setAttribute('data-lucide', 'check-circle');
+                iconContainer.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5"></i>';
                 iconContainer.className = "w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 bg-fmm-lime/20 text-fmm-lime";
             }
             
             toast.classList.remove('hidden');
-            lucide.createIcons();
+            // Força o display flex para garantir visibilidade no mobile
+            toast.style.display = 'flex';
             
-            setTimeout(() => toast.classList.add('hidden'), 4000);
+            if (window.lucide) lucide.createIcons();
+            
+            setTimeout(() => {
+                toast.classList.add('hidden');
+                toast.style.display = 'none';
+            }, 4000);
         }
 
-        // Fluxo de Autenticação
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        // Lógica de Login Unificada
+        async function handleAuth(e, email, password, btn) {
             e.preventDefault();
-            const submitBtn = document.getElementById('submitBtn');
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-
-            // Bloquear UI
-            submitBtn.disabled = true;
-            const originalContent = submitBtn.innerHTML;
-            submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Autenticando...';
-            lucide.createIcons();
+            const originalContent = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = 'Aguarde...';
 
             try {
-                // 1. Login no Supabase Auth
                 const { data: authData, error: authError } = await window.supabaseClient.auth.signInWithPassword({ email, password });
-                
-                if (authError) {
-                    if (authError.message === 'Invalid login credentials') throw new Error("E-mail ou senha incorretos.");
-                    throw authError;
-                }
+                if (authError) throw new Error("E-mail ou senha incorretos.");
 
-                // 2. Busca Perfil do Usuário
                 const { data: perfil, error: perfError } = await window.supabaseClient
-                    .from('perfis')
-                    .select('cargo')
-                    .eq('id', authData.user.id)
-                    .maybeSingle();
+                    .from('perfis').select('cargo').eq('id', authData.user.id).maybeSingle();
 
-                if (perfError) throw perfError;
-                if (!perfil) throw new Error("Perfil não encontrado no banco de dados.");
+                if (perfError || !perfil) throw new Error("Perfil não localizado.");
 
-                // 3. Mapeamento de Destinos (Sincronizado com a Sidebar)
                 const destinos = {
                     'diretor': 'coordenador/principal/dashboard_coordenador.html',
                     'coordenador': 'coordenador/principal/dashboard_coordenador.html',
                     'professor': 'professor/dashboard_professor.html',
-                    'orientador': 'orientador/dashboard_orientador.html', // Corrigido conforme solicitado
+                    'orientador': 'orientador/dashboard_orientador.html',
                     'secretaria': 'secretaria/dashboard_secretaria.html',
                     'inspetor': 'inspetor/dashboard_inspetor.html'
                 };
@@ -194,20 +285,30 @@
                 const cargo = perfil.cargo ? perfil.cargo.toLowerCase() : '';
                 const urlDestino = destinos[cargo] || 'coordenador/principal/dashboard_coordenador.html';
 
-                showToast("Acesso autorizado! Redirecionando...");
-                
-                // Delay para o usuário ler o sucesso
-                setTimeout(() => {
-                    window.location.href = urlDestino;
-                }, 800);
+                showToast("Acesso autorizado!");
+                setTimeout(() => window.location.href = urlDestino, 800);
                 
             } catch (err) {
-                console.error("Erro de login:", err);
                 showToast(err.message, 'error');
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalContent;
-                lucide.createIcons();
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+                if (window.lucide) lucide.createIcons();
             }
+        }
+
+        // Listeners para os dois formulários
+        document.getElementById('loginFormDesktop').addEventListener('submit', (e) => {
+            const email = document.getElementById('loginEmail').value;
+            const pass = document.getElementById('loginPassword').value;
+            const btn = document.getElementById('submitBtnDesktop');
+            handleAuth(e, email, pass, btn);
+        });
+
+        document.getElementById('loginFormMobile').addEventListener('submit', (e) => {
+            const email = document.getElementById('mobileEmail').value;
+            const pass = document.getElementById('mobilePassword').value;
+            const btn = document.getElementById('submitBtnMobile');
+            handleAuth(e, email, pass, btn);
         });
 
         // Inicializar ícones
