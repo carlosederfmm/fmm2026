@@ -21,7 +21,15 @@ self.addEventListener('install', (event) => {
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request).catch(() => {
-      return caches.match(event.request);
+      const cachedResponse = caches.match(event.request);
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      // Fallback para erros de rede quando não há cache
+      return new Response('Network error occurred', {
+        status: 408,
+        statusText: 'Network error occurred'
+      });
     })
   );
 });
