@@ -99,7 +99,7 @@
 
                 <div class="flex items-center gap-2">
                     <input type="date" id="selectDate" onchange="loadAttendanceTable()" class="top-bar-select w-36">
-                    <select id="selectTurma" onchange="loadAttendanceTable()" class="top-bar-select">
+                    <select id="selectTurma" onchange="handleTurmaChange()" class="top-bar-select">
                         <option value="">Turma...</option>
                     </select>
                     <select id="selectDisc" onchange="loadAttendanceTable()" class="top-bar-select w-44">
@@ -180,6 +180,7 @@
         let localPresenceState = {};
         let currentDiscSigla = '';
         let currentTurmaId = '';
+        let globalGrade = []; // Guarda a grade horária do professor logado
 
         function formatDriveUrl(url) {
             if (!url) return null;
@@ -212,19 +213,51 @@
                 const { data: t } = await window.supabaseClient.from('turmas').select('*').order('nome');
                 const { data: d } = await window.supabaseClient.from('disciplinas').select('*').order('nome');
                 turmas = t || []; disciplinas = d || [];
+                
+                selectT.innerHTML = '<option value="">Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
+                selectD.innerHTML = '<option value="">Disciplina...</option>' + disciplinas.map(d => `<option value="${d.sigla}" data-tipo="${d.tipo}">${d.nome} (${d.sigla})</option>`).join('');
             } else {
-                const { data: grade } = await window.supabaseClient.from('grade_horaria').select('id_turma, turmas(*)').eq('id_professor', currentUser.id);
-                turmas = Array.from(new Map(grade.map(g => [g.id_turma, g.turmas])).values())
+                // Busca as turmas e as disciplinas conectadas diretamente pela grade horária
+                const { data: grade } = await window.supabaseClient.from('grade_horaria')
+                    .select('id_turma, sigla_disciplina, turmas(*), disciplinas(*)')
+                    .eq('id_professor', currentUser.id);
+                
+                globalGrade = grade || [];
+
+                // Extrai apenas as turmas únicas dessa grade
+                turmas = Array.from(new Map(globalGrade.map(g => [g.id_turma, g.turmas])).values())
                              .filter(t => t !== null);
                 
                 turmas.sort((a, b) => a.nome.localeCompare(b.nome, undefined, { numeric: true, sensitivity: 'base' }));
 
-                const { data: vinculos = [] } = await window.supabaseClient.from('professor_disciplinas').select('sigla_disciplina, disciplinas(*)').eq('id_professor', currentUser.id);
-                disciplinas = vinculos.map(v => v.disciplinas).filter(d => d !== null);
-                disciplinas.sort((a, b) => a.nome.localeCompare(b.nome));
+                selectT.innerHTML = '<option value="">Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
+                selectD.innerHTML = '<option value="">Disciplina...</option>'; // Inicia vazio. Preenchido na escolha da turma.
             }
-            selectT.innerHTML = '<option value="">Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
-            selectD.innerHTML = '<option value="">Disciplina...</option>' + disciplinas.map(d => `<option value="${d.sigla}" data-tipo="${d.tipo}">${d.nome} (${d.sigla})</option>`).join('');
+        }
+
+        function handleTurmaChange() {
+            const turmaId = document.getElementById('selectTurma').value;
+            const selectD = document.getElementById('selectDisc');
+
+            if (currentUser.cargo !== 'coordenador' && currentUser.cargo !== 'diretor') {
+                if (!turmaId) {
+                    selectD.innerHTML = '<option value="">Disciplina...</option>';
+                } else {
+                    // Filtra na grade horária apenas as disciplinas correspondentes à turma selecionada
+                    const discFromGrade = globalGrade
+                        .filter(g => g.id_turma === turmaId && g.disciplinas !== null)
+                        .map(g => g.disciplinas);
+                    
+                    // Remove duplicatas (caso o professor dê mais de um tempo da mesma disciplina na turma)
+                    const uniqueDisc = Array.from(new Map(discFromGrade.map(d => [d.sigla, d])).values());
+                    uniqueDisc.sort((a, b) => a.nome.localeCompare(b.nome));
+                    
+                    selectD.innerHTML = '<option value="">Disciplina...</option>' + uniqueDisc.map(d => `<option value="${d.sigla}" data-tipo="${d.tipo}">${d.nome} (${d.sigla})</option>`).join('');
+                }
+            }
+            
+            // Chama o carregamento da tabela (vai ocultar porque a disciplina ainda não foi selecionada)
+            loadAttendanceTable();
         }
 
         async function loadAttendanceTable() {
