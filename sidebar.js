@@ -127,6 +127,7 @@ const SidebarComponent = {
         ],
         pedagogico: [
             { label: 'Sanções', icon: 'shield-alert', link: 'coordenador/pedagogico/sancoes_coordenador.html', roles: ['diretor', 'coordenador'] },
+            { label: 'Gabaritos', icon: 'clipboard-list', link: 'coordenador/pedagogico/gabaritos_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Sanções', icon: 'shield-alert', link: 'orientador/sancoes_orientador.html', roles: ['orientador'] },
             { label: 'Sanções', icon: 'shield-alert', link: 'inspetor/sancoes_inspetor.html', roles: ['inspetor'] },
             { label: 'Prontuários', icon: 'clipboard-list', link: 'orientador/atendimento_orientador.html', roles: ['orientador'] },
@@ -144,6 +145,7 @@ const SidebarComponent = {
             { label: 'Dashboard', icon: 'layout-dashboard', link: 'professor/dashboard_professor.html', roles: ['professor'] },
             { label: 'Presença', icon: 'calendar-check', link: 'professor/presenca_professor.html', roles: ['professor'] },
             { label: 'Lançar Notas', icon: 'graduation-cap', link: 'professor/notas_professor.html', roles: ['professor'] },
+            { label: 'Gabaritos', icon: 'clipboard-list', link: 'professor/gabaritos_professor.html', roles: ['professor'] },
             { label: 'Gestão Individual', icon: 'user-search', link: 'professor/individual_professor.html', roles: ['professor'] },
             { label: 'Conteúdo de Aula', icon: 'book-text', link: 'professor/conteudo_professor.html', roles: ['professor'] },
             { label: 'Neurodivergentes', icon: 'brain', link: 'professor/alunos_neurodivergentes.html', roles: ['professor'] },
