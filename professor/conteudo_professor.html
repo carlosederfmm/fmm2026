@@ -32,7 +32,6 @@
 
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; overflow: hidden; }
-        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         
@@ -41,13 +40,17 @@
 
         .content-card { background: white; border-radius: 32px; border: 1px solid #f1f5f9; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); transition: all 0.3s ease; }
         
+        .history-item { transition: all 0.2s; cursor: pointer; border-left: 4px solid transparent; }
+        .history-item:hover { background-color: #f8fafc; border-left-color: #c8d400; transform: translateX(4px); }
+        .history-item.active { background-color: #f0f9ff; border-left-color: #00638f; }
+
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
     </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden text-left">
 
-    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
+    <aside id="sidebar-container" class="sidebar-transition w-72 flex-shrink-0 bg-fmm-dark text-white flex flex-col shadow-2xl relative z-20"></aside>
 
     <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
         
@@ -62,12 +65,12 @@
 
                 <div class="h-8 w-px bg-slate-100 hidden md:block"></div>
 
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
                     <input type="date" id="selectDate" onchange="loadClassContent()" class="top-bar-select w-36">
                     <select id="selectTurma" onchange="handleTurmaChange()" class="top-bar-select">
                         <option value="">Turma...</option>
                     </select>
-                    <select id="selectDisc" onchange="loadClassContent()" class="top-bar-select w-48">
+                    <select id="selectDisc" onchange="loadClassContent()" class="top-bar-select w-44">
                         <option value="">Disciplina...</option>
                     </select>
                 </div>
@@ -84,50 +87,68 @@
             </div>
         </header>
 
-        <div class="flex-1 overflow-auto custom-scrollbar bg-slate-50 p-8">
-            <div id="loading-overlay" class="hidden h-full flex flex-col items-center justify-center text-slate-300 gap-4">
-                <i data-lucide="loader-2" class="w-12 h-12 animate-spin text-fmm-blue"></i>
-                <p class="text-sm font-bold uppercase tracking-widest text-left">Buscando registros...</p>
-            </div>
-
-            <div id="empty-view" class="h-full flex flex-col items-center justify-center text-center">
-                <div class="w-20 h-20 bg-white rounded-full shadow-xl flex items-center justify-center mb-6 border border-slate-100">
-                    <i data-lucide="book-text" class="w-10 h-10 text-slate-200"></i>
+        <div class="flex-1 overflow-hidden flex bg-slate-50">
+            
+            <!-- ÁREA DO FORMULÁRIO -->
+            <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                <div id="loading-overlay" class="hidden h-full flex flex-col items-center justify-center text-slate-300 gap-4">
+                    <i data-lucide="loader-2" class="w-12 h-12 animate-spin text-fmm-blue"></i>
+                    <p class="text-sm font-bold uppercase tracking-widest">Sincronizando...</p>
                 </div>
-                <h3 class="text-lg font-bold text-slate-400 uppercase tracking-tight">Selecione os filtros acima</h3>
-                <p class="text-sm text-slate-300 italic font-medium">Você poderá registrar o que foi lecionado em sala.</p>
-            </div>
 
-            <div id="content-form" class="hidden max-w-4xl mx-auto space-y-6 animate-fade">
-                <div class="content-card p-8 space-y-6">
-                    <div class="flex items-center justify-between border-b border-slate-100 pb-6">
-                        <div class="flex flex-col text-left">
-                            <h2 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none" id="display-turma-disc">---</h2>
-                            <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mt-2" id="display-date">--/--/----</p>
-                        </div>
-                        <div class="flex flex-col items-end">
-                            <label class="text-[10px] font-black text-slate-400 uppercase mb-2">Número de Tempos</label>
-                            <select id="inTempos" class="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-fmm-dark outline-none focus:ring-2 focus:ring-fmm-blue">
-                                <option value="1">1 Tempo</option>
-                                <option value="2">2 Tempos</option>
-                                <option value="3">3 Tempos</option>
-                                <option value="4">4 Tempos</option>
-                                <option value="5">5 Tempos</option>
-                            </select>
-                        </div>
+                <div id="empty-view" class="h-full flex flex-col items-center justify-center text-center">
+                    <div class="w-20 h-20 bg-white rounded-full shadow-xl flex items-center justify-center mb-6 border border-slate-100">
+                        <i data-lucide="book-text" class="w-10 h-10 text-slate-200"></i>
                     </div>
+                    <h3 class="text-lg font-bold text-slate-400 uppercase tracking-tight">Selecione os filtros acima</h3>
+                    <p class="text-sm text-slate-300 italic font-medium">Você poderá registrar e consultar o histórico de aulas.</p>
+                </div>
 
-                    <div class="space-y-2 text-left">
-                        <label class="text-[10px] font-black text-slate-500 uppercase ml-1 tracking-widest">Descrição do Conteúdo Lecionado</label>
-                        <textarea id="inConteudo" rows="8" class="w-full p-6 bg-slate-50 border border-slate-100 rounded-[24px] text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-fmm-blue/5 focus:bg-white focus:border-fmm-blue transition-all" placeholder="Ex: Introdução à cinemática escalar. Definição de velocidade média e exercícios da página 45..."></textarea>
-                    </div>
+                <div id="content-form" class="hidden max-w-3xl mx-auto space-y-6 animate-fade">
+                    <div class="content-card p-8 space-y-6">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-6">
+                            <div class="flex flex-col text-left">
+                                <h2 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none" id="display-turma-disc">---</h2>
+                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2" id="display-date">--/--/----</p>
+                            </div>
+                            <div class="flex flex-col items-end">
+                                <label class="text-[10px] font-black text-slate-400 uppercase mb-2">Número de Tempos</label>
+                                <select id="inTempos" class="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-fmm-dark outline-none focus:ring-2 focus:ring-fmm-blue">
+                                    <option value="1">1 Tempo</option>
+                                    <option value="2">2 Tempos</option>
+                                    <option value="3">3 Tempos</option>
+                                    <option value="4">4 Tempos</option>
+                                    <option value="5">5 Tempos</option>
+                                </select>
+                            </div>
+                        </div>
 
-                    <div class="space-y-2 text-left">
-                        <label class="text-[10px] font-black text-slate-500 uppercase ml-1 tracking-widest">Observações Pedagógicas (Opcional)</label>
-                        <textarea id="inObs" rows="3" class="w-full p-6 bg-slate-50 border border-slate-100 rounded-[24px] text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-fmm-blue/5 focus:bg-white focus:border-fmm-blue transition-all" placeholder="Dificuldades observadas, alunos ausentes em atividades, etc..."></textarea>
+                        <div class="space-y-2 text-left">
+                            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 tracking-widest">Descrição do Conteúdo Lecionado</label>
+                            <textarea id="inConteudo" rows="8" class="w-full p-6 bg-slate-50 border border-slate-100 rounded-[24px] text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-fmm-blue/5 focus:bg-white focus:border-fmm-blue transition-all" placeholder="O que foi trabalhado hoje?"></textarea>
+                        </div>
+
+                        <div class="space-y-2 text-left">
+                            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 tracking-widest">Observações Pedagógicas (Opcional)</label>
+                            <textarea id="inObs" rows="3" class="w-full p-6 bg-slate-50 border border-slate-100 rounded-[24px] text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-fmm-blue/5 focus:bg-white focus:border-fmm-blue transition-all" placeholder="Alguma observação relevante sobre a turma ou alunos?"></textarea>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <!-- BARRA LATERAL DE HISTÓRICO -->
+            <aside id="history-sidebar" class="hidden w-96 bg-white border-l border-slate-200 flex flex-col shrink-0 animate-fade">
+                <div class="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
+                    <h3 class="text-xs font-black text-fmm-dark uppercase tracking-widest flex items-center gap-2">
+                        <i data-lucide="history" class="w-4 h-4"></i> Histórico de Registros
+                    </h3>
+                    <span id="history-count" class="px-2 py-1 bg-fmm-blue/10 text-fmm-blue text-[9px] font-black rounded-lg">0</span>
+                </div>
+                <div id="history-list" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                    <!-- Itens do histórico via JS -->
+                </div>
+            </aside>
+
         </div>
     </main>
 
@@ -144,6 +165,7 @@
         let currentRecordId = null;
         let globalGrade = [];
         let teachesProjetoDeVida = false;
+        let currentHistory = [];
 
         async function init() {
             if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
@@ -166,11 +188,7 @@
                 const { data: t } = await window.supabaseClient.from('turmas').select('*').order('nome');
                 const { data: d } = await window.supabaseClient.from('disciplinas').select('*').order('nome');
                 turmas = t || []; disciplinas = d || [];
-                
-                selectT.innerHTML = '<option value="">Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
-                selectD.innerHTML = '<option value="">Disciplina...</option>' + disciplinas.map(d => `<option value="${d.sigla}">${d.nome} (${d.sigla})</option>`).join('');
             } else {
-                // TASK: Verificar vínculo com Projeto de Vida (Assíncrona)
                 const { data: pvidaCheck } = await window.supabaseClient.from('professor_disciplinas')
                     .select('sigla_disciplina')
                     .eq('id_professor', currentUser.id)
@@ -196,9 +214,10 @@
                 }
                 
                 turmas.sort((a, b) => a.nome.localeCompare(b.nome, undefined, { numeric: true }));
-                selectT.innerHTML = '<option value="">Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
-                selectD.innerHTML = '<option value="">Disciplina...</option>'; 
             }
+
+            selectT.innerHTML = '<option value="">Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
+            selectD.innerHTML = '<option value="">Disciplina...</option>'; 
         }
 
         function handleTurmaChange() {
@@ -231,8 +250,9 @@
             const discSigla = document.getElementById('selectDisc').value;
             const date = document.getElementById('selectDate').value;
 
-            if (!turmaId || !discSigla || !date) {
+            if (!turmaId || !discSigla) {
                 document.getElementById('content-form').classList.add('hidden');
+                document.getElementById('history-sidebar').classList.add('hidden');
                 document.getElementById('empty-view').classList.remove('hidden');
                 document.getElementById('btnSave').classList.add('hidden');
                 return;
@@ -243,7 +263,8 @@
             document.getElementById('content-form').classList.add('hidden');
 
             try {
-                const { data: record, error } = await window.supabaseClient.from('conteudos_aula')
+                // 1. Carrega registro da data específica
+                const { data: record } = await window.supabaseClient.from('conteudos_aula')
                     .select('*')
                     .eq('id_turma', turmaId)
                     .eq('sigla_disciplina', discSigla)
@@ -262,12 +283,60 @@
 
                 document.getElementById('content-form').classList.remove('hidden');
                 document.getElementById('btnSave').classList.remove('hidden');
+
+                // 2. Carrega Histórico da Disciplina na Turma
+                await loadHistory(turmaId, discSigla);
+
             } catch (err) {
                 console.error(err);
             } finally {
                 document.getElementById('loading-overlay').classList.add('hidden');
                 lucide.createIcons();
             }
+        }
+
+        async function loadHistory(turmaId, sigla) {
+            const { data: history } = await window.supabaseClient.from('conteudos_aula')
+                .select('*')
+                .eq('id_turma', turmaId)
+                .eq('sigla_disciplina', sigla)
+                .order('data_aula', { ascending: false });
+
+            currentHistory = history || [];
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('history-list');
+            const sidebar = document.getElementById('history-sidebar');
+            const countEl = document.getElementById('history-count');
+            const currentDate = document.getElementById('selectDate').value;
+
+            if (currentHistory.length === 0) {
+                list.innerHTML = `<p class="text-xs text-slate-300 italic text-center py-10 uppercase tracking-widest">Nenhum registro anterior.</p>`;
+            } else {
+                list.innerHTML = currentHistory.map(item => {
+                    const isActive = item.data_aula === currentDate;
+                    return `
+                        <div onclick="setDateAndLoad('${item.data_aula}')" class="history-item p-5 bg-white border border-slate-100 rounded-2xl shadow-sm ${isActive ? 'active' : ''}">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-[10px] font-black text-fmm-blue uppercase">${new Date(item.data_aula + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                                <span class="text-[9px] font-black text-slate-300 uppercase">${item.numero_tempos} Tempos</span>
+                            </div>
+                            <p class="text-xs font-medium text-slate-600 line-clamp-2 leading-relaxed">${item.conteudo}</p>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            countEl.innerText = currentHistory.length;
+            sidebar.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function setDateAndLoad(date) {
+            document.getElementById('selectDate').value = date;
+            loadClassContent();
         }
 
         async function saveContent() {

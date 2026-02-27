@@ -98,6 +98,12 @@ const SidebarComponent = {
             { label: 'Notas', icon: 'graduation-cap', link: 'professor/notas_professor.html' },
             { label: 'Perfil', icon: 'user-circle', link: 'professor/perfil_professor.html' }
         ],
+        'secretaria': [
+            { label: 'Início', icon: 'home', link: 'secretaria/dashboard_secretaria.html' },
+            { label: 'E-mails', icon: 'mail', link: 'secretaria/emails_secretaria.html' },
+            { label: 'Saídas', icon: 'log-out', link: 'coordenador/pedagogico/saidas_coordenador.html' },
+            { label: 'Atrasos', icon: 'clock', link: 'coordenador/pedagogico/atrasos_coordenador.html' }
+        ],
         'inspetor': [
             { label: 'Dashboard', icon: 'home', link: 'inspetor/dashboard_inspetor.html' },
             { label: 'Sanções', icon: 'shield-alert', link: 'inspetor/sancoes_inspetor.html' },
@@ -134,6 +140,7 @@ const SidebarComponent = {
             { label: 'Atendimentos', icon: 'message-square', link: 'coordenador/pedagogico/atendimentos_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Fila de Chamados', icon: 'bell', link: 'orientador/chamados_orientador.html', roles: ['orientador'] },
             { label: 'Chamados', icon: 'bell-plus', link: 'coordenador/pedagogico/chamados_coordenador.html', roles: ['diretor', 'coordenador'] },
+            { label: 'Comunicados', icon: 'mail', link: 'secretaria/emails_secretaria.html', roles: ['secretaria'] },
             { label: 'Saídas', icon: 'log-out', link: 'coordenador/pedagogico/saidas_coordenador.html', roles: ['diretor', 'coordenador', 'secretaria'] },
             { label: 'Atrasos', icon: 'clock', link: 'coordenador/pedagogico/atrasos_coordenador.html', roles: ['diretor', 'coordenador', 'secretaria'] }
         ],
