@@ -191,6 +191,14 @@
             lucide.createIcons();
         }
 
+        async function loadAllDisciplines() {
+            const { data } = await window.supabaseClient.from('disciplinas').select('*').order('nome');
+            if(data) {
+                document.getElementById('selectDisc').innerHTML = '<option value="">Selecione a Disciplina...</option>' + 
+                    data.map(d => `<option value="${d.sigla}">${d.nome} (${d.sigla})</option>`).join('');
+            }
+        }
+
         async function populateSelectors() {
             const selectT = document.getElementById('selectTurma');
             const selectD = document.getElementById('selectDisc');
@@ -199,6 +207,7 @@
             if (currentUser.cargo === 'coordenador' || currentUser.cargo === 'diretor') {
                 const { data: t } = await window.supabaseClient.from('turmas').select('*').order('nome');
                 turmas = t || [];
+                await loadAllDisciplines(); // TASK: Coordenadores têm acesso a todas as disciplinas nativamente
             } else {
                 const { data: pvidaCheck } = await window.supabaseClient.from('professor_disciplinas')
                     .select('sigla_disciplina')
@@ -208,8 +217,9 @@
                 
                 teachesProjetoDeVida = !!pvidaCheck;
 
+                // TASK: CORREÇÃO AQUI - O select agora exige "disciplinas(*)"
                 const { data: grade } = await window.supabaseClient.from('grade_horaria')
-                    .select('id_turma, turmas(*)')
+                    .select('id_turma, sigla_disciplina, turmas(*), disciplinas(*)')
                     .eq('id_professor', currentUser.id);
                 
                 globalGrade = grade || [];
@@ -221,14 +231,14 @@
                         .order('nome');
                     turmas = allAllowedTurmas || [];
                 } else {
-                    turmas = Array.from(new Map(globalGrade.map(g => [g.id_turma, g.turmas])).values()).filter(t => t !== null);
+                    turmas = Array.from(new Map(globalGrade.map(g => [g.id_turma, g.turmas])).values()).filter(t => t !== null && t !== undefined);
                 }
                 
                 turmas.sort((a, b) => a.nome.localeCompare(b.nome, undefined, { numeric: true }));
+                selectD.innerHTML = '<option value="">Selecione a Disciplina...</option>'; 
             }
 
-            selectT.innerHTML = '<option value="">Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
-            selectD.innerHTML = '<option value="">Disciplina...</option>'; 
+            selectT.innerHTML = '<option value="">Selecione a Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
         }
 
         function handleTurmaChange() {
@@ -236,31 +246,26 @@
             const selectD = document.getElementById('selectDisc');
 
             if (currentUser.cargo === 'coordenador' || currentUser.cargo === 'diretor') {
-                 loadAllDisciplines();
+                 // A lista de disciplinas já foi populada em loadAllDisciplines()
             } else {
                 if (!turmaId) {
-                    selectD.innerHTML = '<option value="">Disciplina...</option>';
+                    selectD.innerHTML = '<option value="">Selecione a Disciplina...</option>';
                 } else {
-                    const { data: gradeForTurma } = window.supabaseClient.from('grade_horaria')
-                        .select('sigla_disciplina, disciplinas(*)')
-                        .eq('id_turma', turmaId)
-                        .eq('id_professor', currentUser.id);
-                    
-                    const discFromGrade = globalGrade.filter(g => g.id_turma === turmaId).map(g => g.disciplinas).filter(d => d !== null);
+                    // TASK: Filtro e remoção de undefined do map da tabela "disciplinas"
+                    const discFromGrade = globalGrade
+                        .filter(g => g.id_turma === turmaId)
+                        .map(g => g.disciplinas)
+                        .filter(d => d !== null && d !== undefined);
+
                     const uniqueDiscMap = new Map(discFromGrade.map(d => [d.sigla, d]));
 
                     if (teachesProjetoDeVida) uniqueDiscMap.set('P.VIDA', { sigla: 'P.VIDA', nome: 'PROJETO DE VIDA' });
 
-                    const sortedDisc = Array.from(uniqueDiscMap.values()).sort((a, b) => a.nome.localeCompare(b.nome));
-                    selectD.innerHTML = '<option value="">Disciplina...</option>' + sortedDisc.map(d => `<option value="${d.sigla}">${d.nome} (${d.sigla})</option>`).join('');
+                    const sortedDisc = Array.from(uniqueDiscMap.values()).sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+                    selectD.innerHTML = '<option value="">Selecione a Disciplina...</option>' + sortedDisc.map(d => `<option value="${d.sigla}">${d.nome} (${d.sigla})</option>`).join('');
                 }
             }
             loadHistory();
-        }
-
-        async function loadAllDisciplines() {
-            const { data } = await window.supabaseClient.from('disciplinas').select('*').order('nome');
-            document.getElementById('selectDisc').innerHTML = '<option value="">Disciplina...</option>' + data.map(d => `<option value="${d.sigla}">${d.nome} (${d.sigla})</option>`).join('');
         }
 
         async function loadHistory() {
@@ -294,7 +299,6 @@
 
                 if (currentHistory.length === 0) {
                     grid.innerHTML = '';
-                    // Se não houver nada, apenas mostra o botão de adicionar
                 } else {
                     grid.innerHTML = currentHistory.map(item => `
                         <div onclick="openModal('${item.id}')" class="history-card p-6 flex flex-col gap-4 animate-fade">
