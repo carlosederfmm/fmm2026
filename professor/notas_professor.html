@@ -82,7 +82,7 @@
         .animate-slide { animation: slideInRight 0.4s ease-out forwards; }
     </style>
 </head>
-<body class="flex h-screen w-screen overflow-hidden">
+<body class="flex h-screen w-screen overflow-hidden text-left">
 
     <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
 
@@ -90,17 +90,17 @@
         
         <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-30 shadow-sm flex-shrink-0">
             <div class="flex items-center gap-6">
-                <div class="flex flex-col">
-                    <h1 class="text-base font-black text-fmm-dark tracking-tight flex items-center gap-2">
+                <div class="flex flex-col text-left">
+                    <h1 class="text-base font-black text-fmm-dark tracking-tight flex items-center gap-2 leading-none">
                         <span class="w-1.5 h-4 bg-fmm-lime rounded-full"></span>
-                        Diário
+                        Diário Acadêmico
                     </h1>
                 </div>
 
                 <div class="h-8 w-px bg-slate-100 hidden md:block"></div>
 
                 <div class="flex items-center gap-3">
-                    <select id="selectTurma" onchange="loadGradeTable()" class="top-bar-select">
+                    <select id="selectTurma" onchange="handleTurmaChange()" class="top-bar-select">
                         <option value="">Turma...</option>
                     </select>
                     <select id="selectDisc" onchange="loadGradeTable()" class="top-bar-select w-48">
@@ -139,8 +139,8 @@
                 <div class="w-20 h-20 bg-white rounded-full shadow-xl flex items-center justify-center mb-6 border border-slate-100">
                     <i data-lucide="layers" class="w-10 h-10 text-slate-200"></i>
                 </div>
-                <h3 class="text-lg font-bold text-slate-400">Selecione os filtros</h3>
-                <p class="text-sm text-slate-300 italic">O diário de notas será exibido aqui.</p>
+                <h3 class="text-lg font-bold text-slate-400 uppercase tracking-tight">Selecione os filtros</h3>
+                <p class="text-sm text-slate-300 italic font-medium">O diário de notas será exibido aqui.</p>
             </div>
             <div id="table-wrapper" class="hidden inline-block align-middle min-w-full">
                 <table class="min-w-full border-separate border-spacing-0 text-left" id="notasTable">
@@ -173,16 +173,16 @@
     </div>
 
     <script>
-        // TASK 3.2.1: supabaseClient agora é global vindo de ../assets/js/supabase_client.js
-
         let currentUser = null;
         let saveTimers = {};
         let currentView = 'anual'; 
         let globalMatriculas = [];
         let globalNotas = [];
         let globalAnual = [];
+        let globalGrade = [];
         let currentDiscType = 'BCC';
         let currentDiscSigla = '';
+        let teachesProjetoDeVida = false; // Flag para controle da matéria assíncrona
 
         function formatDriveUrl(url) {
             if (!url) return null;
@@ -207,22 +207,80 @@
             const selectT = document.getElementById('selectTurma');
             const selectD = document.getElementById('selectDisc');
             let turmas = [], disciplinas = [];
+
             if (currentUser.cargo === 'coordenador' || currentUser.cargo === 'diretor') {
                 const { data: t } = await window.supabaseClient.from('turmas').select('*').order('nome');
                 const { data: d } = await window.supabaseClient.from('disciplinas').select('*').order('nome');
                 turmas = t || []; disciplinas = d || [];
+                
+                selectT.innerHTML = '<option value="">Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
+                selectD.innerHTML = '<option value="">Disciplina...</option>' + disciplinas.map(d => `<option value="${d.sigla}" data-tipo="${d.tipo}">${d.nome} (${d.sigla})</option>`).join('');
             } else {
-                const { data: grade } = await window.supabaseClient.from('grade_horaria').select('id_turma, turmas(*)').eq('id_professor', currentUser.id);
-                turmas = Array.from(new Map(grade.map(g => [g.id_turma, g.turmas])).values())
-                             .filter(t => t !== null)
-                             .sort((a, b) => a.nome.localeCompare(b.nome, undefined, { numeric: true, sensitivity: 'base' }));
+                // TASK: Verificar se o professor leciona Projeto de Vida (Assíncrona)
+                const { data: pvidaCheck } = await window.supabaseClient.from('professor_disciplinas')
+                    .select('sigla_disciplina')
+                    .eq('id_professor', currentUser.id)
+                    .eq('sigla_disciplina', 'P.VIDA')
+                    .maybeSingle();
+                
+                teachesProjetoDeVida = !!pvidaCheck;
 
-                const { data: vinculos = [] } = await window.supabaseClient.from('professor_disciplinas').select('sigla_disciplina, disciplinas(*)').eq('id_professor', currentUser.id);
-                disciplinas = vinculos.map(v => v.disciplinas).filter(d => d !== null);
-                disciplinas.sort((a, b) => a.nome.localeCompare(b.nome));
+                // Busca a grade horária normal
+                const { data: grade } = await window.supabaseClient.from('grade_horaria')
+                    .select('id_turma, turmas(*), disciplinas(*)')
+                    .eq('id_professor', currentUser.id);
+                
+                globalGrade = grade || [];
+
+                // Se leciona Projeto de Vida, carregamos TODAS as turmas permitidas pelos seus níveis de acesso
+                if (teachesProjetoDeVida) {
+                    const { data: allAllowedTurmas } = await window.supabaseClient.from('turmas')
+                        .select('*')
+                        .in('nivel', currentUser.niveis_acesso || [])
+                        .order('nome');
+                    turmas = allAllowedTurmas || [];
+                } else {
+                    // Senão, apenas as turmas onde ele tem horários fixos
+                    turmas = Array.from(new Map(globalGrade.map(g => [g.id_turma, g.turmas])).values())
+                                 .filter(t => t !== null);
+                }
+
+                turmas.sort((a, b) => a.nome.localeCompare(b.nome, undefined, { numeric: true, sensitivity: 'base' }));
+
+                // Preencher turmas
+                selectT.innerHTML = '<option value="">Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
+                selectD.innerHTML = '<option value="">Disciplina...</option>'; 
             }
-            selectT.innerHTML = '<option value="">Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
-            selectD.innerHTML = '<option value="">Disciplina...</option>' + disciplinas.map(d => `<option value="${d.sigla}" data-tipo="${d.tipo}">${d.nome} (${d.sigla})</option>`).join('');
+        }
+
+        // TASK: Adicionada função handleTurmaChange para gerenciar a injeção de P.VIDA
+        function handleTurmaChange() {
+            const turmaId = document.getElementById('selectTurma').value;
+            const selectD = document.getElementById('selectDisc');
+
+            if (currentUser.cargo !== 'coordenador' && currentUser.cargo !== 'diretor') {
+                if (!turmaId) {
+                    selectD.innerHTML = '<option value="">Disciplina...</option>';
+                } else {
+                    // Filtra na grade horária apenas as disciplinas correspondentes à turma selecionada
+                    const discFromGrade = globalGrade
+                        .filter(g => g.id_turma === turmaId && g.disciplinas !== null)
+                        .map(g => g.disciplinas);
+                    
+                    const uniqueDiscMap = new Map(discFromGrade.map(d => [d.sigla, d]));
+
+                    // Se professor de Projeto de Vida, injetar a disciplina na lista para qualquer turma permitida
+                    if (teachesProjetoDeVida) {
+                        uniqueDiscMap.set('P.VIDA', { sigla: 'P.VIDA', nome: 'PROJETO DE VIDA', tipo: 'BCC' });
+                    }
+
+                    const sortedDisc = Array.from(uniqueDiscMap.values()).sort((a, b) => a.nome.localeCompare(b.nome));
+                    
+                    selectD.innerHTML = '<option value="">Disciplina...</option>' + sortedDisc.map(d => `<option value="${d.sigla}" data-tipo="${d.tipo}">${d.nome} (${d.sigla})</option>`).join('');
+                }
+            }
+            
+            loadGradeTable();
         }
 
         function switchView(view) {
@@ -253,7 +311,6 @@
             if (document.getElementById('period-tabs')) document.getElementById('period-tabs').classList.toggle('hidden', currentDiscType !== 'BCC');
 
             try {
-                // --- LÓGICA DE SUBTURMA (INGLÊS) ---
                 const { data: discInfo } = await window.supabaseClient.from('disciplinas').select('nome').eq('sigla', currentDiscSigla).maybeSingle();
                 const isIngles = currentDiscSigla === 'L.ING' || discInfo?.nome?.toUpperCase().includes('INGLÊS');
 
@@ -282,8 +339,6 @@
                 }
 
                 const { data: matriculas } = await matriculasQuery;
-                
-                // --- CORREÇÃO DE SEGURANÇA: Filtrar matrículas que não possuem dados de aluno vinculados ---
                 globalMatriculas = (matriculas || []).filter(m => m.alunos !== null);
                 
                 if (currentDiscType === 'BCC') {
@@ -295,7 +350,6 @@
                     globalNotas = nt || [];
                 }
 
-                // --- ORDENAÇÃO ROBUSTA: Verifica a existência do objeto antes de comparar ---
                 globalMatriculas.sort((a, b) => {
                     const nomeA = a.alunos?.nome_completo || "";
                     const nomeB = b.alunos?.nome_completo || "";
@@ -485,6 +539,7 @@
         function openPhotoModal(url, name) { const modal = document.getElementById('photoModal'); document.getElementById('enlargedPhoto').src = url; document.getElementById('enlargedName').innerText = name; modal.classList.remove('hidden'); }
         function closePhotoModal() { document.getElementById('photoModal').classList.add('hidden'); }
         async function logout() { if(confirm("Deseja sair?")) { await window.supabaseClient.auth.signOut(); window.location.href = "../index.html"; } }
+        
         window.onload = init;
     </script>
 </body>

@@ -88,7 +88,7 @@
     <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
         
         <!-- TOP BAR -->
-        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-30 shadow-sm flex-shrink-0">
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-30 shadow-sm flex-shrink-0 text-left">
             <div class="flex items-center gap-6">
                 <h1 class="text-base font-black text-fmm-dark tracking-tight flex items-center gap-2">
                     <span class="w-1.5 h-4 bg-fmm-blue rounded-full"></span>
@@ -180,7 +180,8 @@
         let localPresenceState = {};
         let currentDiscSigla = '';
         let currentTurmaId = '';
-        let globalGrade = []; // Guarda a grade horária do professor logado
+        let globalGrade = []; 
+        let teachesProjetoDeVida = false; // TASK: Flag para controle da matéria assíncrona
 
         function formatDriveUrl(url) {
             if (!url) return null;
@@ -192,7 +193,7 @@
         }
 
         async function init() {
-            if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            if(window.SidebarComponent) await window.SidebarComponent.render('sidebar-container');
 
             const { data: { user } } = await window.supabaseClient.auth.getUser();
             if (!user) return window.location.href = '../index.html';
@@ -217,21 +218,38 @@
                 selectT.innerHTML = '<option value="">Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
                 selectD.innerHTML = '<option value="">Disciplina...</option>' + disciplinas.map(d => `<option value="${d.sigla}" data-tipo="${d.tipo}">${d.nome} (${d.sigla})</option>`).join('');
             } else {
-                // Busca as turmas e as disciplinas conectadas diretamente pela grade horária
+                // TASK: Verificar se o professor leciona Projeto de Vida (Assíncrona)
+                const { data: pvidaCheck } = await window.supabaseClient.from('professor_disciplinas')
+                    .select('sigla_disciplina')
+                    .eq('id_professor', currentUser.id)
+                    .eq('sigla_disciplina', 'P.VIDA')
+                    .maybeSingle();
+                
+                teachesProjetoDeVida = !!pvidaCheck;
+
+                // Busca a grade normal
                 const { data: grade } = await window.supabaseClient.from('grade_horaria')
                     .select('id_turma, sigla_disciplina, turmas(*), disciplinas(*)')
                     .eq('id_professor', currentUser.id);
                 
                 globalGrade = grade || [];
 
-                // Extrai apenas as turmas únicas dessa grade
-                turmas = Array.from(new Map(globalGrade.map(g => [g.id_turma, g.turmas])).values())
-                             .filter(t => t !== null);
+                // Se leciona Projeto de Vida, carregamos TODAS as turmas permitidas pelo userLevels
+                if (teachesProjetoDeVida) {
+                    const { data: allAllowedTurmas } = await window.supabaseClient.from('turmas')
+                        .select('*')
+                        .in('nivel', currentUser.niveis_acesso || [])
+                        .order('nome');
+                    turmas = allAllowedTurmas || [];
+                } else {
+                    // Senão, apenas turmas da grade
+                    turmas = Array.from(new Map(globalGrade.map(g => [g.id_turma, g.turmas])).values()).filter(t => t !== null);
+                }
                 
                 turmas.sort((a, b) => a.nome.localeCompare(b.nome, undefined, { numeric: true, sensitivity: 'base' }));
 
                 selectT.innerHTML = '<option value="">Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
-                selectD.innerHTML = '<option value="">Disciplina...</option>'; // Inicia vazio. Preenchido na escolha da turma.
+                selectD.innerHTML = '<option value="">Disciplina...</option>'; 
             }
         }
 
@@ -243,20 +261,24 @@
                 if (!turmaId) {
                     selectD.innerHTML = '<option value="">Disciplina...</option>';
                 } else {
-                    // Filtra na grade horária apenas as disciplinas correspondentes à turma selecionada
+                    // Filtra na grade horária
                     const discFromGrade = globalGrade
                         .filter(g => g.id_turma === turmaId && g.disciplinas !== null)
                         .map(g => g.disciplinas);
                     
-                    // Remove duplicatas (caso o professor dê mais de um tempo da mesma disciplina na turma)
-                    const uniqueDisc = Array.from(new Map(discFromGrade.map(d => [d.sigla, d])).values());
-                    uniqueDisc.sort((a, b) => a.nome.localeCompare(b.nome));
+                    const uniqueDiscMap = new Map(discFromGrade.map(d => [d.sigla, d]));
+
+                    // TASK: Se professor de Projeto de Vida, injetar a disciplina na lista
+                    if (teachesProjetoDeVida) {
+                        uniqueDiscMap.set('P.VIDA', { sigla: 'P.VIDA', nome: 'PROJETO DE VIDA', tipo: 'BCC' });
+                    }
+
+                    const sortedDisc = Array.from(uniqueDiscMap.values()).sort((a, b) => a.nome.localeCompare(b.nome));
                     
-                    selectD.innerHTML = '<option value="">Disciplina...</option>' + uniqueDisc.map(d => `<option value="${d.sigla}" data-tipo="${d.tipo}">${d.nome} (${d.sigla})</option>`).join('');
+                    selectD.innerHTML = '<option value="">Disciplina...</option>' + sortedDisc.map(d => `<option value="${d.sigla}" data-tipo="${d.tipo}">${d.nome} (${d.sigla})</option>`).join('');
                 }
             }
             
-            // Chama o carregamento da tabela (vai ocultar porque a disciplina ainda não foi selecionada)
             loadAttendanceTable();
         }
 
@@ -279,7 +301,6 @@
             document.getElementById('table-wrapper').classList.add('hidden');
 
             try {
-                // --- LÓGICA DE SUBTURMA (INGLÊS) ---
                 const { data: discInfo } = await window.supabaseClient.from('disciplinas').select('nome').eq('sigla', currentDiscSigla).maybeSingle();
                 const isIngles = currentDiscSigla === 'L.ING' || discInfo?.nome?.toUpperCase().includes('INGLÊS');
 
@@ -296,10 +317,8 @@
                         .eq('id_professor', currentUser.id)
                         .maybeSingle();
                     
-                    if (subturma) {
-                        matriculasQuery = matriculasQuery.eq('alunos.id_subturma_ingles', subturma.id);
-                    } else {
-                        // Se for professor de Inglês mas não tiver subturma para esta turma, não carrega alunos.
+                    if (subturma) matriculasQuery = matriculasQuery.eq('alunos.id_subturma_ingles', subturma.id);
+                    else {
                         globalMatriculas = [];
                         renderTable();
                         document.getElementById('table-wrapper').classList.remove('hidden');
