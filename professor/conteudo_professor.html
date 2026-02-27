@@ -32,25 +32,25 @@
 
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; overflow: hidden; }
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         
-        .top-bar-select { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; color: #003c5b; outline: none; transition: all 0.2s; min-width: 140px; }
+        .top-bar-select { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; color: #003c5b; outline: none; transition: all 0.2s; min-width: 160px; }
         .top-bar-select:focus { border-color: #00638f; background: white; box-shadow: 0 0 0 4px rgba(0, 99, 143, 0.05); }
 
-        .content-card { background: white; border-radius: 32px; border: 1px solid #f1f5f9; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); transition: all 0.3s ease; }
+        .history-card { background: white; border-radius: 24px; border: 1px solid #f1f5f9; transition: all 0.3s ease; cursor: pointer; }
+        .history-card:hover { transform: translateY(-4px); border-color: #c8d400; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); }
         
-        .history-item { transition: all 0.2s; cursor: pointer; border-left: 4px solid transparent; }
-        .history-item:hover { background-color: #f8fafc; border-left-color: #c8d400; transform: translateX(4px); }
-        .history-item.active { background-color: #f0f9ff; border-left-color: #00638f; }
-
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
+
+        .modal-overlay { background-color: rgba(0, 60, 91, 0.8); backdrop-filter: blur(4px); }
     </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden text-left">
 
-    <aside id="sidebar-container" class="sidebar-transition w-72 flex-shrink-0 bg-fmm-dark text-white flex flex-col shadow-2xl relative z-20"></aside>
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
 
     <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
         
@@ -65,13 +65,12 @@
 
                 <div class="h-8 w-px bg-slate-100 hidden md:block"></div>
 
-                <div class="flex items-center gap-2">
-                    <input type="date" id="selectDate" onchange="loadClassContent()" class="top-bar-select w-36">
+                <div class="flex items-center gap-3">
                     <select id="selectTurma" onchange="handleTurmaChange()" class="top-bar-select">
-                        <option value="">Turma...</option>
+                        <option value="">Selecione a Turma...</option>
                     </select>
-                    <select id="selectDisc" onchange="loadClassContent()" class="top-bar-select w-44">
-                        <option value="">Disciplina...</option>
+                    <select id="selectDisc" onchange="loadHistory()" class="top-bar-select">
+                        <option value="">Selecione a Disciplina...</option>
                     </select>
                 </div>
             </div>
@@ -81,76 +80,90 @@
                     <i data-lucide="refresh-ccw" class="w-3.5 h-3.5 text-fmm-blue"></i>
                     <span class="text-[9px] font-black text-fmm-blue uppercase">Sinc...</span>
                 </div>
-                <button onclick="saveContent()" id="btnSave" class="hidden px-6 py-2.5 bg-fmm-dark text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg">
-                    <i data-lucide="save" class="w-4 h-4"></i> Salvar Registro
+                <button onclick="openModal()" id="btnAdd" class="hidden px-6 py-2.5 bg-fmm-dark text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i> Adicionar Registro
                 </button>
             </div>
         </header>
 
-        <div class="flex-1 overflow-hidden flex bg-slate-50">
-            
-            <!-- ÁREA DO FORMULÁRIO -->
-            <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                <div id="loading-overlay" class="hidden h-full flex flex-col items-center justify-center text-slate-300 gap-4">
-                    <i data-lucide="loader-2" class="w-12 h-12 animate-spin text-fmm-blue"></i>
-                    <p class="text-sm font-bold uppercase tracking-widest">Sincronizando...</p>
+        <!-- ÁREA DE HISTÓRICO (VISÃO PRINCIPAL) -->
+        <div class="flex-1 overflow-y-auto custom-scrollbar bg-slate-50 p-8">
+            <div id="loading-overlay" class="hidden h-full flex flex-col items-center justify-center text-slate-300 gap-4">
+                <i data-lucide="loader-2" class="w-12 h-12 animate-spin text-fmm-blue"></i>
+                <p class="text-sm font-bold uppercase tracking-widest">Buscando histórico...</p>
+            </div>
+
+            <div id="empty-view" class="h-full flex flex-col items-center justify-center text-center">
+                <div class="w-20 h-20 bg-white rounded-full shadow-xl flex items-center justify-center mb-6 border border-slate-100">
+                    <i data-lucide="history" class="w-10 h-10 text-slate-200"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-400 uppercase tracking-tight">Selecione os filtros acima</h3>
+                <p class="text-sm text-slate-300 italic font-medium">O histórico de registros aparecerá aqui.</p>
+            </div>
+
+            <div id="history-container" class="hidden max-w-6xl mx-auto">
+                <div class="flex items-center justify-between mb-8">
+                    <h2 class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <i data-lucide="calendar-days" class="w-4 h-4 text-fmm-blue"></i> 
+                        Cronograma de Aulas Registradas
+                    </h2>
+                    <span id="history-count" class="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-black text-fmm-dark shadow-sm">0 REGISTROS</span>
+                </div>
+                
+                <div id="history-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade">
+                    <!-- Cards gerados via JS -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL DE LANÇAMENTO / EDIÇÃO -->
+    <div id="contentModal" class="hidden fixed inset-0 z-[100] modal-overlay flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden animate-fade flex flex-col max-h-[90vh]">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                <div class="flex flex-col text-left">
+                    <h2 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none" id="modalTitle">Registrar Aula</h2>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2" id="modalSubtitle">Preencha os detalhes da aula ministrada</p>
+                </div>
+                <button onclick="closeModal()" class="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-all text-slate-400"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-1.5 text-left">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Data da Aula</label>
+                        <input type="date" id="inDate" class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-fmm-blue">
+                    </div>
+                    <div class="space-y-1.5 text-left">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Número de Tempos</label>
+                        <select id="inTempos" class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-fmm-blue">
+                            <option value="1">1 Tempo</option>
+                            <option value="2">2 Tempos</option>
+                            <option value="3">3 Tempos</option>
+                            <option value="4">4 Tempos</option>
+                            <option value="5">5 Tempos</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div id="empty-view" class="h-full flex flex-col items-center justify-center text-center">
-                    <div class="w-20 h-20 bg-white rounded-full shadow-xl flex items-center justify-center mb-6 border border-slate-100">
-                        <i data-lucide="book-text" class="w-10 h-10 text-slate-200"></i>
-                    </div>
-                    <h3 class="text-lg font-bold text-slate-400 uppercase tracking-tight">Selecione os filtros acima</h3>
-                    <p class="text-sm text-slate-300 italic font-medium">Você poderá registrar e consultar o histórico de aulas.</p>
+                <div class="space-y-1.5 text-left">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Conteúdo Ministrado</label>
+                    <textarea id="inConteudo" rows="6" class="w-full p-6 bg-slate-50 border border-slate-200 rounded-3xl text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-fmm-blue/5 focus:bg-white transition-all" placeholder="O que foi trabalhado hoje?"></textarea>
                 </div>
 
-                <div id="content-form" class="hidden max-w-3xl mx-auto space-y-6 animate-fade">
-                    <div class="content-card p-8 space-y-6">
-                        <div class="flex items-center justify-between border-b border-slate-100 pb-6">
-                            <div class="flex flex-col text-left">
-                                <h2 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none" id="display-turma-disc">---</h2>
-                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2" id="display-date">--/--/----</p>
-                            </div>
-                            <div class="flex flex-col items-end">
-                                <label class="text-[10px] font-black text-slate-400 uppercase mb-2">Número de Tempos</label>
-                                <select id="inTempos" class="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-fmm-dark outline-none focus:ring-2 focus:ring-fmm-blue">
-                                    <option value="1">1 Tempo</option>
-                                    <option value="2">2 Tempos</option>
-                                    <option value="3">3 Tempos</option>
-                                    <option value="4">4 Tempos</option>
-                                    <option value="5">5 Tempos</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="space-y-2 text-left">
-                            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 tracking-widest">Descrição do Conteúdo Lecionado</label>
-                            <textarea id="inConteudo" rows="8" class="w-full p-6 bg-slate-50 border border-slate-100 rounded-[24px] text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-fmm-blue/5 focus:bg-white focus:border-fmm-blue transition-all" placeholder="O que foi trabalhado hoje?"></textarea>
-                        </div>
-
-                        <div class="space-y-2 text-left">
-                            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 tracking-widest">Observações Pedagógicas (Opcional)</label>
-                            <textarea id="inObs" rows="3" class="w-full p-6 bg-slate-50 border border-slate-100 rounded-[24px] text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-fmm-blue/5 focus:bg-white focus:border-fmm-blue transition-all" placeholder="Alguma observação relevante sobre a turma ou alunos?"></textarea>
-                        </div>
-                    </div>
+                <div class="space-y-1.5 text-left">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Observações Pedagógicas (Opcional)</label>
+                    <textarea id="inObs" rows="3" class="w-full p-6 bg-slate-50 border border-slate-200 rounded-3xl text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-fmm-blue/5 focus:bg-white transition-all" placeholder="Anotações extras..."></textarea>
                 </div>
             </div>
 
-            <!-- BARRA LATERAL DE HISTÓRICO -->
-            <aside id="history-sidebar" class="hidden w-96 bg-white border-l border-slate-200 flex flex-col shrink-0 animate-fade">
-                <div class="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
-                    <h3 class="text-xs font-black text-fmm-dark uppercase tracking-widest flex items-center gap-2">
-                        <i data-lucide="history" class="w-4 h-4"></i> Histórico de Registros
-                    </h3>
-                    <span id="history-count" class="px-2 py-1 bg-fmm-blue/10 text-fmm-blue text-[9px] font-black rounded-lg">0</span>
-                </div>
-                <div id="history-list" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                    <!-- Itens do histórico via JS -->
-                </div>
-            </aside>
-
+            <div class="p-8 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3 shrink-0">
+                <button id="btnDelete" onclick="deleteRecord()" class="hidden px-6 py-3 text-xs font-black text-red-500 uppercase rounded-2xl hover:bg-red-50 transition-all mr-auto">Excluir Registro</button>
+                <button onclick="closeModal()" class="px-8 py-3.5 text-xs font-black text-slate-400 uppercase rounded-2xl hover:bg-white transition-all">Cancelar</button>
+                <button onclick="saveContent()" id="btnSubmit" class="px-10 py-3.5 bg-fmm-dark text-white text-xs font-black uppercase rounded-2xl shadow-xl shadow-fmm-dark/20 hover:scale-105 active:scale-95 transition-all">Salvar Registro</button>
+            </div>
         </div>
-    </main>
+    </div>
 
     <!-- TOAST -->
     <div id="toast" class="fixed bottom-8 right-8 z-50 translate-y-20 opacity-0 transition-all duration-500">
@@ -174,7 +187,6 @@
             const { data: profile } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).single();
             currentUser = profile;
 
-            document.getElementById('selectDate').valueAsDate = new Date();
             await populateSelectors();
             lucide.createIcons();
         }
@@ -182,12 +194,11 @@
         async function populateSelectors() {
             const selectT = document.getElementById('selectTurma');
             const selectD = document.getElementById('selectDisc');
-            let turmas = [], disciplinas = [];
+            let turmas = [];
 
             if (currentUser.cargo === 'coordenador' || currentUser.cargo === 'diretor') {
                 const { data: t } = await window.supabaseClient.from('turmas').select('*').order('nome');
-                const { data: d } = await window.supabaseClient.from('disciplinas').select('*').order('nome');
-                turmas = t || []; disciplinas = d || [];
+                turmas = t || [];
             } else {
                 const { data: pvidaCheck } = await window.supabaseClient.from('professor_disciplinas')
                     .select('sigla_disciplina')
@@ -198,7 +209,7 @@
                 teachesProjetoDeVida = !!pvidaCheck;
 
                 const { data: grade } = await window.supabaseClient.from('grade_horaria')
-                    .select('id_turma, turmas(*), disciplinas(*)')
+                    .select('id_turma, turmas(*)')
                     .eq('id_professor', currentUser.id);
                 
                 globalGrade = grade || [];
@@ -224,133 +235,141 @@
             const turmaId = document.getElementById('selectTurma').value;
             const selectD = document.getElementById('selectDisc');
 
-            if (currentUser.cargo !== 'coordenador' && currentUser.cargo !== 'diretor') {
+            if (currentUser.cargo === 'coordenador' || currentUser.cargo === 'diretor') {
+                 loadAllDisciplines();
+            } else {
                 if (!turmaId) {
                     selectD.innerHTML = '<option value="">Disciplina...</option>';
                 } else {
-                    const discFromGrade = globalGrade
-                        .filter(g => g.id_turma === turmaId && g.disciplinas !== null)
-                        .map(g => g.disciplinas);
+                    const { data: gradeForTurma } = window.supabaseClient.from('grade_horaria')
+                        .select('sigla_disciplina, disciplinas(*)')
+                        .eq('id_turma', turmaId)
+                        .eq('id_professor', currentUser.id);
                     
+                    const discFromGrade = globalGrade.filter(g => g.id_turma === turmaId).map(g => g.disciplinas).filter(d => d !== null);
                     const uniqueDiscMap = new Map(discFromGrade.map(d => [d.sigla, d]));
 
-                    if (teachesProjetoDeVida) {
-                        uniqueDiscMap.set('P.VIDA', { sigla: 'P.VIDA', nome: 'PROJETO DE VIDA' });
-                    }
+                    if (teachesProjetoDeVida) uniqueDiscMap.set('P.VIDA', { sigla: 'P.VIDA', nome: 'PROJETO DE VIDA' });
 
                     const sortedDisc = Array.from(uniqueDiscMap.values()).sort((a, b) => a.nome.localeCompare(b.nome));
                     selectD.innerHTML = '<option value="">Disciplina...</option>' + sortedDisc.map(d => `<option value="${d.sigla}">${d.nome} (${d.sigla})</option>`).join('');
                 }
             }
-            loadClassContent();
+            loadHistory();
         }
 
-        async function loadClassContent() {
-            const turmaId = document.getElementById('selectTurma').value;
-            const discSigla = document.getElementById('selectDisc').value;
-            const date = document.getElementById('selectDate').value;
+        async function loadAllDisciplines() {
+            const { data } = await window.supabaseClient.from('disciplinas').select('*').order('nome');
+            document.getElementById('selectDisc').innerHTML = '<option value="">Disciplina...</option>' + data.map(d => `<option value="${d.sigla}">${d.nome} (${d.sigla})</option>`).join('');
+        }
 
-            if (!turmaId || !discSigla) {
-                document.getElementById('content-form').classList.add('hidden');
-                document.getElementById('history-sidebar').classList.add('hidden');
-                document.getElementById('empty-view').classList.remove('hidden');
-                document.getElementById('btnSave').classList.add('hidden');
+        async function loadHistory() {
+            const turmaId = document.getElementById('selectTurma').value;
+            const sigla = document.getElementById('selectDisc').value;
+            const grid = document.getElementById('history-grid');
+            const empty = document.getElementById('empty-view');
+            const container = document.getElementById('history-container');
+            const btnAdd = document.getElementById('btnAdd');
+
+            if (!turmaId || !sigla) {
+                container.classList.add('hidden');
+                empty.classList.remove('hidden');
+                btnAdd.classList.add('hidden');
                 return;
             }
 
-            document.getElementById('empty-view').classList.add('hidden');
+            empty.classList.add('hidden');
             document.getElementById('loading-overlay').classList.remove('hidden');
-            document.getElementById('content-form').classList.add('hidden');
+            container.classList.add('hidden');
 
             try {
-                // 1. Carrega registro da data específica
-                const { data: record } = await window.supabaseClient.from('conteudos_aula')
-                    .select('*')
+                const { data: history } = await window.supabaseClient.from('conteudos_aula')
+                    .select('*, prof:perfis(nome_completo)')
                     .eq('id_turma', turmaId)
-                    .eq('sigla_disciplina', discSigla)
-                    .eq('data_aula', date)
-                    .maybeSingle();
+                    .eq('sigla_disciplina', sigla)
+                    .order('data_aula', { ascending: false });
 
-                currentRecordId = record?.id || null;
-                document.getElementById('inTempos').value = record?.numero_tempos || "1";
-                document.getElementById('inConteudo').value = record?.conteudo || "";
-                document.getElementById('inObs').value = record?.observacoes || "";
+                currentHistory = history || [];
+                document.getElementById('history-count').innerText = `${currentHistory.length} REGISTROS`;
 
-                const turmaNome = document.getElementById('selectTurma').options[document.getElementById('selectTurma').selectedIndex].text;
-                const discNome = document.getElementById('selectDisc').options[document.getElementById('selectDisc').selectedIndex].text;
-                document.getElementById('display-turma-disc').innerText = `${turmaNome} | ${discNome}`;
-                document.getElementById('display-date').innerText = new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+                if (currentHistory.length === 0) {
+                    grid.innerHTML = '';
+                    // Se não houver nada, apenas mostra o botão de adicionar
+                } else {
+                    grid.innerHTML = currentHistory.map(item => `
+                        <div onclick="openModal('${item.id}')" class="history-card p-6 flex flex-col gap-4 animate-fade">
+                            <div class="flex justify-between items-start">
+                                <div class="bg-fmm-blue/5 p-2 rounded-xl text-fmm-blue">
+                                    <i data-lucide="book-open" class="w-5 h-5"></i>
+                                </div>
+                                <span class="text-[10px] font-black text-slate-300 uppercase">${new Date(item.data_aula + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-xs font-black text-fmm-dark uppercase mb-2 line-clamp-1">${item.numero_tempos} Tempos de Aula</p>
+                                <p class="text-xs font-medium text-slate-500 line-clamp-3 leading-relaxed">${item.conteudo}</p>
+                            </div>
+                            <div class="pt-4 border-t border-slate-50 flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-black text-slate-400">
+                                        ${item.prof?.nome_completo?.charAt(0) || 'P'}
+                                    </div>
+                                    <span class="text-[9px] font-bold text-slate-400 uppercase">${item.prof?.nome_completo?.split(' ')[0] || 'Docente'}</span>
+                                </div>
+                                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-200"></i>
+                            </div>
+                        </div>
+                    `).join('');
+                }
 
-                document.getElementById('content-form').classList.remove('hidden');
-                document.getElementById('btnSave').classList.remove('hidden');
-
-                // 2. Carrega Histórico da Disciplina na Turma
-                await loadHistory(turmaId, discSigla);
-
+                container.classList.remove('hidden');
+                btnAdd.classList.remove('hidden');
+                lucide.createIcons();
             } catch (err) {
                 console.error(err);
             } finally {
                 document.getElementById('loading-overlay').classList.add('hidden');
-                lucide.createIcons();
             }
         }
 
-        async function loadHistory(turmaId, sigla) {
-            const { data: history } = await window.supabaseClient.from('conteudos_aula')
-                .select('*')
-                .eq('id_turma', turmaId)
-                .eq('sigla_disciplina', sigla)
-                .order('data_aula', { ascending: false });
-
-            currentHistory = history || [];
-            renderHistory();
-        }
-
-        function renderHistory() {
-            const list = document.getElementById('history-list');
-            const sidebar = document.getElementById('history-sidebar');
-            const countEl = document.getElementById('history-count');
-            const currentDate = document.getElementById('selectDate').value;
-
-            if (currentHistory.length === 0) {
-                list.innerHTML = `<p class="text-xs text-slate-300 italic text-center py-10 uppercase tracking-widest">Nenhum registro anterior.</p>`;
+        function openModal(id = null) {
+            currentRecordId = id;
+            const form = document.getElementById('contentModal');
+            const btnDel = document.getElementById('btnDelete');
+            
+            if (id) {
+                const record = currentHistory.find(r => r.id === id);
+                document.getElementById('modalTitle').innerText = "Editar Registro";
+                document.getElementById('inDate').value = record.data_aula;
+                document.getElementById('inTempos').value = record.numero_tempos;
+                document.getElementById('inConteudo').value = record.conteudo;
+                document.getElementById('inObs').value = record.observacoes || "";
+                btnDel.classList.remove('hidden');
             } else {
-                list.innerHTML = currentHistory.map(item => {
-                    const isActive = item.data_aula === currentDate;
-                    return `
-                        <div onclick="setDateAndLoad('${item.data_aula}')" class="history-item p-5 bg-white border border-slate-100 rounded-2xl shadow-sm ${isActive ? 'active' : ''}">
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="text-[10px] font-black text-fmm-blue uppercase">${new Date(item.data_aula + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
-                                <span class="text-[9px] font-black text-slate-300 uppercase">${item.numero_tempos} Tempos</span>
-                            </div>
-                            <p class="text-xs font-medium text-slate-600 line-clamp-2 leading-relaxed">${item.conteudo}</p>
-                        </div>
-                    `;
-                }).join('');
+                document.getElementById('modalTitle').innerText = "Novo Registro";
+                document.getElementById('inDate').valueAsDate = new Date();
+                document.getElementById('inTempos').value = "1";
+                document.getElementById('inConteudo').value = "";
+                document.getElementById('inObs').value = "";
+                btnDel.classList.add('hidden');
             }
 
-            countEl.innerText = currentHistory.length;
-            sidebar.classList.remove('hidden');
+            form.classList.remove('hidden');
             lucide.createIcons();
         }
 
-        function setDateAndLoad(date) {
-            document.getElementById('selectDate').value = date;
-            loadClassContent();
-        }
+        function closeModal() { document.getElementById('contentModal').classList.add('hidden'); }
 
         async function saveContent() {
             const turmaId = document.getElementById('selectTurma').value;
             const discSigla = document.getElementById('selectDisc').value;
-            const date = document.getElementById('selectDate').value;
+            const date = document.getElementById('inDate').value;
             const conteudo = document.getElementById('inConteudo').value.trim();
 
             if (!conteudo) return alert("Por favor, descreva o conteúdo da aula.");
 
-            const btn = document.getElementById('btnSave');
+            const btn = document.getElementById('btnSubmit');
             btn.disabled = true;
-            btn.innerHTML = '<i data-lucide="refresh-cw" class="w-4 h-4 animate-spin"></i> Gravando...';
-            lucide.createIcons();
+            btn.innerText = "Salvando...";
 
             const payload = {
                 id_turma: turmaId,
@@ -371,15 +390,26 @@
                 }
 
                 if (error) throw error;
-                showToast("Conteúdo salvo com sucesso!");
-                await loadClassContent();
+                showToast("Conteúdo salvo!");
+                closeModal();
+                await loadHistory();
             } catch (err) {
                 alert("Erro ao salvar: " + err.message);
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Salvar Registro';
-                lucide.createIcons();
+                btn.innerText = "Salvar Registro";
             }
+        }
+
+        async function deleteRecord() {
+            if (!confirm("Deseja excluir este registro permanentemente?")) return;
+            try {
+                const { error } = await window.supabaseClient.from('conteudos_aula').delete().eq('id', currentRecordId);
+                if (error) throw error;
+                showToast("Registro removido.");
+                closeModal();
+                await loadHistory();
+            } catch (err) { alert(err.message); }
         }
 
         function showToast(msg) {
