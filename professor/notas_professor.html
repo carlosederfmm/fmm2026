@@ -109,11 +109,9 @@
                 </div>
             </div>
 
+            <!-- Abas renderizadas dinamicamente via JS -->
             <div id="period-tabs" class="hidden lg:flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200">
-                <button onclick="switchView('anual')" class="tab-btn active" id="tab-anual">Anual</button>
-                <button onclick="switchView('1_TRIMESTRE')" class="tab-btn" id="tab-1_TRIMESTRE">1º Trim</button>
-                <button onclick="switchView('2_TRIMESTRE')" class="tab-btn" id="tab-2_TRIMESTRE">2º Trim</button>
-                <button onclick="switchView('3_TRIMESTRE')" class="tab-btn" id="tab-3_TRIMESTRE">3º Trim</button>
+                <!-- Botões injetados dinamicamente -->
             </div>
 
             <div class="flex items-center gap-4">
@@ -182,7 +180,10 @@
         let globalGrade = [];
         let currentDiscType = 'BCC';
         let currentDiscSigla = '';
-        let teachesProjetoDeVida = false; // Flag para controle da matéria assíncrona
+        let teachesProjetoDeVida = false; 
+        
+        // TASK: Adicionada Variável de Matriz para roteamento (Fundamental, Básica, Técnica)
+        let currentMatriz = 'BASICA';
 
         function formatDriveUrl(url) {
             if (!url) return null;
@@ -216,7 +217,6 @@
                 selectT.innerHTML = '<option value="">Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
                 selectD.innerHTML = '<option value="">Disciplina...</option>' + disciplinas.map(d => `<option value="${d.sigla}" data-tipo="${d.tipo}">${d.nome} (${d.sigla})</option>`).join('');
             } else {
-                // TASK: Verificar se o professor leciona Projeto de Vida (Assíncrona)
                 const { data: pvidaCheck } = await window.supabaseClient.from('professor_disciplinas')
                     .select('sigla_disciplina')
                     .eq('id_professor', currentUser.id)
@@ -225,14 +225,12 @@
                 
                 teachesProjetoDeVida = !!pvidaCheck;
 
-                // Busca a grade horária normal
                 const { data: grade } = await window.supabaseClient.from('grade_horaria')
                     .select('id_turma, turmas(*), disciplinas(*)')
                     .eq('id_professor', currentUser.id);
                 
                 globalGrade = grade || [];
 
-                // Se leciona Projeto de Vida, carregamos TODAS as turmas permitidas pelos seus níveis de acesso
                 if (teachesProjetoDeVida) {
                     const { data: allAllowedTurmas } = await window.supabaseClient.from('turmas')
                         .select('*')
@@ -240,20 +238,17 @@
                         .order('nome');
                     turmas = allAllowedTurmas || [];
                 } else {
-                    // Senão, apenas as turmas onde ele tem horários fixos
                     turmas = Array.from(new Map(globalGrade.map(g => [g.id_turma, g.turmas])).values())
                                  .filter(t => t !== null);
                 }
 
                 turmas.sort((a, b) => a.nome.localeCompare(b.nome, undefined, { numeric: true, sensitivity: 'base' }));
 
-                // Preencher turmas
                 selectT.innerHTML = '<option value="">Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
                 selectD.innerHTML = '<option value="">Disciplina...</option>'; 
             }
         }
 
-        // TASK: Adicionada função handleTurmaChange para gerenciar a injeção de P.VIDA
         function handleTurmaChange() {
             const turmaId = document.getElementById('selectTurma').value;
             const selectD = document.getElementById('selectDisc');
@@ -262,14 +257,12 @@
                 if (!turmaId) {
                     selectD.innerHTML = '<option value="">Disciplina...</option>';
                 } else {
-                    // Filtra na grade horária apenas as disciplinas correspondentes à turma selecionada
                     const discFromGrade = globalGrade
                         .filter(g => g.id_turma === turmaId && g.disciplinas !== null)
                         .map(g => g.disciplinas);
                     
                     const uniqueDiscMap = new Map(discFromGrade.map(d => [d.sigla, d]));
 
-                    // Se professor de Projeto de Vida, injetar a disciplina na lista para qualquer turma permitida
                     if (teachesProjetoDeVida) {
                         uniqueDiscMap.set('P.VIDA', { sigla: 'P.VIDA', nome: 'PROJETO DE VIDA', tipo: 'BCC' });
                     }
@@ -308,18 +301,49 @@
             document.getElementById('loading-overlay').classList.remove('hidden');
             document.getElementById('table-wrapper').classList.add('hidden');
             
-            if (document.getElementById('period-tabs')) document.getElementById('period-tabs').classList.toggle('hidden', currentDiscType !== 'BCC');
-
             try {
                 const { data: discInfo } = await window.supabaseClient.from('disciplinas').select('nome').eq('sigla', currentDiscSigla).maybeSingle();
                 const isIngles = currentDiscSigla === 'L.ING' || discInfo?.nome?.toUpperCase().includes('INGLÊS');
 
+                // TASK: Verificar nível da turma para determinar a matriz (Fundamental, Básico ou Técnico)
+                const { data: turmaInfo } = await window.supabaseClient.from('turmas').select('nivel').eq('id', turmaId).maybeSingle();
+                const isEF = turmaInfo?.nivel?.startsWith('EF');
+                const isEMT = turmaInfo?.nivel === 'EMT';
+                currentMatriz = isEF ? 'FUNDAMENTAL' : (currentDiscType === 'BCC' ? 'BASICA' : 'TECNICA');
+
+                // TASK: Renderização Dinâmica de Abas Baseada na Matriz
+                const tabsContainer = document.getElementById('period-tabs');
+                if (currentMatriz === 'FUNDAMENTAL') {
+                    if (currentView.includes('TRIMESTRE')) currentView = 'anual';
+                    tabsContainer.innerHTML = `
+                        <button onclick="switchView('anual')" class="tab-btn ${currentView==='anual'?'active':''}" id="tab-anual">Anual</button>
+                        <button onclick="switchView('1_BIMESTRE')" class="tab-btn ${currentView==='1_BIMESTRE'?'active':''}" id="tab-1_BIMESTRE">1º Bim</button>
+                        <button onclick="switchView('2_BIMESTRE')" class="tab-btn ${currentView==='2_BIMESTRE'?'active':''}" id="tab-2_BIMESTRE">2º Bim</button>
+                        <button onclick="switchView('3_BIMESTRE')" class="tab-btn ${currentView==='3_BIMESTRE'?'active':''}" id="tab-3_BIMESTRE">3º Bim</button>
+                        <button onclick="switchView('4_BIMESTRE')" class="tab-btn ${currentView==='4_BIMESTRE'?'active':''}" id="tab-4_BIMESTRE">4º Bim</button>
+                    `;
+                    tabsContainer.classList.remove('hidden');
+                } else if (currentMatriz === 'BASICA') {
+                    if (currentView.includes('BIMESTRE')) currentView = 'anual';
+                    tabsContainer.innerHTML = `
+                        <button onclick="switchView('anual')" class="tab-btn ${currentView==='anual'?'active':''}" id="tab-anual">Anual</button>
+                        <button onclick="switchView('1_TRIMESTRE')" class="tab-btn ${currentView==='1_TRIMESTRE'?'active':''}" id="tab-1_TRIMESTRE">1º Trim</button>
+                        <button onclick="switchView('2_TRIMESTRE')" class="tab-btn ${currentView==='2_TRIMESTRE'?'active':''}" id="tab-2_TRIMESTRE">2º Trim</button>
+                        <button onclick="switchView('3_TRIMESTRE')" class="tab-btn ${currentView==='3_TRIMESTRE'?'active':''}" id="tab-3_TRIMESTRE">3º Trim</button>
+                    `;
+                    tabsContainer.classList.remove('hidden');
+                } else {
+                    tabsContainer.classList.add('hidden'); // Técnica não usa abas na UI atual, renderiza tudo em lista
+                }
+
                 let matriculasQuery = window.supabaseClient.from('matriculas')
-                    .select('id, ra_aluno, alunos:ra_aluno(nome_completo, url_foto, id_subturma_ingles)')
+                    .select('id, ra_aluno, status, alunos!inner(nome_completo, url_foto, id_subturma_ingles, status)')
                     .eq('id_turma', turmaId)
-                    .eq('status', 'CURSANDO')
                     .eq('ano_letivo', 2026);
 
+                let subturmaId = null;
+
+                // Lógica de Inglês baseada no status anterior implementado
                 if (isIngles && currentUser.cargo === 'professor') {
                     const { data: subturma } = await window.supabaseClient.from('subturmas')
                         .select('id')
@@ -328,7 +352,8 @@
                         .maybeSingle();
 
                     if (subturma) {
-                        matriculasQuery = matriculasQuery.eq('alunos.id_subturma_ingles', subturma.id);
+                        subturmaId = subturma.id;
+                        matriculasQuery = matriculasQuery.eq('alunos.id_subturma_ingles', subturmaId);
                     } else {
                         globalMatriculas = [];
                         renderTable();
@@ -338,16 +363,56 @@
                     }
                 }
 
-                const { data: matriculas } = await matriculasQuery;
-                globalMatriculas = (matriculas || []).filter(m => m.alunos !== null);
+                let { data: matriculas, error: matErr } = await matriculasQuery;
+
+                // Fallback de Segurança
+                if (matErr || !matriculas || matriculas.length === 0) {
+                    let fallbackQuery = window.supabaseClient.from('alunos')
+                        .select('ra, nome_completo, url_foto, id_subturma_ingles, status')
+                        .eq('id_turma', turmaId);
+                    
+                    if (subturmaId) fallbackQuery = fallbackQuery.eq('id_subturma_ingles', subturmaId);
+
+                    const { data: fallbackAlunos } = await fallbackQuery;
+
+                    if (fallbackAlunos && fallbackAlunos.length > 0) {
+                        matriculas = fallbackAlunos.map(a => ({
+                            id: a.ra, 
+                            ra_aluno: a.ra,
+                            status: a.status,
+                            alunos: {
+                                nome_completo: a.nome_completo,
+                                url_foto: a.url_foto,
+                                id_subturma_ingles: a.id_subturma_ingles,
+                                status: a.status
+                            }
+                        }));
+                    }
+                }
+
+                globalMatriculas = (matriculas || []).filter(m => {
+                    const st = (m.status || m.alunos?.status || 'CURSANDO').toUpperCase();
+                    return st === 'CURSANDO' || st === 'ATIVO';
+                });
                 
-                if (currentDiscType === 'BCC') {
-                    const { data: nb } = await window.supabaseClient.from('notas_basica').select('*').eq('sigla_disciplina', currentDiscSigla);
-                    const { data: ab } = await window.supabaseClient.from('anual_basica').select('*').eq('sigla_disciplina', currentDiscSigla);
-                    globalNotas = nb || []; globalAnual = ab || [];
+                if (globalMatriculas.length > 0) {
+                    const idList = globalMatriculas.map(m => m.id);
+
+                    // TASK: Roteamento de Notas no DB baseado na Matriz Detectada
+                    if (currentMatriz === 'FUNDAMENTAL') {
+                        const { data: nf } = await window.supabaseClient.from('notas_fundamental').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList);
+                        const { data: af } = await window.supabaseClient.from('anual_fundamental').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList);
+                        globalNotas = nf || []; globalAnual = af || [];
+                    } else if (currentMatriz === 'BASICA') {
+                        const { data: nb } = await window.supabaseClient.from('notas_basica').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList);
+                        const { data: ab } = await window.supabaseClient.from('anual_basica').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList);
+                        globalNotas = nb || []; globalAnual = ab || [];
+                    } else {
+                        const { data: nt } = await window.supabaseClient.from('notas_tecnica').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList);
+                        globalNotas = nt || [];
+                    }
                 } else {
-                    const { data: nt } = await window.supabaseClient.from('notas_tecnica').select('*').eq('sigla_disciplina', currentDiscSigla);
-                    globalNotas = nt || [];
+                    globalNotas = []; globalAnual = [];
                 }
 
                 globalMatriculas.sort((a, b) => {
@@ -368,8 +433,12 @@
             const header = document.getElementById('tableHeader');
             const body = document.getElementById('tableBody');
             if (!header || !body) return;
-            if (currentDiscType === 'BCC') renderBCC(header, body);
+            
+            // TASK: Roteador de Renderização da Tabela
+            if (currentMatriz === 'FUNDAMENTAL') renderFundamental(header, body);
+            else if (currentMatriz === 'BASICA') renderBCC(header, body);
             else renderTecnica(header, body);
+            
             lucide.createIcons(); 
         }
 
@@ -378,6 +447,69 @@
             return `<div class="intervention-badge" title="Nota alterada administrativamente pela Coordenação"><i data-lucide="shield-check" class="w-3 h-3"></i></div>`;
         }
 
+        // TASK: Renderização Exclusiva do Ensino Fundamental (Bimestral)
+        function renderFundamental(header, body) {
+            let headHTML = `<tr><th class="px-8 py-6 sticky-intersect border-r border-white/5 min-w-[300px] text-white text-[10px] font-black uppercase tracking-widest">Aluno</th>`;
+            if (currentView === 'anual') {
+                headHTML += `<th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">1º Bim</th>
+                             <th class="text-center py-6 sticky-header bg-slate-700 text-white text-[10px] font-black uppercase">2º Bim</th>
+                             <th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">3º Bim</th>
+                             <th class="text-center py-6 sticky-header bg-slate-700 text-white text-[10px] font-black uppercase">4º Bim</th>
+                             <th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase">M. Anual</th>
+                             <th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase">R. Final</th>
+                             <th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase border-r border-white/10">Conselho</th>
+                             <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">M. Final</th></tr>`;
+            } else {
+                headHTML += `<th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 1 (P1)</th>
+                             <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 2 (P2)</th>
+                             <th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">M. Parcial</th>
+                             <th class="text-center py-6 sticky-header bg-orange-600 text-white text-[10px] font-black uppercase">Recup (RB)</th>
+                             <th class="text-center py-6 sticky-header bg-fmm-lime text-fmm-dark text-[10px] font-black uppercase tracking-widest">Bimestral</th></tr>`;
+            }
+            header.innerHTML = headHTML;
+
+            if (globalMatriculas.length === 0) {
+                body.innerHTML = `<tr><td colspan="${currentView === 'anual' ? 9 : 6}" class="px-8 py-20 text-center text-slate-300 italic font-medium">Nenhum aluno encontrado neste grupo.</td></tr>`;
+                return;
+            }
+
+            body.innerHTML = globalMatriculas.map(m => {
+                const n = globalNotas.find(x => x.id_matricula === m.id && x.periodo === currentView) || { p1: 0, p2: 0, rb: 0, nb: 0, alterado_pela_coordenacao: false };
+                const a = globalAnual.find(x => x.id_matricula === m.id) || { media_anual: 0, recup_final: 0, conselho_classe: 0, media_final: 0, alterado_pela_coordenacao: false };
+                const n1 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '1_BIMESTRE')?.nb || 0;
+                const n2 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '2_BIMESTRE')?.nb || 0;
+                const n3 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '3_BIMESTRE')?.nb || 0;
+                const n4 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '4_BIMESTRE')?.nb || 0;
+
+                const urlFoto = formatDriveUrl(m.alunos?.url_foto);
+                const avatar = urlFoto 
+                    ? `<img src="${urlFoto}" class="student-photo" onclick="openPhotoModal('${urlFoto}', '${m.alunos?.nome_completo}')" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(m.alunos?.nome_completo)}&background=random&color=fff'">`
+                    : `<div class="student-photo flex items-center justify-center bg-slate-100 text-slate-400 font-bold text-xs border-2 border-white shadow-sm">${m.alunos?.nome_completo.charAt(0)}</div>`;
+
+                let rows = `<tr class="group transition-colors hover:bg-slate-50/50 text-left"><td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100"><div class="flex items-center gap-4 text-left">${avatar}<div class="flex flex-col text-left"><span class="text-sm font-extrabold truncate max-w-[180px]">${m.alunos?.nome_completo || 'N/A'}</span><span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span></div></div></td>`;
+
+                if (currentView === 'anual') {
+                    rows += `<td class="px-4 text-center font-bold ${n1 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n1).toFixed(1)}</td>
+                             <td class="px-4 text-center font-bold ${n2 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n2).toFixed(1)}</td>
+                             <td class="px-4 text-center font-bold ${n3 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n3).toFixed(1)}</td>
+                             <td class="px-4 text-center font-bold ${n4 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n4).toFixed(1)}</td>
+                             <td class="px-4 text-center font-black text-fmm-blue bg-blue-50/30" id="media-anual-display-${m.id}">${Number(a.media_anual).toFixed(1)}</td>
+                             <td class="px-4 text-center">${renderAnualInput(m.id, 'recup_final', a.recup_final, a.media_anual >= 6, a.alterado_pela_coordenacao, 'ANUAL_FUND')}</td>
+                             <td class="px-4 text-center border-r border-slate-100">${renderAnualInput(m.id, 'conselho_classe', a.conselho_classe, false, a.alterado_pela_coordenacao, 'ANUAL_FUND')}</td>
+                             <td class="px-6 text-center"><span id="media-final-display-${m.id}" class="font-black text-base ${a.media_final < 6 ? 'text-red-600' : 'text-fmm-green'}">${Number(a.media_final).toFixed(1)}</span></td>`;
+                } else {
+                    const mp = (Number(n.p1 || 0) + Number(n.p2 || 0)) / 2;
+                    rows += `<td class="px-4 text-center">${renderInput(m.id, currentView, 'p1', n.p1, false, n.alterado_pela_coordenacao, 'FUND')}</td>
+                             <td class="px-4 text-center">${renderInput(m.id, currentView, 'p2', n.p2, false, n.alterado_pela_coordenacao, 'FUND')}</td>
+                             <td class="px-4 text-center font-bold bg-slate-50 text-slate-400" id="mp-display-${m.id}-${currentView}">${mp.toFixed(1)}</td>
+                             <td class="px-4 text-center">${renderInput(m.id, currentView, 'rb', n.rb, mp >= 6, n.alterado_pela_coordenacao, 'FUND')}</td>
+                             <td class="px-6 text-center"><span id="nt-display-${m.id}-${currentView}" class="font-black text-base ${n.nb < 6 ? 'text-red-600' : 'text-fmm-blue'}">${Number(n.nb || 0).toFixed(1)}</span></td>`;
+                }
+                return rows + '</tr>';
+            }).join('');
+        }
+
+        // Renderização Trimestral (Médio Básico)
         function renderBCC(header, body) {
             let headHTML = `<tr><th class="px-8 py-6 sticky-intersect border-r border-white/5 min-w-[300px] text-white text-[10px] font-black uppercase tracking-widest">Aluno</th>`;
             if (currentView === 'anual') {
@@ -398,7 +530,7 @@
             header.innerHTML = headHTML;
 
             if (globalMatriculas.length === 0) {
-                body.innerHTML = `<tr><td colspan="${currentView === 'anual' ? 8 : 6}" class="px-8 py-20 text-center text-slate-300 italic">Nenhum aluno encontrado neste grupo.</td></tr>`;
+                body.innerHTML = `<tr><td colspan="${currentView === 'anual' ? 8 : 6}" class="px-8 py-20 text-center text-slate-300 italic font-medium">Nenhum aluno encontrado neste grupo.</td></tr>`;
                 return;
             }
 
@@ -414,33 +546,34 @@
                     ? `<img src="${urlFoto}" class="student-photo" onclick="openPhotoModal('${urlFoto}', '${m.alunos?.nome_completo}')" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(m.alunos?.nome_completo)}&background=random&color=fff'">`
                     : `<div class="student-photo flex items-center justify-center bg-slate-100 text-slate-400 font-bold text-xs border-2 border-white shadow-sm">${m.alunos?.nome_completo.charAt(0)}</div>`;
 
-                let rows = `<tr class="group transition-colors hover:bg-slate-50/50"><td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100"><div class="flex items-center gap-4">${avatar}<div class="flex flex-col"><span class="text-sm font-extrabold truncate max-w-[180px]">${m.alunos?.nome_completo || 'N/A'}</span><span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span></div></div></td>`;
+                let rows = `<tr class="group transition-colors hover:bg-slate-50/50 text-left"><td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100"><div class="flex items-center gap-4 text-left">${avatar}<div class="flex flex-col text-left"><span class="text-sm font-extrabold truncate max-w-[180px]">${m.alunos?.nome_completo || 'N/A'}</span><span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span></div></div></td>`;
 
                 if (currentView === 'anual') {
                     rows += `<td class="px-4 text-center font-bold ${n1 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n1).toFixed(1)}</td>
                              <td class="px-4 text-center font-bold ${n2 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n2).toFixed(1)}</td>
                              <td class="px-4 text-center font-bold ${n3 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n3).toFixed(1)}</td>
                              <td class="px-4 text-center font-black text-fmm-blue bg-blue-50/30" id="media-anual-display-${m.id}">${Number(a.media_anual).toFixed(1)}</td>
-                             <td class="px-4 text-center">${renderAnualInput(m.id, 'recup_final', a.recup_final, a.media_anual >= 6, a.alterado_pela_coordenacao)}</td>
-                             <td class="px-4 text-center border-r border-slate-100">${renderAnualInput(m.id, 'conselho_classe', a.conselho_classe, false, a.alterado_pela_coordenacao)}</td>
+                             <td class="px-4 text-center">${renderAnualInput(m.id, 'recup_final', a.recup_final, a.media_anual >= 6, a.alterado_pela_coordenacao, 'ANUAL_BCC')}</td>
+                             <td class="px-4 text-center border-r border-slate-100">${renderAnualInput(m.id, 'conselho_classe', a.conselho_classe, false, a.alterado_pela_coordenacao, 'ANUAL_BCC')}</td>
                              <td class="px-6 text-center"><span id="media-final-display-${m.id}" class="font-black text-base ${a.media_final < 6 ? 'text-red-600' : 'text-fmm-green'}">${Number(a.media_final).toFixed(1)}</span></td>`;
                 } else {
                     const mp = (Number(n.p1 || 0) + Number(n.p2 || 0)) / 2;
-                    rows += `<td class="px-4 text-center">${renderInput(m.id, currentView, 'p1', n.p1, false, n.alterado_pela_coordenacao)}</td>
-                             <td class="px-4 text-center">${renderInput(m.id, currentView, 'p2', n.p2, false, n.alterado_pela_coordenacao)}</td>
+                    rows += `<td class="px-4 text-center">${renderInput(m.id, currentView, 'p1', n.p1, false, n.alterado_pela_coordenacao, 'BCC')}</td>
+                             <td class="px-4 text-center">${renderInput(m.id, currentView, 'p2', n.p2, false, n.alterado_pela_coordenacao, 'BCC')}</td>
                              <td class="px-4 text-center font-bold bg-slate-50 text-slate-400" id="mp-display-${m.id}-${currentView}">${mp.toFixed(1)}</td>
-                             <td class="px-4 text-center">${renderInput(m.id, currentView, 'rt', n.rt, mp >= 6, n.alterado_pela_coordenacao)}</td>
+                             <td class="px-4 text-center">${renderInput(m.id, currentView, 'rt', n.rt, mp >= 6, n.alterado_pela_coordenacao, 'BCC')}</td>
                              <td class="px-6 text-center"><span id="nt-display-${m.id}-${currentView}" class="font-black text-base ${n.nt < 6 ? 'text-red-600' : 'text-fmm-blue'}">${Number(n.nt || 0).toFixed(1)}</span></td>`;
                 }
                 return rows + '</tr>';
             }).join('');
         }
 
+        // Renderização Semestral (Médio Técnico)
         function renderTecnica(header, body) {
             header.innerHTML = `<tr><th class="px-8 py-6 sticky-intersect border-r border-white/5 min-w-[300px] text-white text-[10px] font-black uppercase tracking-widest">Aluno</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">P1</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">P2</th><th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">M1</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Rec. P.</th><th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">Cons.</th><th class="text-center py-6 sticky-header bg-slate-700 text-white text-[10px] font-black uppercase">M2</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Rec. F.</th><th class="text-center py-6 sticky-header bg-fmm-green text-white text-[10px] font-black uppercase tracking-widest">N.F.P</th></tr>`;
             
             if (globalMatriculas.length === 0) {
-                body.innerHTML = `<tr><td colspan="9" class="px-8 py-20 text-center text-slate-300 italic">Nenhum aluno encontrado neste grupo.</td></tr>`;
+                body.innerHTML = `<tr><td colspan="9" class="px-8 py-20 text-center text-slate-300 italic font-medium">Nenhum aluno encontrado neste grupo.</td></tr>`;
                 return;
             }
 
@@ -448,26 +581,27 @@
                 const n = globalNotas.find(x => x.id_matricula === m.id) || { p1: 0, p2: 0, media_1: 0, recup_parcial: 0, conselho_semestral: 0, media_2: 0, recup_final_semestral: 0, nota_final_periodo: 0, alterado_pela_coordenacao: false };
                 const formattedUrl = formatDriveUrl(m.alunos?.url_foto);
                 const avatar = m.alunos?.url_foto ? `<img src="${formattedUrl}" class="student-photo" onclick="openPhotoModal('${formattedUrl}', '${m.alunos?.nome_completo}')" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(m.alunos?.nome_completo)}&background=random&color=fff'">` : `<div class="student-photo flex items-center justify-center bg-slate-100 text-slate-400 font-bold text-xs border-2 border-white shadow-sm">${m.alunos?.nome_completo.charAt(0)}</div>`;
-                return `<tr class="group transition-colors hover:bg-slate-50/50"><td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100"><div class="flex items-center gap-4">${avatar}<div class="flex flex-col"><span class="text-sm font-extrabold truncate max-w-[180px]">${m.alunos?.nome_completo || 'N/A'}</span><span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span></div></div></td><td class="px-2 text-center">${renderTecInput(m.id, 'p1', n.p1, false, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'p2', n.p2, false, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center font-bold bg-slate-50 text-slate-400" id="m1-display-${m.id}">${Number(n.media_1).toFixed(1)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'recup_parcial', n.recup_parcial, n.media_1 >= 6, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'conselho_semestral', n.conselho_semestral, false, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center font-bold bg-slate-50 text-slate-400" id="m2-display-${m.id}">${Number(n.media_2).toFixed(1)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'recup_final_semestral', n.recup_final_semestral, n.media_2 >= 6, n.alterado_pela_coordenacao)}</td><td class="px-4 text-center"><span id="nfp-display-${m.id}" class="font-black text-base text-fmm-green">${Number(n.nota_final_periodo).toFixed(1)}</span></td></tr>`;
+                return `<tr class="group transition-colors hover:bg-slate-50/50 text-left"><td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100"><div class="flex items-center gap-4 text-left">${avatar}<div class="flex flex-col text-left"><span class="text-sm font-extrabold truncate max-w-[180px]">${m.alunos?.nome_completo || 'N/A'}</span><span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span></div></div></td><td class="px-2 text-center">${renderTecInput(m.id, 'p1', n.p1, false, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'p2', n.p2, false, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center font-bold bg-slate-50 text-slate-400" id="m1-display-${m.id}">${Number(n.media_1).toFixed(1)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'recup_parcial', n.recup_parcial, n.media_1 >= 6, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'conselho_semestral', n.conselho_semestral, false, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center font-bold bg-slate-50 text-slate-400" id="m2-display-${m.id}">${Number(n.media_2).toFixed(1)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'recup_final_semestral', n.recup_final_semestral, n.media_2 >= 6, n.alterado_pela_coordenacao)}</td><td class="px-4 text-center"><span id="nfp-display-${m.id}" class="font-black text-base text-fmm-green">${Number(n.nota_final_periodo).toFixed(1)}</span></td></tr>`;
             }).join('');
         }
 
-        function renderInput(matId, periodo, field, val, disabled = false, isChanged = false) {
+        // TASK: Tipos Específicos para Salvar nos Bancos Corretos
+        function renderInput(matId, periodo, field, val, disabled = false, isChanged = false, specificType = 'BCC') {
             const isLow = val < 6 && val !== '' && val !== 0;
             const inputId = `in-${matId}-${field}-${periodo}`;
             return `
                 <div class="intervention-wrapper">
                     ${renderInterventionIndicator(isChanged)}
-                    <input type="text" id="${inputId}" name="${inputId}" value="${val === 0 ? '0' : (val || '')}" ${disabled ? 'disabled' : ''} oninput="handleInput(this, 'BCC', '${matId}', '${currentDiscSigla}', '${periodo}', '${field}')" class="grade-input ${isLow ? 'grade-low' : 'grade-ok'}" placeholder="-">
+                    <input type="text" id="${inputId}" name="${inputId}" value="${val === 0 ? '0' : (val || '')}" ${disabled ? 'disabled' : ''} oninput="handleInput(this, '${specificType}', '${matId}', '${currentDiscSigla}', '${periodo}', '${field}')" class="grade-input ${isLow ? 'grade-low' : 'grade-ok'}" placeholder="-">
                 </div>`;
         }
 
-        function renderAnualInput(matId, field, val, disabled = false, isChanged = false) {
+        function renderAnualInput(matId, field, val, disabled = false, isChanged = false, specificType = 'ANUAL_BCC') {
             const inputId = `in-${matId}-${field}-anual`;
             return `
                 <div class="intervention-wrapper">
                     ${renderInterventionIndicator(isChanged)}
-                    <input type="text" id="${inputId}" name="${inputId}" value="${val === 0 ? '0' : (val || '')}" ${disabled ? 'disabled' : ''} oninput="handleInput(this, 'ANUAL', '${matId}', '${currentDiscSigla}', null, '${field}')" class="grade-input bg-blue-50/40" placeholder="-">
+                    <input type="text" id="${inputId}" name="${inputId}" value="${val === 0 ? '0' : (val || '')}" ${disabled ? 'disabled' : ''} oninput="handleInput(this, '${specificType}', '${matId}', '${currentDiscSigla}', null, '${field}')" class="grade-input bg-blue-50/40" placeholder="-">
                 </div>`;
         }
 
@@ -497,21 +631,36 @@
         async function saveData(type, matId, sigla, periodo, field, val) {
             try {
                 let error, data;
-                const conflict = type === 'ANUAL' ? 'id_matricula,sigla_disciplina' : 'id_matricula,sigla_disciplina,periodo';
-                const table = type === 'BCC' ? 'notas_basica' : (type === 'ANUAL' ? 'anual_basica' : 'notas_tecnica');
+                let table, conflict;
+                
+                // TASK: Roteador de Banco de Dados por Nível
+                if (type === 'BCC') { table = 'notas_basica'; conflict = 'id_matricula,sigla_disciplina,periodo'; }
+                else if (type === 'FUND') { table = 'notas_fundamental'; conflict = 'id_matricula,sigla_disciplina,periodo'; }
+                else if (type === 'TEC') { table = 'notas_tecnica'; conflict = 'id_matricula,sigla_disciplina,periodo'; }
+                else if (type === 'ANUAL_BCC') { table = 'anual_basica'; conflict = 'id_matricula,sigla_disciplina'; }
+                else if (type === 'ANUAL_FUND') { table = 'anual_fundamental'; conflict = 'id_matricula,sigla_disciplina'; }
+
                 const payload = { id_matricula: matId, sigla_disciplina: sigla, [field]: val };
-                if (periodo && type !== 'ANUAL') payload.periodo = periodo;
+                if (periodo && !type.startsWith('ANUAL')) payload.periodo = periodo;
 
                 ({ data, error } = await window.supabaseClient.from(table).upsert(payload, { onConflict: conflict }).select().single());
                 if (error) throw error;
 
+                // Atualizações Dinâmicas da Interface
                 if (type === 'BCC') {
                     const ntDisplay = document.getElementById(`nt-display-${matId}-${periodo}`);
                     if (ntDisplay && data.nt !== undefined) {
                         ntDisplay.innerText = Number(data.nt).toFixed(1);
                         ntDisplay.className = `font-black text-base ${data.nt < 6 ? 'text-red-600' : 'text-fmm-blue'}`;
                     }
-                } else if (type === 'ANUAL') {
+                } else if (type === 'FUND') {
+                    // Fundamental usa 'nb' (Nota Bimestral) para o campo consolidado
+                    const nbDisplay = document.getElementById(`nt-display-${matId}-${periodo}`);
+                    if (nbDisplay && data.nb !== undefined) {
+                        nbDisplay.innerText = Number(data.nb).toFixed(1);
+                        nbDisplay.className = `font-black text-base ${data.nb < 6 ? 'text-red-600' : 'text-fmm-blue'}`;
+                    }
+                } else if (type === 'ANUAL_BCC' || type === 'ANUAL_FUND') {
                     const mfDisplay = document.getElementById(`media-final-display-${matId}`);
                     if (mfDisplay && data.media_final !== undefined) {
                         mfDisplay.innerText = Number(data.media_final).toFixed(1);

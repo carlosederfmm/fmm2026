@@ -666,7 +666,7 @@
             const seriesContainer = document.getElementById('seriesContainer');
             if(matriz === 'Fundamental') etapa.innerHTML = `<option value="1_BIMESTRE">1º Bimestre</option><option value="2_BIMESTRE">2º Bimestre</option><option value="3_BIMESTRE">3º Bimestre</option><option value="4_BIMESTRE">4º Bimestre</option>`;
             else etapa.innerHTML = `<option value="1_TRIMESTRE">1º Trimestre</option><option value="2_TRIMESTRE">2º Trimestre</option><option value="3_TRIMESTRE">3º Trimestre</option>`;
-            let options = matriz === 'Fundamental' ? ['6º Ano', '7º Ano', '8º Ano', '9º Ano'] : ['1ª Série', '2ª Série', '3ª Série'];
+            let options = matriz === 'Fundamental' ? ['5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano'] : ['1ª Série', '2ª Série', '3ª Série'];
             seriesContainer.innerHTML = options.map(s => `<label class="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl cursor-pointer hover:bg-slate-50 transition-all group text-left"><input type="checkbox" name="serie_checkbox" value="${s}" class="w-4 h-4 rounded border-slate-300 text-fmm-blue focus:ring-fmm-blue"><span class="text-[11px] font-bold text-slate-500 uppercase group-hover:text-fmm-dark">${s}</span></label>`).join('');
         }
 

@@ -181,7 +181,7 @@
         let currentDiscSigla = '';
         let currentTurmaId = '';
         let globalGrade = []; 
-        let teachesProjetoDeVida = false; // TASK: Flag para controle da matéria assíncrona
+        let teachesProjetoDeVida = false; 
 
         function formatDriveUrl(url) {
             if (!url) return null;
@@ -218,7 +218,6 @@
                 selectT.innerHTML = '<option value="">Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
                 selectD.innerHTML = '<option value="">Disciplina...</option>' + disciplinas.map(d => `<option value="${d.sigla}" data-tipo="${d.tipo}">${d.nome} (${d.sigla})</option>`).join('');
             } else {
-                // TASK: Verificar se o professor leciona Projeto de Vida (Assíncrona)
                 const { data: pvidaCheck } = await window.supabaseClient.from('professor_disciplinas')
                     .select('sigla_disciplina')
                     .eq('id_professor', currentUser.id)
@@ -227,14 +226,12 @@
                 
                 teachesProjetoDeVida = !!pvidaCheck;
 
-                // Busca a grade normal
                 const { data: grade } = await window.supabaseClient.from('grade_horaria')
                     .select('id_turma, sigla_disciplina, turmas(*), disciplinas(*)')
                     .eq('id_professor', currentUser.id);
                 
                 globalGrade = grade || [];
 
-                // Se leciona Projeto de Vida, carregamos TODAS as turmas permitidas pelo userLevels
                 if (teachesProjetoDeVida) {
                     const { data: allAllowedTurmas } = await window.supabaseClient.from('turmas')
                         .select('*')
@@ -242,7 +239,6 @@
                         .order('nome');
                     turmas = allAllowedTurmas || [];
                 } else {
-                    // Senão, apenas turmas da grade
                     turmas = Array.from(new Map(globalGrade.map(g => [g.id_turma, g.turmas])).values()).filter(t => t !== null);
                 }
                 
@@ -261,14 +257,12 @@
                 if (!turmaId) {
                     selectD.innerHTML = '<option value="">Disciplina...</option>';
                 } else {
-                    // Filtra na grade horária
                     const discFromGrade = globalGrade
                         .filter(g => g.id_turma === turmaId && g.disciplinas !== null)
                         .map(g => g.disciplinas);
                     
                     const uniqueDiscMap = new Map(discFromGrade.map(d => [d.sigla, d]));
 
-                    // TASK: Se professor de Projeto de Vida, injetar a disciplina na lista
                     if (teachesProjetoDeVida) {
                         uniqueDiscMap.set('P.VIDA', { sigla: 'P.VIDA', nome: 'PROJETO DE VIDA', tipo: 'BCC' });
                     }
@@ -304,11 +298,13 @@
                 const { data: discInfo } = await window.supabaseClient.from('disciplinas').select('nome').eq('sigla', currentDiscSigla).maybeSingle();
                 const isIngles = currentDiscSigla === 'L.ING' || discInfo?.nome?.toUpperCase().includes('INGLÊS');
 
+                // Adicionado a busca de status na tabela alunos para o Fallback
                 let matriculasQuery = window.supabaseClient.from('matriculas')
-                    .select('ra_aluno, alunos!inner(nome_completo, url_foto, id_subturma_ingles)')
+                    .select('ra_aluno, status, alunos!inner(nome_completo, url_foto, id_subturma_ingles, status)')
                     .eq('id_turma', currentTurmaId)
-                    .eq('status', 'CURSANDO')
                     .eq('ano_letivo', 2026);
+
+                let subturmaId = null;
 
                 if (isIngles && currentUser.cargo === 'professor') {
                     const { data: subturma } = await window.supabaseClient.from('subturmas')
@@ -317,8 +313,10 @@
                         .eq('id_professor', currentUser.id)
                         .maybeSingle();
                     
-                    if (subturma) matriculasQuery = matriculasQuery.eq('alunos.id_subturma_ingles', subturma.id);
-                    else {
+                    if (subturma) {
+                        subturmaId = subturma.id;
+                        matriculasQuery = matriculasQuery.eq('alunos.id_subturma_ingles', subturmaId);
+                    } else {
                         globalMatriculas = [];
                         renderTable();
                         document.getElementById('table-wrapper').classList.remove('hidden');
@@ -328,8 +326,40 @@
                     }
                 }
 
-                const { data: matriculas } = await matriculasQuery;
-                globalMatriculas = matriculas || [];
+                let { data: matriculas, error: matErr } = await matriculasQuery;
+
+                // TASK: Fallback de Segurança - Se a tabela 'matriculas' retornar vazia, tentamos localizar a turma diretamente pela tabela de 'alunos'
+                if (matErr || !matriculas || matriculas.length === 0) {
+                    let fallbackQuery = window.supabaseClient.from('alunos')
+                        .select('ra, nome_completo, url_foto, id_subturma_ingles, status')
+                        .eq('id_turma', currentTurmaId);
+                    
+                    if (subturmaId) {
+                        fallbackQuery = fallbackQuery.eq('id_subturma_ingles', subturmaId);
+                    }
+
+                    const { data: fallbackAlunos } = await fallbackQuery;
+
+                    if (fallbackAlunos && fallbackAlunos.length > 0) {
+                        matriculas = fallbackAlunos.map(a => ({
+                            ra_aluno: a.ra,
+                            status: a.status,
+                            alunos: {
+                                nome_completo: a.nome_completo,
+                                url_foto: a.url_foto,
+                                id_subturma_ingles: a.id_subturma_ingles,
+                                status: a.status
+                            }
+                        }));
+                    }
+                }
+
+                // Filtro de status em memória para aceitar Cursando, CURSANDO, Ativo...
+                globalMatriculas = (matriculas || []).filter(m => {
+                    const st = (m.status || m.alunos?.status || 'CURSANDO').toUpperCase();
+                    return st === 'CURSANDO' || st === 'ATIVO';
+                });
+
                 globalMatriculas.sort((a, b) => (a.alunos?.nome_completo || "").localeCompare((b.alunos?.nome_completo || "")));
 
                 const { data: freq } = await window.supabaseClient.from('frequencias')

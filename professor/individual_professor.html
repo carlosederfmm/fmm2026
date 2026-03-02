@@ -98,7 +98,7 @@
 
         <div class="flex-1 overflow-auto custom-scrollbar bg-slate-50" id="main-content">
             <div id="empty-view" class="h-full flex flex-col items-center justify-center p-20 text-center">
-                <div class="w-24 h-24 bg-white rounded-[32px] shadow-xl flex items-center justify-center mb-8 border border-slate-50"><i data-lucide="user-plus" class="w-10 h-10 text-slate-200"></i></div>
+                <div class="w-24 h-24 bg-white rounded-[32px] shadow-xl flex items-center justify-center mb-8 border border-slate-50"><i data-lucide="user-search" class="w-10 h-10 text-slate-200"></i></div>
                 <h3 class="text-xl font-extrabold text-slate-400 tracking-tight">Conselho de Classe Individual</h3>
                 <p id="empty-msg" class="text-sm text-slate-300 italic mt-2">Pesquise um aluno para gerir dados detalhados.</p>
             </div>
@@ -124,7 +124,7 @@
                     <div id="content-frequencia" class="animate-slide space-y-6">
                         <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center gap-4">
                             <div class="flex-1 w-full space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Lançar Falta</label>
-                            <div class="flex gap-2"><input type="date" id="newAbsenceDate" class="flex-1 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold"><select id="newAbsenceTime" class="w-32 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold"><option value="1">1º Tempo</option><option value="2">2º Tempo</option></select><button onclick="addAbsence()" class="bg-fmm-dark text-white px-6 py-2 rounded-xl text-xs font-black uppercase">Lançar</button></div></div>
+                            <div class="flex gap-2"><input type="date" id="newAbsenceDate" class="flex-1 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold"><select id="newAbsenceTime" class="w-32 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold"><option value="1">1º Tempo</option><option value="2">2º Tempo</option></select><button onclick="addAbsence()" class="bg-fmm-dark text-white px-6 py-2 rounded-xl text-xs font-black uppercase shadow-sm active:scale-95 transition-transform">Lançar</button></div></div>
                         </div>
                         <div class="bg-white rounded-[32px] border border-slate-100 shadow-xl overflow-hidden">
                             <div class="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
@@ -137,10 +137,10 @@
 
                     <div id="content-notas" class="hidden animate-slide">
                         <div class="bg-white rounded-[32px] border border-slate-100 shadow-xl overflow-hidden">
-                            <div id="notas-grid-container" class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100 bg-white"></div>
+                            <div id="notas-grid-container" class="bg-white"></div>
                             <div id="anual-consolidado-area" class="bg-slate-50 p-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-10">
                                 <div class="flex gap-10"><div class="flex flex-col"><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Média Anual</span><span id="label-media-anual" class="text-3xl font-black text-fmm-dark">0.0</span></div><div class="h-12 w-px bg-slate-200"></div><div class="flex flex-col"><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Média Final</span><span id="label-media-final" class="text-3xl font-black text-fmm-blue">0.0</span></div></div>
-                                <div class="flex gap-6"><div class="flex flex-col gap-1.5"><label class="text-[9px] font-black text-slate-400 uppercase text-center">Rec. Final</label><input type="text" id="in-recup-final" oninput="handleInputGrade(this, 'ANUAL', 'recup_final')" class="grade-input bg-amber-50"></div><div class="flex flex-col gap-1.5"><label class="text-[9px] font-black text-slate-400 uppercase text-center">Conselho</label><input type="text" id="in-conselho" oninput="handleInputGrade(this, 'ANUAL', 'conselho_classe')" class="grade-input bg-blue-50"></div></div>
+                                <div class="flex gap-6"><div class="flex flex-col gap-1.5"><label class="text-[9px] font-black text-slate-400 uppercase text-center">Rec. Final</label><input type="text" id="in-recup-final" class="grade-input bg-amber-50"></div><div class="flex flex-col gap-1.5"><label class="text-[9px] font-black text-slate-400 uppercase text-center">Conselho</label><input type="text" id="in-conselho" class="grade-input bg-blue-50"></div></div>
                             </div>
                         </div>
                     </div>
@@ -171,9 +171,9 @@
     </div>
 
     <script>
-        // TASK 3.2.1: supabaseClient agora é global vindo de ../assets/js/supabase_client.js
-
-        let currentUser = null, selectedStudent = null, currentMatriculaId = null, currentDiscSigla = "", currentDiscType = "BCC", activeTab = 'frequencia', saveTimers = {};
+        let currentUser = null, selectedStudent = null, currentMatriculaId = null;
+        let currentDiscSigla = "", currentDiscType = "BCC", activeTab = 'frequencia', saveTimers = {};
+        let teachesProjetoDeVida = false; // TASK: Suporte a disciplinas globais (Projeto de Vida)
 
         function formatDriveUrl(url) {
             if (!url) return null;
@@ -191,6 +191,7 @@
             const { data: profile } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).single();
             currentUser = profile;
             document.getElementById('newAbsenceDate').valueAsDate = new Date();
+            
             await populateTeacherDisciplines();
             lucide.createIcons();
         }
@@ -198,10 +199,20 @@
         async function populateTeacherDisciplines() {
             const select = document.getElementById('selectDisc');
             let disciplines = [];
+            
             if (currentUser.cargo === 'coordenador' || currentUser.cargo === 'diretor') {
                 const { data } = await window.supabaseClient.from('disciplinas').select('*').order('nome');
                 disciplines = data || [];
             } else {
+                // Checa P.VIDA para não ser bloqueado em matrizes normais
+                const { data: pvidaCheck } = await window.supabaseClient.from('professor_disciplinas')
+                    .select('sigla_disciplina')
+                    .eq('id_professor', currentUser.id)
+                    .eq('sigla_disciplina', 'P.VIDA')
+                    .maybeSingle();
+                
+                teachesProjetoDeVida = !!pvidaCheck;
+
                 const { data: vinculos } = await window.supabaseClient.from('professor_disciplinas').select('sigla_disciplina, disciplinas(*)').eq('id_professor', currentUser.id);
                 disciplines = (vinculos || []).map(v => v.disciplinas).filter(d => d !== null);
                 disciplines.sort((a, b) => a.nome.localeCompare(b.nome));
@@ -213,16 +224,27 @@
         async function searchAlunos(val) {
             const results = document.getElementById('searchResults');
             if (!val || val.length < 2) return results.classList.add('hidden');
-            const { data } = await window.supabaseClient.from('alunos').select('*, turmas(nome, serie)').or(`nome_completo.ilike.%${val}%,ra.ilike.%${val}%`).limit(5);
-            if (data && data.length > 0) { results.innerHTML = data.map(a => `<div onclick="loadStudent('${a.ra}')" class="p-4 search-result-item cursor-pointer flex items-center gap-4 border-b border-slate-50 last:border-0 transition-colors"><img src="${formatDriveUrl(a.url_foto) || 'https://ui-avatars.com/api/?name='+encodeURIComponent(a.nome_completo)}" class="w-10 h-10 rounded-xl object-cover shadow-sm"><div class="flex flex-col"><span class="text-sm font-black text-fmm-dark">${a.nome_completo}</span><span class="text-[9px] text-slate-400 font-bold uppercase">${a.turmas?.nome || 'Sem Turma'} | RA: ${a.ra}</span></div></div>`).join(''); results.classList.remove('hidden'); }
-            else results.classList.add('hidden');
+            
+            // TASK: Tolerância case-insensitive via ilike para o status 'Cursando'
+            const { data } = await window.supabaseClient.from('alunos')
+                .select('*, turmas(nome, serie, nivel)')
+                .or(`nome_completo.ilike.%${val}%,ra.ilike.%${val}%`)
+                .ilike('status', 'cursando')
+                .limit(6);
+                
+            if (data && data.length > 0) { 
+                results.innerHTML = data.map(a => `<div onclick="loadStudent('${a.ra}')" class="p-4 search-result-item cursor-pointer flex items-center gap-4 border-b border-slate-50 last:border-0 transition-colors"><img src="${formatDriveUrl(a.url_foto) || 'https://ui-avatars.com/api/?name='+encodeURIComponent(a.nome_completo)}" class="w-10 h-10 rounded-xl object-cover shadow-sm"><div class="flex flex-col"><span class="text-sm font-black text-fmm-dark">${a.nome_completo}</span><span class="text-[9px] text-slate-400 font-bold uppercase">${a.turmas?.nome || 'Sem Turma'} | RA: ${a.ra}</span></div></div>`).join(''); 
+                results.classList.remove('hidden'); 
+            } else {
+                results.innerHTML = `<div class="p-4 text-center text-xs font-bold text-slate-400">Nenhum aluno encontrado.</div>`;
+                results.classList.remove('hidden');
+            }
         }
 
         async function loadStudent(ra) {
             document.getElementById('searchResults').classList.add('hidden'); 
             document.getElementById('studentSearch').value = '';
             
-            // --- VALIDAÇÃO INICIAL DE CONTEXTO ---
             if (!currentDiscSigla) {
                 alert("Por favor, selecione sua disciplina primeiro para validar o acesso ao aluno.");
                 return;
@@ -231,14 +253,12 @@
             const { data: student } = await window.supabaseClient.from('alunos').select('*, turmas(*)').eq('ra', ra).single();
             const { data: matricula } = await window.supabaseClient.from('matriculas').select('id').eq('ra_aluno', ra).eq('ano_letivo', 2026).maybeSingle();
             
-            // --- LÓGICA DE SEGURANÇA E ACESSO (SUBTURMA OU TURMA REGULAR) ---
             if (currentUser.cargo === 'professor') {
                 const s = document.getElementById('selectDisc');
                 const discName = s.options[s.selectedIndex]?.text || "";
                 const isIngles = currentDiscSigla === 'L.ING' || discName.toUpperCase().includes('INGLÊS');
 
                 if (isIngles) {
-                    // Verificação para Inglês (Subturmas)
                     const { data: subturma } = await window.supabaseClient.from('subturmas')
                         .select('id')
                         .eq('id_turma_origem', student.id_turma)
@@ -249,23 +269,25 @@
                         return denyAccess("Este aluno pertence a outro grupo de Inglês.");
                     }
                 } else {
-                    // Verificação para Disciplinas Regulares
-                    // O professor deve estar vinculado a esta disciplina E a esta turma do aluno
-                    const { data: vinculoRegular } = await window.supabaseClient.from('professor_disciplinas')
+                    const { data: vinculoRegular } = await window.supabaseClient.from('grade_horaria')
                         .select('id')
                         .eq('id_professor', currentUser.id)
                         .eq('sigla_disciplina', currentDiscSigla)
                         .eq('id_turma', student.id_turma)
+                        .limit(1)
                         .maybeSingle();
 
-                    if (!vinculoRegular) {
+                    if (!vinculoRegular && !teachesProjetoDeVida) {
                         return denyAccess("Você não leciona nesta turma para a disciplina selecionada.");
                     }
                 }
             }
 
-            // Se chegou aqui, o acesso foi concedido
-            selectedStudent = student; currentMatriculaId = matricula?.id || null;
+            // TASK: Tratamento de Fallback atualizado para UUID
+            // Se não houver id de matrícula, usamos null para evitar erros 400 no banco.
+            selectedStudent = student; 
+            currentMatriculaId = matricula?.id || null; 
+            
             document.getElementById('empty-view').classList.add('hidden'); 
             document.getElementById('student-view').classList.remove('hidden');
             document.getElementById('empty-msg').innerHTML = "Pesquise um aluno para gerir dados detalhados.";
@@ -280,7 +302,6 @@
             lucide.createIcons();
         }
 
-        // Função auxiliar para negar acesso
         function denyAccess(msg) {
             selectedStudent = null;
             currentMatriculaId = null;
@@ -296,7 +317,6 @@
             currentDiscType = s.options[s.selectedIndex]?.dataset.tipo;
             document.getElementById('selected-disc-label').innerText = s.options[s.selectedIndex]?.text || "Selecione uma matéria";
             
-            // Se já houver um aluno carregado, re-valida a permissão de visualização para o novo contexto de disciplina
             if (selectedStudent) loadStudent(selectedStudent.ra);
         }
 
@@ -320,28 +340,76 @@
         async function addAbsence() { const d = document.getElementById('newAbsenceDate').value, t = parseInt(document.getElementById('newAbsenceTime').value); if(!currentDiscSigla || !selectedStudent) return; const { error } = await window.supabaseClient.from('frequencias').upsert({ ra_aluno: selectedStudent.ra, sigla_disciplina: currentDiscSigla, id_turma: selectedStudent.id_turma, data_presenca: d, numero_tempo: t, presente: false }); if(!error) { showToast("Falta lançada"); refreshFrequency(); } }
         async function removeAbsence(id) { if (!confirm("Remover esta falta?")) return; const { error } = await window.supabaseClient.from('frequencias').delete().eq('id', id); if (!error) { showToast("Registo removido"); refreshFrequency(); } }
 
+        // TASK: Roteador Dinâmico de Grade e Avaliações por Matriz
         async function refreshGrades() {
-            if (!currentMatriculaId || !currentDiscSigla) return;
+            if (!selectedStudent || !currentDiscSigla) return;
             const container = document.getElementById('notas-grid-container');
-            if (currentDiscType === 'BCC') {
-                const { data: notas } = await window.supabaseClient.from('notas_basica').select('*').eq('id_matricula', currentMatriculaId).eq('sigla_disciplina', currentDiscSigla);
-                const { data: anual } = await window.supabaseClient.from('anual_basica').select('*').eq('id_matricula', currentMatriculaId).eq('sigla_disciplina', currentDiscSigla).maybeSingle();
-                const periodos = ['1_TRIMESTRE', '2_TRIMESTRE', '3_TRIMESTRE'];
+            
+            const nivel = selectedStudent.turmas?.nivel || '';
+            const isEF = nivel.startsWith('EF');
+            const currentMatriz = isEF ? 'FUNDAMENTAL' : (currentDiscType === 'BCC' ? 'BASICA' : 'TECNICA');
+
+            let notas = [];
+            let anual = null;
+            let nTec = [];
+
+            // Se o aluno não tiver currentMatriculaId, as notas retornarão vazias (0) mas o painel ainda será renderizado
+            if (currentMatriculaId) {
+                if (currentMatriz === 'FUNDAMENTAL') {
+                    const { data: n } = await window.supabaseClient.from('notas_fundamental').select('*').eq('id_matricula', currentMatriculaId).eq('sigla_disciplina', currentDiscSigla);
+                    const { data: a } = await window.supabaseClient.from('anual_fundamental').select('*').eq('id_matricula', currentMatriculaId).eq('sigla_disciplina', currentDiscSigla).maybeSingle();
+                    notas = n || []; anual = a;
+                } else if (currentMatriz === 'BASICA') {
+                    const { data: n } = await window.supabaseClient.from('notas_basica').select('*').eq('id_matricula', currentMatriculaId).eq('sigla_disciplina', currentDiscSigla);
+                    const { data: a } = await window.supabaseClient.from('anual_basica').select('*').eq('id_matricula', currentMatriculaId).eq('sigla_disciplina', currentDiscSigla).maybeSingle();
+                    notas = n || []; anual = a;
+                } else {
+                    const { data: nt } = await window.supabaseClient.from('notas_tecnica').select('*').eq('id_matricula', currentMatriculaId).eq('sigla_disciplina', currentDiscSigla);
+                    nTec = nt || [];
+                }
+            }
+
+            if (currentMatriz === 'FUNDAMENTAL') {
+                const periodos = ['1_BIMESTRE', '2_BIMESTRE', '3_BIMESTRE', '4_BIMESTRE'];
+                
+                container.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-100 bg-white";
                 container.innerHTML = periodos.map(p => {
-                    const n = (notas || []).find(x => x.periodo === p) || { p1: 0, p2: 0, rt: 0, nt: 0 };
-                    return `<div class="p-8 space-y-6"><h5 class="text-[10px] font-black text-fmm-blue uppercase tracking-widest border-b pb-2">${p.replace('_', ' ')}</h5><div class="grid grid-cols-2 gap-4"><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">P1</span><input type="text" id="p1-${p}" value="${n.p1 || '0'}" oninput="handleInputGrade(this, 'BCC', 'p1', '${p}')" class="grade-input"></div><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">P2</span><input type="text" id="p2-${p}" value="${n.p2 || '0'}" oninput="handleInputGrade(this, 'BCC', 'p2', '${p}')" class="grade-input"></div><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">RT</span><input type="text" id="rt-${p}" value="${n.rt || '0'}" oninput="handleInputGrade(this, 'BCC', 'rt', '${p}')" class="grade-input"></div><div class="flex flex-col justify-end pb-1"><span class="text-[9px] font-bold text-slate-400 uppercase">Final</span><span id="nt-${p}" class="text-xl font-black ${n.nt < 6 ? 'text-red-500' : 'text-fmm-blue'}">${Number(n.nt).toFixed(1)}</span></div></div></div>`;
+                    const n = (notas || []).find(x => x.periodo === p) || { p1: 0, p2: 0, rb: 0, nb: 0 };
+                    return `<div class="p-8 space-y-6"><h5 class="text-[10px] font-black text-fmm-blue uppercase tracking-widest border-b pb-2">${p.replace('_', ' ')}</h5><div class="grid grid-cols-2 gap-4"><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">P1</span><input type="text" id="p1-${p}" value="${n.p1 || '0'}" oninput="handleInputGrade(this, 'FUND', 'p1', '${p}')" class="grade-input"></div><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">P2</span><input type="text" id="p2-${p}" value="${n.p2 || '0'}" oninput="handleInputGrade(this, 'FUND', 'p2', '${p}')" class="grade-input"></div><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">RB</span><input type="text" id="rb-${p}" value="${n.rb || '0'}" oninput="handleInputGrade(this, 'FUND', 'rb', '${p}')" class="grade-input"></div><div class="flex flex-col justify-end pb-1"><span class="text-[9px] font-bold text-slate-400 uppercase">Final</span><span id="nb-${p}" class="text-xl font-black ${n.nb < 6 ? 'text-red-500' : 'text-fmm-blue'}">${Number(n.nb || 0).toFixed(1)}</span></div></div></div>`;
                 }).join('');
+                
                 document.getElementById('anual-consolidado-area').classList.remove('hidden');
                 document.getElementById('label-media-anual').innerText = Number(anual?.media_anual || 0).toFixed(1);
                 document.getElementById('label-media-final').innerText = Number(anual?.media_final || 0).toFixed(1);
                 document.getElementById('in-recup-final').value = anual?.recup_final || '0';
+                document.getElementById('in-recup-final').setAttribute('oninput', "handleInputGrade(this, 'ANUAL_FUND', 'recup_final')");
                 document.getElementById('in-conselho').value = anual?.conselho_classe || '0';
+                document.getElementById('in-conselho').setAttribute('oninput', "handleInputGrade(this, 'ANUAL_FUND', 'conselho_classe')");
+
+            } else if (currentMatriz === 'BASICA') {
+                const periodos = ['1_TRIMESTRE', '2_TRIMESTRE', '3_TRIMESTRE'];
+                
+                container.className = "grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100 bg-white";
+                container.innerHTML = periodos.map(p => {
+                    const n = (notas || []).find(x => x.periodo === p) || { p1: 0, p2: 0, rt: 0, nt: 0 };
+                    return `<div class="p-8 space-y-6"><h5 class="text-[10px] font-black text-fmm-blue uppercase tracking-widest border-b pb-2">${p.replace('_', ' ')}</h5><div class="grid grid-cols-2 gap-4"><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">P1</span><input type="text" id="p1-${p}" value="${n.p1 || '0'}" oninput="handleInputGrade(this, 'BCC', 'p1', '${p}')" class="grade-input"></div><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">P2</span><input type="text" id="p2-${p}" value="${n.p2 || '0'}" oninput="handleInputGrade(this, 'BCC', 'p2', '${p}')" class="grade-input"></div><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">RT</span><input type="text" id="rt-${p}" value="${n.rt || '0'}" oninput="handleInputGrade(this, 'BCC', 'rt', '${p}')" class="grade-input"></div><div class="flex flex-col justify-end pb-1"><span class="text-[9px] font-bold text-slate-400 uppercase">Final</span><span id="nt-${p}" class="text-xl font-black ${n.nt < 6 ? 'text-red-500' : 'text-fmm-blue'}">${Number(n.nt || 0).toFixed(1)}</span></div></div></div>`;
+                }).join('');
+                
+                document.getElementById('anual-consolidado-area').classList.remove('hidden');
+                document.getElementById('label-media-anual').innerText = Number(anual?.media_anual || 0).toFixed(1);
+                document.getElementById('label-media-final').innerText = Number(anual?.media_final || 0).toFixed(1);
+                document.getElementById('in-recup-final').value = anual?.recup_final || '0';
+                document.getElementById('in-recup-final').setAttribute('oninput', "handleInputGrade(this, 'ANUAL_BCC', 'recup_final')");
+                document.getElementById('in-conselho').value = anual?.conselho_classe || '0';
+                document.getElementById('in-conselho').setAttribute('oninput', "handleInputGrade(this, 'ANUAL_BCC', 'conselho_classe')");
+
             } else {
-                const { data: nTec } = await window.supabaseClient.from('notas_tecnica').select('*').eq('id_matricula', currentMatriculaId).eq('sigla_disciplina', currentDiscSigla);
                 const periodos = ['1_SEMESTRE', '2_SEMESTRE'];
+                
+                container.className = "grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100 bg-white";
                 container.innerHTML = periodos.map(p => {
                     const n = (nTec || []).find(x => x.periodo === p) || { p1: 0, p2: 0, media_1: 0, recup_parcial: 0, conselho_semestral: 0, media_2: 0, recup_final_semestral: 0, nota_final_periodo: 0 };
-                    return `<div class="p-8 space-y-6"><h5 class="text-[10px] font-black text-fmm-green uppercase tracking-widest border-b pb-2">${p.replace('_', ' ')}</h5><div class="grid grid-cols-2 gap-4"><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">P1</span><input type="text" value="${n.p1 || '0'}" oninput="handleInputGrade(this, 'TEC', 'p1', '${p}')" class="grade-input"></div><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">P2</span><input type="text" value="${n.p2 || '0'}" oninput="handleInputGrade(this, 'TEC', 'p2', '${p}')" class="grade-input"></div><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">Rec. P.</span><input type="text" value="${n.recup_parcial || '0'}" oninput="handleInputGrade(this, 'TEC', 'recup_parcial', '${p}')" class="grade-input"></div><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">Cons.</span><input type="text" value="${n.conselho_semestral || '0'}" oninput="handleInputGrade(this, 'TEC', 'conselho_semestral', '${p}')" class="grade-input"></div><div class="flex flex-col col-span-2 border-t pt-3 mt-2"><span class="text-[9px] font-bold text-slate-400 uppercase">Nota Final</span><span class="text-2xl font-black ${n.nota_final_periodo < 6 ? 'text-red-500' : 'text-fmm-green'}">${Number(n.nota_final_periodo).toFixed(1)}</span></div></div></div>`;
+                    return `<div class="p-8 space-y-6"><h5 class="text-[10px] font-black text-fmm-green uppercase tracking-widest border-b pb-2">${p.replace('_', ' ')}</h5><div class="grid grid-cols-2 gap-4"><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">P1</span><input type="text" value="${n.p1 || '0'}" oninput="handleInputGrade(this, 'TEC', 'p1', '${p}')" class="grade-input"></div><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">P2</span><input type="text" value="${n.p2 || '0'}" oninput="handleInputGrade(this, 'TEC', 'p2', '${p}')" class="grade-input"></div><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">Rec. P.</span><input type="text" value="${n.recup_parcial || '0'}" oninput="handleInputGrade(this, 'TEC', 'recup_parcial', '${p}')" class="grade-input"></div><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">Cons.</span><input type="text" value="${n.conselho_semestral || '0'}" oninput="handleInputGrade(this, 'TEC', 'conselho_semestral', '${p}')" class="grade-input"></div><div class="flex flex-col col-span-2 border-t pt-3 mt-2"><span class="text-[9px] font-bold text-slate-400 uppercase">Nota Final</span><span class="text-2xl font-black ${n.nota_final_periodo < 6 ? 'text-red-500' : 'text-fmm-green'}">${Number(n.nota_final_periodo || 0).toFixed(1)}</span></div></div></div>`;
                 }).join('');
                 document.getElementById('anual-consolidado-area').classList.add('hidden');
             }
@@ -357,17 +425,31 @@
 
         async function saveData(type, field, val, periodo) {
             try {
-                let error; const conflict = type === 'ANUAL' ? 'id_matricula,sigla_disciplina' : 'id_matricula,sigla_disciplina,periodo';
-                const table = type === 'BCC' ? 'notas_basica' : (type === 'ANUAL' ? 'anual_basica' : 'notas_tecnica');
+                if (!currentMatriculaId) throw new Error("Aluno sem matrícula ativa no ano vigente (Impossível salvar notas).");
+
+                let error, table, conflict;
+                if (type === 'BCC') { table = 'notas_basica'; conflict = 'id_matricula,sigla_disciplina,periodo'; }
+                else if (type === 'FUND') { table = 'notas_fundamental'; conflict = 'id_matricula,sigla_disciplina,periodo'; }
+                else if (type === 'TEC') { table = 'notas_tecnica'; conflict = 'id_matricula,sigla_disciplina,periodo'; }
+                else if (type === 'ANUAL_BCC') { table = 'anual_basica'; conflict = 'id_matricula,sigla_disciplina'; }
+                else if (type === 'ANUAL_FUND') { table = 'anual_fundamental'; conflict = 'id_matricula,sigla_disciplina'; }
+
                 const payload = { id_matricula: currentMatriculaId, sigla_disciplina: currentDiscSigla, [field]: val };
-                if (periodo && type !== 'ANUAL') payload.periodo = periodo;
+                if (periodo && !type.startsWith('ANUAL')) payload.periodo = periodo;
+                
                 ({ error } = await window.supabaseClient.from(table).upsert(payload, { onConflict: conflict }));
-                if (error) throw error; showToast("Sincronizado"); refreshGrades();
-            } catch (err) { console.error(err); } finally { document.getElementById('sync-status').classList.add('hidden'); }
+                if (error) throw error; 
+                showToast("Sincronizado"); 
+                refreshGrades();
+            } catch (err) { 
+                console.error(err); 
+                alert("Erro ao salvar: " + err.message); 
+            } finally { 
+                document.getElementById('sync-status').classList.add('hidden'); 
+            }
         }
 
         function switchStudentTab(tab) { activeTab = tab; document.getElementById('tab-freq').classList.toggle('active', tab === 'frequencia'); document.getElementById('tab-notas').classList.toggle('active', tab === 'notas'); document.getElementById('content-frequencia').classList.toggle('hidden', tab !== 'frequencia'); document.getElementById('content-notas').classList.toggle('hidden', tab !== 'notas'); loadContextData(); }
-        function toggleSidebar() { if(window.SidebarComponent) SidebarComponent.toggleSidebar(); }
         function showToast(msg) { const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = msg; t.classList.replace('opacity-0', 'opacity-100'); t.classList.replace('translate-y-20', 'translate-y-0'); setTimeout(() => { t.classList.replace('opacity-100', 'opacity-0'); t.classList.replace('translate-y-0', 'translate-y-20'); }, 2500); }
         function openPhotoZoom() { if(selectedStudent) { const url = formatDriveUrl(selectedStudent.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedStudent.nome_completo)}&background=random&color=fff`; document.getElementById('enlargedPhoto').src = url; document.getElementById('enlargedName').innerText = selectedStudent.nome_completo; document.getElementById('photoModal').classList.remove('hidden'); } }
         function closePhotoModal() { document.getElementById('photoModal').classList.add('hidden'); }
