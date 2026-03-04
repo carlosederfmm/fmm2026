@@ -1,6 +1,6 @@
 /**
- * Componente de Sidebar Reutilizável SME FMM 2026 - Versão 4.2 (PWA Stable)
- * Mobile: Bottom Navigation Bar + Hub Menu (Anti-duplication)
+ * Componente de Sidebar Reutilizável SME FMM 2026 - Versão 4.3 (Audit Ready)
+ * Mobile: Bottom Navigation Bar + Hub Menu
  * Desktop: Sidebar Clássica
  */
 const SidebarComponent = {
@@ -119,6 +119,8 @@ const SidebarComponent = {
             { label: 'Dashboard', icon: 'pie-chart', link: 'inspetor/dashboard_inspetor.html', roles: ['inspetor'] },
             { label: 'Tarefas (Scrum)', icon: 'check-square', link: 'coordenador/principal/tarefas_coordenador.html', roles: ['coordenador', 'diretor'] },
             { label: 'Requerimentos', icon: 'inbox', link: 'coordenador/principal/requerimentos.html', roles: ['coordenador', 'diretor'], badge: true },
+            { label: 'Listas de Assinatura', icon: 'printer', link: 'coordenador/principal/listas_coordenador.html', roles: ['coordenador', 'diretor'] },
+            { label: 'Auditoria de Diários', icon: 'clipboard-check', link: 'coordenador/principal/auditoria_coordenador.html', roles: ['coordenador', 'diretor'] },
             { label: 'Meu Perfil', icon: 'user-circle', link: 'coordenador/principal/perfil_coordenador.html', roles: ['coordenador', 'diretor', 'orientador', 'secretaria'] },
             { label: 'Meu Perfil', icon: 'user-circle', link: 'inspetor/perfil_inspetor.html', roles: ['inspetor'] }
         ],

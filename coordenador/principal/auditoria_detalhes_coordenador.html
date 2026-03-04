@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes da Auditoria | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Scripts locais do projeto -->
+    <script src="../../assets/js/supabase_client.js"></script>
+    <!-- Sidebar removida desta tela para Modo de Foco -->
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        /* Estilo Tabela Excel de Frequência (Nível de Documento Oficial) */
+        .excel-table { border-collapse: separate; border-spacing: 0; width: 100%; }
+        .excel-table th, .excel-table td { border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; text-align: center; vertical-align: middle; }
+        
+        .excel-table th { 
+            background-color: #f1f5f9; padding: 12px 4px; font-size: 9px; font-weight: 900; 
+            color: #475569; position: sticky; top: 0; z-index: 20; 
+        }
+        
+        .excel-table td { padding: 6px 4px; font-size: 11px; font-weight: 700; color: #334155; height: 32px; background: white; }
+        
+        .excel-table td.aluno-nome { 
+            text-align: left; position: sticky; left: 0; background: white; z-index: 10; 
+            font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 6px 16px;
+            white-space: nowrap; max-width: 300px; overflow: hidden; text-overflow: ellipsis;
+            box-shadow: 2px 0 4px rgba(0,0,0,0.02); border-right: 2px solid #f1f5f9;
+        }
+
+        .excel-table th.sticky-intersect { position: sticky; top: 0; left: 0; z-index: 30; background-color: #e2e8f0; border-right: 2px solid #cbd5e1; }
+
+        /* Status de Células da Chamada */
+        .freq-f { color: #ef4444; font-weight: 900; background-color: #fef2f2 !important; } /* Falta */
+        .freq-p { color: #94a3b8; font-weight: 900; } /* Presença (.) */
+        .freq-missing { background-color: #fff1f2 !important; color: #fb7185; font-weight: 900; } /* Alerta: Registro Vazio */
+
+        /* Navegação */
+        .tab-btn { transition: all 0.2s; border-bottom: 3px solid transparent; }
+        .tab-btn.active { color: #00638f; border-bottom-color: #c8d400; font-weight: 800; }
+
+        /* Estilo dos Cards de Seleção de Turma */
+        .turma-card { transition: all 0.3s ease; border: 2px solid #f1f5f9; }
+        .turma-card:hover { border-color: #c8d400; transform: translateY(-4px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden text-left bg-white">
+
+    <!-- Sidebar removida para maximizar o espaço de auditoria detalhada -->
+
+    <main class="flex h-full w-full flex-col overflow-hidden relative">
+        
+        <!-- CABEÇALHO CONTEXTUAL -->
+        <header class="bg-white h-24 border-b border-slate-200 flex items-center justify-between px-10 shrink-0 z-30 shadow-sm">
+            <div class="flex items-center gap-6">
+                <!-- Botão Voltar Inteligente -->
+                <button onclick="handleBackAction()" class="p-3 bg-slate-100 hover:bg-slate-200 rounded-2xl transition-all text-slate-500 active:scale-95">
+                    <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                </button>
+                <div class="flex flex-col">
+                    <div class="flex items-center gap-3">
+                        <h1 id="viewProfessor" class="text-2xl font-black text-fmm-dark uppercase tracking-tight leading-none">Carregando...</h1>
+                        <span class="h-6 w-px bg-slate-200"></span>
+                        <h2 id="viewDisciplina" class="text-lg font-bold text-fmm-blue uppercase tracking-tight leading-none">---</h2>
+                        <span id="jTurmaTag" class="hidden px-3 py-1 bg-fmm-blue text-white text-[10px] font-black rounded-lg uppercase tracking-widest">---</span>
+                    </div>
+                    <p id="viewPeriodo" class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2">Mês de Referência: ---</p>
+                </div>
+            </div>
+
+            <!-- Tabs só aparecem quando uma turma é selecionada -->
+            <div id="tabContainer" class="hidden flex items-center bg-slate-100 p-1.5 rounded-[20px] gap-1">
+                <button onclick="switchTab('frequencia')" id="tabFreq" class="tab-btn active px-6 py-2.5 text-xs font-black uppercase tracking-widest">Frequência</button>
+                <button onclick="switchTab('conteudo')" id="tabCont" class="tab-btn px-6 py-2.5 text-xs font-black uppercase tracking-widest text-slate-400">Conteúdo</button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-hidden relative bg-slate-50">
+            
+            <!-- LOADING -->
+            <div id="loadingState" class="absolute inset-0 z-50 bg-white flex flex-col items-center justify-center text-slate-300 gap-4">
+                <i data-lucide="loader-2" class="w-12 h-12 animate-spin text-fmm-blue"></i>
+                <p class="text-sm font-bold uppercase tracking-widest">Processando dados do diário...</p>
+            </div>
+
+            <!-- FASE 1: GRID DE CARDS COM INDICADORES DE PERFORMANCE -->
+            <div id="turmasView" class="hidden h-full overflow-y-auto p-10 custom-scrollbar">
+                <div class="max-w-6xl mx-auto space-y-8">
+                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <i data-lucide="layout-grid" class="w-4 h-4 text-fmm-blue"></i> Saúde de Preenchimento Mensal
+                    </h3>
+                    <div id="turmasGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <!-- Gerado dinamicamente -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- FASE 2: DIÁRIO DE FREQUÊNCIA ESTILO EXCEL (SUPORTE A GEMINADAS) -->
+            <div id="viewFreq" class="hidden h-full overflow-auto custom-scrollbar relative bg-white">
+                <table class="excel-table">
+                    <thead id="freqHead"></thead>
+                    <tbody id="freqBody"></tbody>
+                </table>
+            </div>
+
+            <!-- FASE 2: DIÁRIO DE CONTEÚDO (TIMELINE DE QUALIDADE) -->
+            <div id="viewCont" class="hidden h-full overflow-y-auto p-10 custom-scrollbar">
+                <div id="contList" class="max-w-4xl mx-auto space-y-6">
+                    <!-- Gerado dinamicamente -->
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const idProf = params.get('idProf');
+        const sigla = params.get('sigla');
+        const monthIndex = parseInt(params.get('month'));
+        const currentYear = 2026;
+
+        let teacherData = null;
+        let turmasDoProfessor = [];
+        let calendarDates = [];
+        let auditRawData = []; 
+        let currentLevel = 'turmas'; // Controle de navegação: 'turmas' ou 'diario'
+
+        const MONTH_NAMES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+        async function init() {
+            // Sidebar removida do init para manter o foco total nos dados
+            if(!idProf || !sigla) return window.location.href = "auditoria_coordenador.html";
+
+            document.getElementById('viewPeriodo').innerText = `Mês de Referência: ${MONTH_NAMES[monthIndex]} / ${currentYear}`;
+            
+            await loadInitialData();
+            lucide.createIcons();
+        }
+
+        async function loadInitialData() {
+            try {
+                // 1. Carregar perfil e disciplina
+                const [pRes, dRes] = await Promise.all([
+                    window.supabaseClient.from('perfis').select('nome_completo').eq('id', idProf).single(),
+                    window.supabaseClient.from('disciplinas').select('nome').eq('sigla', sigla).single()
+                ]);
+                teacherData = { nome: pRes.data.nome_completo, disciplina: dRes.data.nome };
+                document.getElementById('viewProfessor').innerText = teacherData.nome;
+                document.getElementById('viewDisciplina').innerText = teacherData.disciplina;
+
+                // 2. Buscar TODOS os registros da View para este professor no mês (Gera os Previews dos Cards)
+                const startDate = new Date(currentYear, monthIndex, 1).toISOString().split('T')[0];
+                const endDate = new Date(currentYear, monthIndex + 1, 0).toISOString().split('T')[0];
+                
+                const { data: audit } = await window.supabaseClient.from('v_auditoria_diarios')
+                    .select('*').eq('id_professor', idProf).eq('sigla_disciplina', sigla)
+                    .gte('data', startDate).lte('data', endDate);
+                
+                auditRawData = audit || [];
+
+                // 3. Mapear turmas e indicadores
+                const turmasMap = new Map();
+                auditRawData.forEach(r => {
+                    if(!turmasMap.has(r.id_turma)) {
+                        turmasMap.set(r.id_turma, { 
+                            id: r.id_turma, nome: r.nome_turma, 
+                            totalAulas: 0, chamadasOK: 0, conteudosOK: 0 
+                        });
+                    }
+                    const t = turmasMap.get(r.id_turma);
+                    t.totalAulas++;
+                    if(r.chamada_realizada) t.chamadasOK++;
+                    if(r.conteudo_registrado) t.conteudosOK++;
+                });
+
+                turmasDoProfessor = Array.from(turmasMap.values());
+                renderTurmaCards();
+
+            } catch (err) { console.error(err); } 
+            finally { document.getElementById('loadingState').classList.add('hidden'); }
+        }
+
+        function renderTurmaCards() {
+            const grid = document.getElementById('turmasGrid');
+            grid.innerHTML = turmasDoProfessor.map(t => {
+                const percChamada = Math.round((t.chamadasOK / t.totalAulas) * 100) || 0;
+                const percConteudo = Math.round((t.conteudosOK / t.totalAulas) * 100) || 0;
+
+                return `
+                <div onclick="inspectTurma('${t.id}', '${t.nome}')" class="turma-card bg-white p-6 rounded-[32px] cursor-pointer flex flex-col items-center animate-fade shadow-sm">
+                    <div class="w-14 h-14 bg-fmm-blue/5 rounded-2xl flex items-center justify-center text-fmm-blue mb-4">
+                        <i data-lucide="book-open" class="w-7 h-7"></i>
+                    </div>
+                    <h3 class="text-lg font-black text-fmm-dark uppercase tracking-tight">${t.nome}</h3>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">${t.totalAulas} Aulas Previstas</p>
+                    
+                    <div class="mt-6 w-full space-y-3">
+                        <!-- Chamadas -->
+                        <div class="flex justify-between items-center text-[10px] font-black uppercase">
+                            <span class="text-slate-400">Chamadas</span>
+                            <span class="${percChamada < 100 ? 'text-red-500' : 'text-fmm-green'}">${t.chamadasOK}/${t.totalAulas}</span>
+                        </div>
+                        <div class="w-full h-1.5 bg-slate-50 rounded-full overflow-hidden border border-slate-100">
+                            <div class="h-full ${percChamada < 100 ? 'bg-red-400' : 'bg-fmm-green'}" style="width: ${percChamada}%"></div>
+                        </div>
+
+                        <!-- Conteúdos -->
+                        <div class="flex justify-between items-center text-[10px] font-black uppercase">
+                            <span class="text-slate-400">Conteúdos</span>
+                            <span class="${percConteudo < 100 ? 'text-red-500' : 'text-fmm-green'}">${t.conteudosOK}/${t.totalAulas}</span>
+                        </div>
+                        <div class="w-full h-1.5 bg-slate-50 rounded-full overflow-hidden border border-slate-100">
+                            <div class="h-full ${percConteudo < 100 ? 'bg-red-400' : 'bg-fmm-green'}" style="width: ${percConteudo}%"></div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+            
+            document.getElementById('turmasView').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        async function inspectTurma(idTurma, nomeTurma) {
+            currentLevel = 'diario';
+            document.getElementById('turmasView').classList.add('hidden');
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('tabContainer').classList.remove('hidden');
+            
+            const tag = document.getElementById('jTurmaTag');
+            tag.innerText = nomeTurma;
+            tag.classList.remove('hidden');
+
+            const startDate = new Date(currentYear, monthIndex, 1).toISOString().split('T')[0];
+            const endDate = new Date(currentYear, monthIndex + 1, 0).toISOString().split('T')[0];
+
+            try {
+                // 1. Pegar a Grade Horária dessa turma para saber OS TEMPOS (Geminadas)
+                const { data: grade } = await window.supabaseClient.from('grade_horaria')
+                    .select('dia_semana, numero_tempo')
+                    .eq('id_professor', idProf).eq('sigla_disciplina', sigla).eq('id_turma', idTurma)
+                    .order('dia_semana').order('numero_tempo');
+
+                // 2. Pegar calendário letivo do mês
+                const { data: cal } = await window.supabaseClient.from('calendario_letivo').select('data').eq('tipo', 'letivo').gte('data', startDate).lte('data', endDate);
+
+                // 3. Reconstruir Expectativa (Mapeando o índice da aula no dia)
+                const expectedGrid = [];
+                const dayMap = { 'SEG': 1, 'TER': 2, 'QUA': 3, 'QUI': 4, 'SEX': 5 };
+                
+                cal.forEach(dia => {
+                    const dowNum = new Date(dia.data + 'T12:00:00').getDay();
+                    const aulasNoDia = grade.filter(g => dayMap[g.dia_semana] === dowNum);
+                    
+                    // Adicionamos o "índice interno" da aula no dia para bater com o lançamento do professor
+                    aulasNoDia.forEach((aula, index) => {
+                        expectedGrid.push({ 
+                            data: dia.data, 
+                            tempoGrade: aula.numero_tempo, 
+                            ordemNoDia: index + 1 // 1ª aula do dia, 2ª aula do dia...
+                        });
+                    });
+                });
+
+                // 4. Buscar Alunos e Registros Reais
+                const [mRes, fRes, cRes] = await Promise.all([
+                    window.supabaseClient.from('matriculas').select('ra_aluno, alunos(nome_completo)').eq('id_turma', idTurma).eq('status', 'CURSANDO').eq('ano_letivo', 2026),
+                    window.supabaseClient.from('frequencias').select('*').eq('id_turma', idTurma).eq('sigla_disciplina', sigla).gte('data_presenca', startDate).lte('data_presenca', endDate),
+                    window.supabaseClient.from('conteudos_aula').select('*').eq('id_turma', idTurma).eq('sigla_disciplina', sigla).gte('data_aula', startDate).lte('data_aula', endDate)
+                ]);
+
+                const alunos = (mRes.data || []).sort((a,b) => a.alunos.nome_completo.localeCompare(b.alunos.nome_completo));
+
+                renderFrequencyTable(alunos, expectedGrid, fRes.data || []);
+                renderContentTimeline(expectedGrid, cRes.data || []);
+
+                switchTab('frequencia');
+
+            } catch (err) { console.error(err); }
+            finally { document.getElementById('loadingState').classList.add('hidden'); }
+        }
+
+        function renderFrequencyTable(alunos, gridExpectativa, freqReal) {
+            const head = document.getElementById('freqHead');
+            const body = document.getElementById('freqBody');
+
+            // Header (Com suporte a múltiplas colunas na mesma data para geminadas)
+            let hHTML = `<tr><th class="sticky-intersect w-12">Nº</th><th class="aluno-nome sticky-intersect" style="left: 48px;">ESTUDANTE</th>`;
+            gridExpectativa.forEach(aula => {
+                const parts = aula.data.split('-');
+                hHTML += `<th class="w-12">${parts[2]}/${parts[1]}<br><span class="text-[7px] text-slate-400">T${aula.tempoGrade}</span></th>`;
+            });
+            head.innerHTML = hHTML + '</tr>';
+
+            // Corpo - Lógica de Mapeamento por Ordem
+            body.innerHTML = alunos.map((m, idx) => {
+                let row = `<tr><td class="w-12 font-bold text-slate-300 bg-slate-50/50">${idx + 1}</td><td class="aluno-nome" style="left: 48px;">${m.alunos.nome_completo}</td>`;
+                
+                gridExpectativa.forEach(aula => {
+                    // TASK: Mapeamento Inteligente por ordem do lançamento no dia
+                    const f = freqReal.find(x => 
+                        x.ra_aluno === m.ra_aluno && 
+                        x.data_presenca === aula.data && 
+                        x.numero_tempo === aula.ordemNoDia
+                    );
+                    
+                    if (!f) row += `<td class="freq-missing">!</td>`;
+                    else row += `<td class="${f.presente ? 'freq-p' : 'freq-f'}">${f.presente ? '.' : 'F'}</td>`;
+                });
+                return row + '</tr>';
+            }).join('');
+        }
+
+        function renderContentTimeline(gridExpectativa, contReal) {
+            const list = document.getElementById('contList');
+            
+            // Na timeline de conteúdo, iteramos sobre cada TEMPO previsto na grade
+            list.innerHTML = gridExpectativa.map(aula => {
+                const c = contReal.find(x => x.data_aula === aula.data && x.numero_tempos >= aula.ordemNoDia);
+                const dateObj = new Date(aula.data + 'T12:00:00');
+
+                if (c) {
+                    return `
+                        <div class="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm flex gap-8 animate-fade">
+                            <div class="flex flex-col items-center justify-center bg-slate-50 rounded-2xl w-24 h-24 shrink-0 border border-slate-100">
+                                <span class="text-3xl font-black text-fmm-dark">${dateObj.getDate()}</span>
+                                <span class="text-[10px] font-bold text-fmm-blue uppercase">${MONTH_NAMES[dateObj.getMonth()].substring(0,3)}</span>
+                                <span class="text-[8px] font-black text-slate-400 mt-1 uppercase">Tempo ${aula.tempoGrade}</span>
+                            </div>
+                            <div class="flex-1 space-y-3">
+                                <div class="flex justify-between items-center border-b border-slate-50 pb-2">
+                                    <span class="text-[10px] font-black text-fmm-dark uppercase tracking-widest">${c.numero_tempos} Tempo(s) Registrados</span>
+                                    <span class="px-3 py-1 bg-green-50 text-green-600 text-[8px] font-black uppercase rounded-lg">Lançamento OK</span>
+                                </div>
+                                <p class="text-sm font-medium text-slate-600 leading-relaxed">${c.conteudo}</p>
+                            </div>
+                        </div>`;
+                } else {
+                    return `
+                        <div class="bg-red-50/30 p-8 rounded-[32px] border-2 border-dashed border-red-100 flex gap-8 animate-fade opacity-80">
+                            <div class="flex flex-col items-center justify-center bg-red-100/50 rounded-2xl w-24 h-24 shrink-0">
+                                <span class="text-3xl font-black text-red-400">${dateObj.getDate()}</span>
+                                <span class="text-[10px] font-bold text-red-400 uppercase">${MONTH_NAMES[dateObj.getMonth()].substring(0,3)}</span>
+                                <span class="text-[8px] font-black text-red-400 mt-1 uppercase">Tempo ${aula.tempoGrade}</span>
+                            </div>
+                            <div class="flex-1 flex flex-col justify-center text-left">
+                                <h4 class="text-sm font-black text-red-600 uppercase tracking-tight">Conteúdo não localizado</h4>
+                                <p class="text-[10px] font-bold text-red-400 uppercase mt-1 tracking-widest">Aula prevista no ${aula.tempoGrade}º tempo da grade</p>
+                            </div>
+                            <div class="flex items-center"><i data-lucide="alert-circle" class="w-8 h-8 text-red-300"></i></div>
+                        </div>`;
+                }
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function handleBackAction() {
+            if (currentLevel === 'diario') {
+                currentLevel = 'turmas';
+                document.getElementById('viewFreq').classList.add('hidden');
+                document.getElementById('viewCont').classList.add('hidden');
+                document.getElementById('tabContainer').classList.add('hidden');
+                document.getElementById('jTurmaTag').classList.add('hidden');
+                document.getElementById('turmasView').classList.remove('hidden');
+            } else {
+                // Redireciona para o radar, onde a sidebar está disponível
+                window.location.href = "auditoria_coordenador.html";
+            }
+        }
+
+        function switchTab(tab) {
+            document.getElementById('tabFreq').classList.toggle('active', tab === 'frequencia');
+            document.getElementById('tabCont').classList.toggle('active', tab === 'conteudo');
+            document.getElementById('viewFreq').classList.toggle('hidden', tab !== 'frequencia');
+            document.getElementById('viewCont').classList.toggle('hidden', tab !== 'conteudo');
+            document.getElementById('tabFreq').classList.toggle('text-slate-400', tab !== 'frequencia');
+            document.getElementById('tabCont').classList.toggle('text-slate-400', tab !== 'conteudo');
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

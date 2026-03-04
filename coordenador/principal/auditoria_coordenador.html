@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditoria de Diários | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="../../assets/js/supabase_client.js"></script>
+    <script src="../../sidebar.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        /* Matriz de Auditoria - Performance e Sticky */
+        .audit-table { border-collapse: separate; border-spacing: 0; table-layout: fixed; width: 100%; }
+        
+        .sticky-intersect { 
+            position: sticky; top: 0; left: 0; z-index: 50; 
+            background: #f8fafc; border-bottom: 2px solid #e2e8f0; border-right: 2px solid #e2e8f0;
+        }
+
+        .sticky-header-row th { position: sticky; top: 0; z-index: 40; background: #f8fafc; }
+        .header-day { 
+            min-width: 32px; width: 32px; text-align: center; font-size: 10px; 
+            font-weight: 800; color: #64748b; border-bottom: 2px solid #e2e8f0;
+            padding: 8px 0; background: #f8fafc;
+        }
+
+        .sticky-col { 
+            position: sticky; left: 0; z-index: 30; background: white; 
+            border-right: 2px solid #f1f5f9; box-shadow: 4px 0 8px -4px rgba(0,0,0,0.05);
+            transition: background 0.2s;
+        }
+
+        /* Cores de Status */
+        .audit-cell { 
+            width: 28px; height: 28px; border-radius: 4px; 
+            display: flex; align-items: center; justify-content: center;
+            font-size: 8px; font-weight: 900; cursor: pointer;
+            transition: all 0.15s; border: 1px solid transparent;
+            margin: 2px auto;
+        }
+
+        .cell-none { background: transparent; color: #cbd5e1; border: 1px dashed #e2e8f0; cursor: default; }
+        .cell-perfect { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
+        .cell-partial { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+        .cell-missing { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        .critical-pulse { animation: pulse-red 2s infinite; }
+
+        /* Drawer */
+        .drawer-overlay { background: rgba(0, 60, 91, 0.4); backdrop-filter: blur(4px); transition: all 0.3s ease; }
+        .drawer-content { transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .drawer-content.open { transform: translateX(0); }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden text-left">
+
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden relative">
+        
+        <!-- HEADER -->
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-30 shadow-sm flex-shrink-0">
+            <div class="flex items-center gap-6">
+                <div class="flex flex-col text-left">
+                    <h1 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none">Radar de Auditoria</h1>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Visão Geral de Conformidade</p>
+                </div>
+
+                <div class="h-8 w-px bg-slate-100 hidden md:block"></div>
+
+                <div class="flex items-center gap-3">
+                    <select id="selectMonth" onchange="loadAuditData()" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-fmm-blue">
+                        <option value="0">Janeiro</option>
+                        <option value="1">Fevereiro</option>
+                        <option value="2" selected>Março</option>
+                        <option value="3">Abril</option>
+                        <option value="4">Maio</option>
+                        <option value="5">Junho</option>
+                        <option value="6">Julho</option>
+                        <option value="7">Agosto</option>
+                        <option value="8">Setembro</option>
+                        <option value="9">Outubro</option>
+                        <option value="10">Novembro</option>
+                        <option value="11">Dezembro</option>
+                    </select>
+                    
+                    <select id="selectSegmento" onchange="loadAuditData()" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-fmm-blue">
+                        <option value="all">Todos os Segmentos</option>
+                        <option value="EMT">Ensino Médio</option>
+                        <option value="EF">Fundamental</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-6">
+                <div class="flex flex-col items-end">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Aulas Críticas</span>
+                    <span id="criticalCount" class="text-xl font-black text-red-500">0</span>
+                </div>
+                <div class="h-8 w-px bg-slate-100"></div>
+                <div class="flex flex-col items-end">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Conformidade</span>
+                    <span id="complianceRate" class="text-xl font-black text-fmm-green">0%</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTEÚDO DA MATRIZ -->
+        <div class="flex-1 overflow-auto custom-scrollbar bg-white" id="mainScroll">
+            <div id="loadingState" class="hidden py-32 flex flex-col items-center justify-center text-slate-300 gap-4">
+                <i data-lucide="loader-2" class="w-12 h-12 animate-spin text-fmm-blue"></i>
+                <p id="loadingText" class="text-sm font-bold uppercase tracking-widest text-center">Cruzando dados acadêmicos...</p>
+            </div>
+
+            <div id="auditContainer" class="hidden w-full h-full">
+                <table class="audit-table">
+                    <thead id="auditHeader"></thead>
+                    <tbody id="auditBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- DRAWER DE INSPEÇÃO RÁPIDA (DIA ESPECÍFICO) -->
+        <div id="drawer" class="hidden fixed inset-0 z-[100] flex justify-end overflow-hidden">
+            <div class="drawer-overlay absolute inset-0" onclick="closeDrawer()"></div>
+            <div class="drawer-content w-full max-w-lg bg-white h-full shadow-2xl relative z-10 flex flex-col">
+                <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                    <div class="text-left">
+                        <h2 id="drawerTeacher" class="text-xl font-black text-fmm-dark uppercase tracking-tight">Nome do Professor</h2>
+                        <p id="drawerDate" class="text-[10px] text-fmm-blue font-bold uppercase tracking-widest mt-2">Data: --/--/----</p>
+                    </div>
+                    <button onclick="closeDrawer()" class="p-3 hover:bg-slate-100 rounded-2xl transition-all text-slate-400"><i data-lucide="x" class="w-6 h-6"></i></button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar bg-slate-50/50" id="drawerList"></div>
+                <div class="p-6 border-t border-slate-100 bg-white text-center shrink-0">
+                    <p class="text-[9px] text-slate-400 font-bold uppercase italic tracking-widest">Clique no nome do professor na matriz para abrir o diário completo.</p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        let auditData = [];
+        let calendarLetivo = [];
+        let currentYear = 2026;
+
+        async function init() {
+            if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if(!user) return window.location.href = "../../index.html";
+
+            await loadCalendar();
+            await loadAuditData();
+            lucide.createIcons();
+        }
+
+        async function loadCalendar() {
+            const { data } = await window.supabaseClient.from('calendario_letivo').select('*').eq('ano_letivo', currentYear);
+            calendarLetivo = data || [];
+        }
+
+        async function loadAuditData() {
+            const container = document.getElementById('auditContainer');
+            const loading = document.getElementById('loadingState');
+            const loadingText = document.getElementById('loadingText');
+            const month = parseInt(document.getElementById('selectMonth').value);
+            const segmento = document.getElementById('selectSegmento').value;
+
+            container.classList.add('hidden');
+            loading.classList.remove('hidden');
+
+            const startDate = new Date(currentYear, month, 1).toISOString().split('T')[0];
+            const endDate = new Date(currentYear, month + 1, 0).toISOString().split('T')[0];
+
+            try {
+                // TASK: LOOP DE PAGINAÇÃO (Garante que carregamos os 82+ professores sem limite de 1000)
+                let allRows = [];
+                let from = 0;
+                const pageSize = 1000;
+                let hasMore = true;
+
+                while (hasMore) {
+                    let query = window.supabaseClient
+                        .from('v_auditoria_diarios')
+                        .select('*')
+                        .gte('data', startDate)
+                        .lte('data', endDate)
+                        .range(from, from + pageSize - 1);
+
+                    if (segmento !== 'all') query = query.ilike('nivel_turma', `${segmento}%`);
+
+                    const { data, error } = await query;
+                    if (error) throw error;
+                    if (data && data.length > 0) {
+                        allRows = allRows.concat(data);
+                        from += pageSize;
+                        loadingText.innerText = `Processando: ${allRows.length} registros...`;
+                        if (data.length < pageSize) hasMore = false;
+                    } else { hasMore = false; }
+                }
+
+                auditData = allRows;
+                renderAuditMatrix(month);
+                calculateKPIs();
+
+            } catch (err) { console.error(err); } 
+            finally { loading.classList.add('hidden'); container.classList.remove('hidden'); }
+        }
+
+        function calculateKPIs() {
+            if(auditData.length === 0) return;
+            const totalExpected = auditData.length * 2;
+            let done = 0, critical = 0;
+            auditData.forEach(item => {
+                if(item.chamada_realizada) done++;
+                if(item.conteudo_registrado) done++;
+                if(!item.chamada_realizada && !item.conteudo_registrado) critical++;
+            });
+            const rate = Math.round((done / totalExpected) * 100);
+            document.getElementById('complianceRate').innerText = `${rate}%`;
+            document.getElementById('criticalCount').innerText = critical;
+            document.getElementById('complianceRate').className = `text-xl font-black ${rate < 70 ? 'text-red-500' : 'text-fmm-green'}`;
+        }
+
+        function renderAuditMatrix(month) {
+            const head = document.getElementById('auditHeader');
+            const body = document.getElementById('auditBody');
+            const daysInMonth = new Date(currentYear, month + 1, 0).getDate();
+
+            let headHTML = `<tr class="sticky-header-row"><th class="sticky-intersect p-4 text-left text-[9px] font-black uppercase text-slate-400 min-w-[280px]">Professor / Disciplina</th>`;
+            for (let i = 1; i <= daysInMonth; i++) headHTML += `<th class="header-day">${i}</th>`;
+            head.innerHTML = headHTML + '</tr>';
+
+            const groups = {};
+            auditData.forEach(item => {
+                const key = `${item.id_professor}|${item.sigla_disciplina}`;
+                if(!groups[key]) groups[key] = { 
+                    idProf: item.id_professor, 
+                    nomeProf: item.nome_professor, 
+                    sigla: item.sigla_disciplina,
+                    nomeDisc: item.nome_disciplina,
+                    days: {} 
+                };
+                
+                const day = new Date(item.data + 'T12:00:00').getDate();
+                if(!groups[key].days[day]) groups[key].days[day] = [];
+                groups[key].days[day].push(item);
+            });
+
+            const sortedKeys = Object.keys(groups).sort((a, b) => groups[a].nomeProf.localeCompare(groups[b].nomeProf));
+            body.innerHTML = sortedKeys.map(key => {
+                const g = groups[key];
+                // TASK: Link para a tela de detalhes no nome do professor
+                const detailUrl = `auditoria_detalhes_coordenador.html?idProf=${g.idProf}&sigla=${g.sigla}&month=${month}`;
+                
+                let row = `<tr class="border-b border-slate-50"><td class="sticky-col px-4 py-2 bg-white"><a href="${detailUrl}" class="flex flex-col text-left overflow-hidden hover:bg-fmm-blue/5 p-1 rounded-lg transition-colors group"><span class="text-[11px] font-black text-fmm-dark uppercase truncate group-hover:text-fmm-blue">${g.nomeProf}</span><span class="text-[8px] font-bold text-fmm-blue uppercase tracking-widest truncate group-hover:text-fmm-blue/80">${g.nomeDisc}</span></a></td>`;
+
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const records = g.days[d] || [];
+                    const dateStr = `${currentYear}-${(month+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
+                    const isLetivo = calendarLetivo.find(c => c.data === dateStr && c.tipo === 'letivo');
+
+                    if (records.length === 0) {
+                        row += `<td class="p-0 border-r border-slate-50"><div class="audit-cell cell-none">${isLetivo ? '•' : ''}</div></td>`;
+                    } else {
+                        const totalTurmas = new Set(records.map(r => r.id_turma)).size;
+                        const doneChamadas = new Set(records.filter(r => r.chamada_realizada).map(r => r.id_turma)).size;
+                        const doneConteudos = new Set(records.filter(r => r.conteudo_registrado).map(r => r.id_turma)).size;
+
+                        let statusClass = 'cell-perfect';
+                        if (doneChamadas === 0 && doneConteudos === 0) statusClass = 'cell-missing critical-pulse';
+                        else if (doneChamadas < totalTurmas || doneConteudos < totalTurmas) statusClass = 'cell-partial';
+
+                        row += `<td class="p-0 border-r border-slate-50"><div onclick="inspectDay('${g.idProf}', '${dateStr}', '${g.sigla}')" class="audit-cell ${statusClass}">${totalTurmas}</div></td>`;
+                    }
+                }
+                return row + '</tr>';
+            }).join('');
+            lucide.createIcons();
+        }
+
+        async function inspectDay(idProf, date, sigla) {
+            const items = auditData.filter(a => a.id_professor === idProf && a.data === date && a.sigla_disciplina === sigla);
+            if(items.length === 0) return;
+
+            document.getElementById('drawerTeacher').innerText = items[0].nome_professor;
+            document.getElementById('drawerDate').innerText = `${new Date(date + 'T12:00:00').toLocaleDateString('pt-BR')} • ${items[0].nome_disciplina}`;
+            
+            const list = document.getElementById('drawerList');
+            list.innerHTML = items.map(item => `
+                <div class="bg-white p-5 rounded-[28px] border border-slate-100 shadow-sm space-y-4 animate-fade">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-fmm-blue/5 rounded-2xl flex items-center justify-center text-fmm-blue font-black text-xs">${item.numero_tempo}º</div>
+                            <div>
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tempo de Aula</p>
+                                <p class="text-sm font-black text-fmm-dark uppercase">${item.nome_turma}</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            ${renderStatusBadge('Chamada', item.chamada_realizada)}
+                            ${renderStatusBadge('Conteúdo', item.conteudo_registrado)}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('drawer').classList.remove('hidden');
+            setTimeout(() => document.querySelector('.drawer-content').classList.add('open'), 10);
+            lucide.createIcons();
+        }
+
+        function renderStatusBadge(label, ok) {
+            const color = ok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
+            return `<div class="px-2 py-1 ${color} rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 min-w-[85px]">
+                <div class="w-1.5 h-1.5 rounded-full ${ok ? 'bg-green-500' : 'bg-red-500'}"></div>
+                ${label}
+            </div>`;
+        }
+
+        function closeDrawer() {
+            document.querySelector('.drawer-content').classList.remove('open');
+            setTimeout(() => document.getElementById('drawer').classList.add('hidden'), 400);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
