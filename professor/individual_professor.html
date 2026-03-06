@@ -53,40 +53,32 @@
         .info-pill { background: white; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; color: #475569; display: flex; align-items: center; gap: 8px; }
 
         .grade-input { width: 60px; text-align: center; border-radius: 10px; border: 2px solid #e2e8f0; padding: 8px 2px; font-weight: 800; font-size: 14px; transition: all 0.2s; background: white; }
-        .grade-input:focus { border-color: #00638f; outline: none; background: #fff; transform: scale(1.05); z-index: 10; }
+        .grade-input:focus { border-color: #00638f; outline: none; background: #fff; transform: scale(1.05); z-index: 10; border-width: 3px; }
+        .grade-input:disabled { background: #f8fafc; color: #94a3b8; cursor: not-allowed; border-color: #f1f5f9; border-style: dashed; }
         .grade-low { color: #ef4444; border-color: #fecaca; background: #fef2f2; }
         .grade-ok { color: #00638f; border-color: #e2e8f0; }
 
         @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
         .animate-slide { animation: slideInRight 0.4s ease-out forwards; }
         .search-result-item:hover { background-color: #f8fafc; }
-        
-        .chat-bubble { position: relative; background: white; border-radius: 24px; border-top-left-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #f1f5f9; padding: 24px; transition: all 0.2s; }
-        .chat-bubble:hover { border-color: #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-
-        .tag-badge { font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 4px 10px; border-radius: 8px; letter-spacing: 0.05em; }
-        .tag-comportamental { background: #fef2f2; color: #ef4444; border: 1px solid #fee2e2; }
-        .tag-academico { background: #eff6ff; color: #3b82f6; border: 1px solid #dbeafe; }
-        .tag-familiar { background: #f0fdf4; color: #22c55e; border: 1px solid #dcfce7; }
-        .tag-saude { background: #faf5ff; color: #a855f7; border: 1px solid #f3e8ff; }
     </style>
 </head>
-<body class="flex h-screen w-screen overflow-hidden">
+<body class="flex h-screen w-screen overflow-hidden text-left">
 
     <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
 
     <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-30 shadow-sm flex-shrink-0">
-            <div class="flex items-center gap-6 flex-1">
+            <div class="flex items-center gap-6 flex-1 text-left">
                 <h1 class="text-base font-black text-fmm-dark tracking-tight flex items-center gap-2"><span class="w-1.5 h-4 bg-fmm-lime rounded-full"></span>Individual</h1>
                 <div class="h-8 w-px bg-slate-100 hidden md:block"></div>
                 <div class="relative w-full max-w-sm">
                     <i data-lucide="search" class="absolute left-4 top-3 w-4 h-4 text-slate-400"></i>
                     <input type="text" id="studentSearch" onkeyup="searchAlunos(this.value)" placeholder="Nome ou RA..." class="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-fmm-blue/5 focus:border-fmm-blue transition-all font-medium text-sm">
-                    <div id="searchResults" class="absolute w-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl max-h-64 overflow-y-auto z-50 hidden custom-scrollbar"></div>
+                    <div id="searchResults" class="absolute w-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl max-h-64 overflow-y-auto z-50 hidden custom-scrollbar text-left"></div>
                 </div>
                 <div class="flex flex-col min-w-[220px]">
-                    <select id="selectDisc" onchange="handleContextChange()" class="w-full px-4 py-2.5 bg-fmm-blue/5 border border-fmm-blue/10 rounded-2xl outline-none focus:ring-4 focus:ring-fmm-blue/5 text-xs font-bold text-fmm-blue">
+                    <select id="selectDisc" onchange="handleContextChange()" class="w-full px-4 py-2.5 bg-fmm-blue/5 border border-fmm-blue/10 rounded-2xl outline-none focus:ring-4 focus:ring-fmm-blue/5 text-xs font-bold text-fmm-blue cursor-pointer">
                         <option value="">Selecione sua disciplina...</option>
                     </select>
                 </div>
@@ -99,7 +91,7 @@
         <div class="flex-1 overflow-auto custom-scrollbar bg-slate-50" id="main-content">
             <div id="empty-view" class="h-full flex flex-col items-center justify-center p-20 text-center">
                 <div class="w-24 h-24 bg-white rounded-[32px] shadow-xl flex items-center justify-center mb-8 border border-slate-50"><i data-lucide="user-search" class="w-10 h-10 text-slate-200"></i></div>
-                <h3 class="text-xl font-extrabold text-slate-400 tracking-tight">Conselho de Classe Individual</h3>
+                <h3 class="text-xl font-extrabold text-slate-400 tracking-tight uppercase">Conselho de Classe Individual</h3>
                 <p id="empty-msg" class="text-sm text-slate-300 italic mt-2">Pesquise um aluno para gerir dados detalhados.</p>
             </div>
 
@@ -108,8 +100,8 @@
                     <div class="relative group cursor-pointer flex-shrink-0" onclick="openPhotoZoom()"><img id="studentAvatar" src="" class="w-28 h-28 rounded-[32px] object-cover border-4 border-slate-50 shadow-md"></div>
                     <div class="flex-1 space-y-4 w-full">
                         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div><h2 id="studentName" class="text-2xl font-black text-fmm-dark tracking-tight leading-none mb-1">---</h2><p class="text-slate-400 font-bold text-xs uppercase tracking-widest" id="studentInfo">RA: --- | Turma: ---</p></div>
-                            <span id="studentStatus" class="w-fit px-4 py-1.5 rounded-full text-[9px] font-black uppercase bg-fmm-green/10 text-fmm-green border border-fmm-green/10">Cursando</span>
+                            <div class="text-left"><h2 id="studentName" class="text-2xl font-black text-fmm-dark tracking-tight leading-none mb-1 uppercase">---</h2><p class="text-slate-400 font-bold text-xs uppercase tracking-widest" id="studentInfo">RA: --- | Turma: ---</p></div>
+                            <span id="studentStatus" class="w-fit px-4 py-1.5 rounded-full text-[9px] font-black uppercase border">---</span>
                         </div>
                         <div class="flex flex-wrap gap-3"><div class="info-pill"><i data-lucide="mail" class="w-3.5 h-3.5 text-fmm-blue"></i> <span id="studentEmail">---</span></div><div class="info-pill"><i data-lucide="users" class="w-3.5 h-3.5 text-fmm-blue"></i> <span id="studentTurmaNome">---</span></div></div>
                     </div>
@@ -121,26 +113,28 @@
                         <div class="text-right"><p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Gerindo Dados em</p><h4 id="selected-disc-label" class="text-sm font-black text-fmm-blue uppercase">Selecione uma matéria</h4></div>
                     </div>
 
+                    <!-- ABA FREQUÊNCIA -->
                     <div id="content-frequencia" class="animate-slide space-y-6">
-                        <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center gap-4">
+                        <div id="absence-form-area" class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center gap-4 text-left">
                             <div class="flex-1 w-full space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Lançar Falta</label>
-                            <div class="flex gap-2"><input type="date" id="newAbsenceDate" class="flex-1 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold"><select id="newAbsenceTime" class="w-32 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold"><option value="1">1º Tempo</option><option value="2">2º Tempo</option></select><button onclick="addAbsence()" class="bg-fmm-dark text-white px-6 py-2 rounded-xl text-xs font-black uppercase shadow-sm active:scale-95 transition-transform">Lançar</button></div></div>
+                            <div class="flex gap-2"><input type="date" id="newAbsenceDate" class="flex-1 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold"><select id="newAbsenceTime" class="w-32 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold"><option value="1">1º Tempo</option><option value="2">2º Tempo</option></select><button id="btnLaunchAbsence" onclick="addAbsence()" class="bg-fmm-dark text-white px-6 py-2 rounded-xl text-xs font-black uppercase shadow-sm active:scale-95 transition-transform hover:bg-slate-800">Lançar</button></div></div>
                         </div>
                         <div class="bg-white rounded-[32px] border border-slate-100 shadow-xl overflow-hidden">
                             <div class="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
                                 <h4 class="font-black text-fmm-dark text-xs uppercase">Registos de Ausência</h4>
-                                <div id="total-faltas" class="px-4 py-1.5 bg-red-50 text-red-600 text-[10px] font-black rounded-full border border-red-100">0 FALTAS</div>
+                                <div id="total-faltas" class="px-4 py-1.5 bg-red-50 text-red-600 text-[10px] font-black rounded-full border border-red-100 uppercase">0 FALTAS</div>
                             </div>
-                            <div class="overflow-x-auto"><table class="w-full text-left"><thead class="bg-slate-50/50 text-[10px] font-black uppercase text-slate-400 tracking-widest"><tr><th class="px-8 py-5">Data</th><th class="px-6 py-5 text-center">Tempo</th><th class="px-8 py-5 text-right">Ações</th></tr></thead><tbody id="freq-list" class="divide-y divide-slate-50 text-sm font-medium"></tbody></table></div>
+                            <div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left border-collapse"><thead class="bg-slate-50/50 text-[10px] font-black uppercase text-slate-400 tracking-widest"><tr><th class="px-8 py-5">Data</th><th class="px-6 py-5 text-center">Tempo</th><th class="px-8 py-5 text-right">Ações</th></tr></thead><tbody id="freq-list" class="divide-y divide-slate-50 text-sm font-medium"></tbody></table></div>
                         </div>
                     </div>
 
+                    <!-- ABA NOTAS -->
                     <div id="content-notas" class="hidden animate-slide">
                         <div class="bg-white rounded-[32px] border border-slate-100 shadow-xl overflow-hidden">
                             <div id="notas-grid-container" class="bg-white"></div>
                             <div id="anual-consolidado-area" class="bg-slate-50 p-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-10">
                                 <div class="flex gap-10"><div class="flex flex-col"><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Média Anual</span><span id="label-media-anual" class="text-3xl font-black text-fmm-dark">0.0</span></div><div class="h-12 w-px bg-slate-200"></div><div class="flex flex-col"><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Média Final</span><span id="label-media-final" class="text-3xl font-black text-fmm-blue">0.0</span></div></div>
-                                <div class="flex gap-6"><div class="flex flex-col gap-1.5"><label class="text-[9px] font-black text-slate-400 uppercase text-center">Rec. Final</label><input type="text" id="in-recup-final" class="grade-input bg-amber-50"></div><div class="flex flex-col gap-1.5"><label class="text-[9px] font-black text-slate-400 uppercase text-center">Conselho</label><input type="text" id="in-conselho" class="grade-input bg-blue-50"></div></div>
+                                <div class="flex gap-6"><div class="flex flex-col gap-1.5 text-center"><label class="text-[9px] font-black text-slate-400 uppercase">Rec. Final</label><input type="text" id="in-recup-final" class="grade-input bg-amber-50 mx-auto"></div><div class="flex flex-col gap-1.5 text-center"><label class="text-[9px] font-black text-slate-400 uppercase">Conselho</label><input type="text" id="in-conselho" class="grade-input bg-blue-50 mx-auto"></div></div>
                             </div>
                         </div>
                     </div>
@@ -151,7 +145,7 @@
 
     <!-- MODAL FOTO -->
     <div id="photoModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onclick="closePhotoModal()">
-        <div class="relative animate-fade-in-up" onclick="event.stopPropagation()">
+        <div class="relative animate-fade" onclick="event.stopPropagation()">
             <button onclick="closePhotoModal()" class="absolute -top-12 -right-4 text-white hover:text-fmm-lime transition-colors">
                 <i data-lucide="x" class="w-8 h-8"></i>
             </button>
@@ -163,8 +157,8 @@
     <!-- TOAST -->
     <div id="toast" class="fixed bottom-8 right-8 z-50 translate-y-20 opacity-0 transition-all duration-500">
         <div class="bg-slate-900 text-white px-8 py-5 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/5">
-            <div class="w-8 h-8 bg-fmm-lime/20 rounded-full flex items-center justify-center" id="toast-icon-container">
-                <i data-lucide="check" class="w-4 h-4 text-fmm-lime" id="toast-icon"></i>
+            <div class="w-8 h-8 bg-fmm-lime/20 rounded-full flex items-center justify-center">
+                <i data-lucide="check" class="w-4 h-4 text-fmm-lime"></i>
             </div>
             <span class="text-xs font-bold tracking-tight" id="toast-msg">Sincronizado</span>
         </div>
@@ -173,13 +167,14 @@
     <script>
         let currentUser = null, selectedStudent = null, currentMatriculaId = null;
         let currentDiscSigla = "", currentDiscType = "BCC", activeTab = 'frequencia', saveTimers = {};
-        let teachesProjetoDeVida = false; // TASK: Suporte a disciplinas globais (Projeto de Vida)
+        let teachesProjetoDeVida = false; 
 
         function formatDriveUrl(url) {
-            if (!url) return null;
-            if (url.includes('drive.google.com') && url.includes('/file/d/')) {
-                const idMatch = url.match(/\/d\/(.*?)\//);
-                if (idMatch && idMatch[1]) return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
+            if (!url || typeof url !== 'string') return null;
+            if (url.includes('drive.google.com')) {
+                const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+                const id = idMatch ? idMatch[1] : null;
+                if (id) return `https://drive.google.com/thumbnail?id=${id}&sz=w500`;
             }
             return url;
         }
@@ -200,111 +195,87 @@
             const select = document.getElementById('selectDisc');
             let disciplines = [];
             
-            if (currentUser.cargo === 'coordenador' || currentUser.cargo === 'diretor') {
-                const { data } = await window.supabaseClient.from('disciplinas').select('*').order('nome');
-                disciplines = data || [];
-            } else {
-                // Checa P.VIDA para não ser bloqueado em matrizes normais
-                const { data: pvidaCheck } = await window.supabaseClient.from('professor_disciplinas')
-                    .select('sigla_disciplina')
-                    .eq('id_professor', currentUser.id)
-                    .eq('sigla_disciplina', 'P.VIDA')
-                    .maybeSingle();
-                
-                teachesProjetoDeVida = !!pvidaCheck;
-
-                const { data: vinculos } = await window.supabaseClient.from('professor_disciplinas').select('sigla_disciplina, disciplinas(*)').eq('id_professor', currentUser.id);
-                disciplines = (vinculos || []).map(v => v.disciplinas).filter(d => d !== null);
-                disciplines.sort((a, b) => a.nome.localeCompare(b.nome));
-            }
-            select.innerHTML = '<option value="">Selecione sua disciplina...</option>' + disciplines.map(d => `<option value="${d.sigla}" data-tipo="${d.tipo}">${d.nome} (${d.sigla})</option>`).join('');
-            if(disciplines.length === 1) { select.value = disciplines[0].sigla; handleContextChange(); }
+            try {
+                if (currentUser.cargo === 'coordenador' || currentUser.cargo === 'diretor') {
+                    const { data } = await window.supabaseClient.from('disciplinas').select('*').order('nome');
+                    disciplines = data || [];
+                } else {
+                    const { data: pvidaCheck } = await window.supabaseClient.from('professor_disciplinas').select('sigla_disciplina').eq('id_professor', currentUser.id).eq('sigla_disciplina', 'P.VIDA').maybeSingle();
+                    teachesProjetoDeVida = !!pvidaCheck;
+                    
+                    const { data: vinculos } = await window.supabaseClient.from('professor_disciplinas').select('sigla_disciplina, disciplinas(*)').eq('id_professor', currentUser.id);
+                    disciplines = (vinculos || []).map(v => v.disciplinas).filter(d => d !== null);
+                    disciplines.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+                }
+                select.innerHTML = '<option value="">Selecione sua disciplina...</option>' + disciplines.map(d => `<option value="${d.sigla}" data-tipo="${d.tipo}">${d.nome} (${d.sigla})</option>`).join('');
+                if(disciplines.length === 1) { select.value = disciplines[0].sigla; handleContextChange(); }
+            } catch (err) { console.error("Erro ao popular disciplinas:", err); }
         }
 
         async function searchAlunos(val) {
             const results = document.getElementById('searchResults');
             if (!val || val.length < 2) return results.classList.add('hidden');
-            
-            // TASK: Tolerância case-insensitive via ilike para o status 'Cursando'
-            const { data } = await window.supabaseClient.from('alunos')
-                .select('*, turmas(nome, serie, nivel)')
-                .or(`nome_completo.ilike.%${val}%,ra.ilike.%${val}%`)
-                .ilike('status', 'cursando')
-                .limit(6);
-                
+            const { data } = await window.supabaseClient.from('alunos').select('*, turmas(nome, serie, nivel)').or(`nome_completo.ilike.%${val}%,ra.ilike.%${val}%`).limit(6);
             if (data && data.length > 0) { 
-                results.innerHTML = data.map(a => `<div onclick="loadStudent('${a.ra}')" class="p-4 search-result-item cursor-pointer flex items-center gap-4 border-b border-slate-50 last:border-0 transition-colors"><img src="${formatDriveUrl(a.url_foto) || 'https://ui-avatars.com/api/?name='+encodeURIComponent(a.nome_completo)}" class="w-10 h-10 rounded-xl object-cover shadow-sm"><div class="flex flex-col"><span class="text-sm font-black text-fmm-dark">${a.nome_completo}</span><span class="text-[9px] text-slate-400 font-bold uppercase">${a.turmas?.nome || 'Sem Turma'} | RA: ${a.ra}</span></div></div>`).join(''); 
+                results.innerHTML = data.map(a => {
+                    const avatar = formatDriveUrl(a.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(a.nome_completo)}&background=random&color=fff`;
+                    return `<div onclick="loadStudent('${a.ra}')" class="p-4 search-result-item cursor-pointer flex items-center gap-4 border-b border-slate-50 last:border-0 transition-colors text-left"><img src="${avatar}" class="w-10 h-10 rounded-xl object-cover shadow-sm" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(a.nome_completo)}&background=random&color=fff'"><div class="flex flex-col text-left"><span class="text-sm font-black text-fmm-dark uppercase truncate max-w-[200px]">${a.nome_completo}</span><span class="text-[9px] text-slate-400 font-bold uppercase">${a.turmas?.nome || 'Sem Turma'} | RA: ${a.ra} | ${a.status}</span></div></div>`;
+                }).join(''); 
                 results.classList.remove('hidden'); 
             } else {
-                results.innerHTML = `<div class="p-4 text-center text-xs font-bold text-slate-400">Nenhum aluno encontrado.</div>`;
+                results.innerHTML = `<div class="p-4 text-center text-xs font-bold text-slate-400 text-left">Nenhum aluno encontrado.</div>`;
                 results.classList.remove('hidden');
             }
+            lucide.createIcons();
         }
 
         async function loadStudent(ra) {
             document.getElementById('searchResults').classList.add('hidden'); 
             document.getElementById('studentSearch').value = '';
-            
-            if (!currentDiscSigla) {
-                alert("Por favor, selecione sua disciplina primeiro para validar o acesso ao aluno.");
-                return;
-            }
+            if (!currentDiscSigla) return alert("Selecione sua disciplina primeiro.");
 
-            const { data: student } = await window.supabaseClient.from('alunos').select('*, turmas(*)').eq('ra', ra).single();
-            const { data: matricula } = await window.supabaseClient.from('matriculas').select('id').eq('ra_aluno', ra).eq('ano_letivo', 2026).maybeSingle();
-            
-            if (currentUser.cargo === 'professor') {
-                const s = document.getElementById('selectDisc');
-                const discName = s.options[s.selectedIndex]?.text || "";
-                const isIngles = currentDiscSigla === 'L.ING' || discName.toUpperCase().includes('INGLÊS');
-
-                if (isIngles) {
-                    const { data: subturma } = await window.supabaseClient.from('subturmas')
-                        .select('id')
-                        .eq('id_turma_origem', student.id_turma)
-                        .eq('id_professor', currentUser.id)
-                        .maybeSingle();
-
-                    if (!subturma || student.id_subturma_ingles !== subturma.id) {
-                        return denyAccess("Este aluno pertence a outro grupo de Inglês.");
-                    }
-                } else {
-                    const { data: vinculoRegular } = await window.supabaseClient.from('grade_horaria')
-                        .select('id')
-                        .eq('id_professor', currentUser.id)
-                        .eq('sigla_disciplina', currentDiscSigla)
-                        .eq('id_turma', student.id_turma)
-                        .limit(1)
-                        .maybeSingle();
-
-                    if (!vinculoRegular && !teachesProjetoDeVida) {
-                        return denyAccess("Você não leciona nesta turma para a disciplina selecionada.");
+            try {
+                const { data: student } = await window.supabaseClient.from('alunos').select('*, turmas(*)').eq('ra', ra).single();
+                const { data: matricula } = await window.supabaseClient.from('matriculas').select('id').eq('ra_aluno', ra).eq('ano_letivo', 2026).maybeSingle();
+                
+                if (currentUser.cargo === 'professor') {
+                    const s = document.getElementById('selectDisc');
+                    const discName = s.options[s.selectedIndex]?.text || "";
+                    const isIngles = currentDiscSigla === 'L.ING' || discName.toUpperCase().includes('INGLÊS');
+                    if (isIngles) {
+                        const { data: subturma } = await window.supabaseClient.from('subturmas').select('id').eq('id_turma_origem', student.id_turma).eq('id_professor', currentUser.id).maybeSingle();
+                        if (!subturma || student.id_subturma_ingles !== subturma.id) return denyAccess("Este aluno pertence a outro grupo de Inglês.");
+                    } else {
+                        const { data: vinculoRegular } = await window.supabaseClient.from('grade_horaria').select('id').eq('id_professor', currentUser.id).eq('sigla_disciplina', currentDiscSigla).eq('id_turma', student.id_turma).limit(1).maybeSingle();
+                        if (!vinculoRegular && !teachesProjetoDeVida) return denyAccess("Você não leciona nesta turma.");
                     }
                 }
-            }
 
-            // TASK: Tratamento de Fallback atualizado para UUID
-            // Se não houver id de matrícula, usamos null para evitar erros 400 no banco.
-            selectedStudent = student; 
-            currentMatriculaId = matricula?.id || null; 
-            
-            document.getElementById('empty-view').classList.add('hidden'); 
-            document.getElementById('student-view').classList.remove('hidden');
-            document.getElementById('empty-msg').innerHTML = "Pesquise um aluno para gerir dados detalhados.";
-            document.getElementById('studentName').innerText = student.nome_completo;
-            document.getElementById('studentAvatar').src = formatDriveUrl(student.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.nome_completo)}&background=random&color=fff`;
-            document.getElementById('studentInfo').innerText = `RA: ${student.ra} • ${student.turmas?.serie || 'Sem Série'}`;
-            document.getElementById('studentEmail').innerText = student.email_institucional;
-            document.getElementById('studentTurmaNome').innerText = student.turmas?.nome || 'Não Alocado';
-            document.getElementById('studentStatus').innerText = student.status;
-            
-            loadContextData();
-            lucide.createIcons();
+                selectedStudent = student; 
+                currentMatriculaId = (matricula && matricula.id) ? matricula.id : null; 
+                
+                document.getElementById('empty-view').classList.add('hidden'); 
+                document.getElementById('student-view').classList.remove('hidden');
+                document.getElementById('studentName').innerText = student.nome_completo;
+                document.getElementById('studentAvatar').src = formatDriveUrl(student.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.nome_completo)}&background=random&color=fff`;
+                document.getElementById('studentInfo').innerText = `RA: ${student.ra} • ${student.turmas?.serie || 'Sem Série'}`;
+                document.getElementById('studentEmail').innerText = student.email_institucional;
+                document.getElementById('studentTurmaNome').innerText = student.turmas?.nome || 'Não Alocado';
+                
+                const isTransf = student.status === 'Transferido';
+                const statusEl = document.getElementById('studentStatus');
+                statusEl.innerText = isTransf ? 'TRANSFERIDO' : 'CURSANDO';
+                statusEl.className = `w-fit px-4 py-1.5 rounded-full text-[9px] font-black uppercase border ${isTransf ? 'bg-red-50 text-red-600 border-red-100' : 'bg-fmm-green/10 text-fmm-green border-fmm-green/10'}`;
+
+                document.getElementById('absence-form-area').classList.toggle('hidden', isTransf);
+                
+                loadContextData();
+                lucide.createIcons();
+            } catch (err) { console.error("Erro ao carregar estudante:", err); }
         }
 
         function denyAccess(msg) {
-            selectedStudent = null;
-            currentMatriculaId = null;
+            selectedStudent = null; currentMatriculaId = null;
             document.getElementById('student-view').classList.add('hidden');
             document.getElementById('empty-view').classList.remove('hidden');
             document.getElementById('empty-msg').innerHTML = `<span class="text-red-500 font-bold">ACESSO NEGADO:</span> ${msg}`;
@@ -316,7 +287,6 @@
             currentDiscSigla = s.value; 
             currentDiscType = s.options[s.selectedIndex]?.dataset.tipo;
             document.getElementById('selected-disc-label').innerText = s.options[s.selectedIndex]?.text || "Selecione uma matéria";
-            
             if (selectedStudent) loadStudent(selectedStudent.ra);
         }
 
@@ -332,91 +302,95 @@
             const { count } = await window.supabaseClient.from('frequencias').select('*', { count: 'exact', head: true }).eq('ra_aluno', selectedStudent.ra).eq('sigla_disciplina', currentDiscSigla).eq('presente', false);
             document.getElementById('total-faltas').innerText = `${count || 0} FALTAS`;
             const list = document.getElementById('freq-list');
-            if (!faltas || faltas.length === 0) list.innerHTML = `<tr><td colspan="3" class="px-8 py-12 text-center text-slate-300 italic font-medium">Nenhum registo de falta.</td></tr>`;
-            else list.innerHTML = faltas.map(f => `<tr class="hover:bg-red-50/20"><td class="px-8 py-5 font-black text-slate-700">${f.data_presenca.split('-').reverse().join('/')}</td><td class="px-6 py-5 text-center"><span class="px-3 py-1 bg-fmm-blue/5 text-fmm-blue text-[10px] font-black rounded-lg uppercase">TEMPO ${f.numero_tempo}</span></td><td class="px-8 py-5 text-right"><button onclick="removeAbsence('${f.id}')" class="p-2 text-slate-300 hover:text-red-500 transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td></tr>`).join('');
+            const isTransf = selectedStudent.status === 'Transferido';
+
+            if (!faltas || faltas.length === 0) list.innerHTML = `<tr><td colspan="3" class="px-8 py-12 text-center text-slate-300 italic font-medium uppercase">Nenhum registo de falta.</td></tr>`;
+            else list.innerHTML = faltas.map(f => `<tr class="hover:bg-red-50/20 text-left"><td class="px-8 py-5 font-black text-slate-700 text-left">${f.data_presenca.split('-').reverse().join('/')}</td><td class="px-6 py-5 text-center"><span class="px-3 py-1 bg-fmm-blue/5 text-fmm-blue text-[10px] font-black rounded-lg uppercase">TEMPO ${f.numero_tempo}</span></td><td class="px-8 py-5 text-right">${isTransf ? '<span class="text-[8px] font-black text-slate-300 uppercase">BLOQUEADO</span>' : `<button onclick="removeAbsence('${f.id}')" class="p-2 text-slate-300 hover:text-red-500 transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`}</td></tr>`).join('');
             lucide.createIcons();
         }
 
-        async function addAbsence() { const d = document.getElementById('newAbsenceDate').value, t = parseInt(document.getElementById('newAbsenceTime').value); if(!currentDiscSigla || !selectedStudent) return; const { error } = await window.supabaseClient.from('frequencias').upsert({ ra_aluno: selectedStudent.ra, sigla_disciplina: currentDiscSigla, id_turma: selectedStudent.id_turma, data_presenca: d, numero_tempo: t, presente: false }); if(!error) { showToast("Falta lançada"); refreshFrequency(); } }
-        async function removeAbsence(id) { if (!confirm("Remover esta falta?")) return; const { error } = await window.supabaseClient.from('frequencias').delete().eq('id', id); if (!error) { showToast("Registo removido"); refreshFrequency(); } }
+        async function addAbsence() { const d = document.getElementById('newAbsenceDate').value, t = parseInt(document.getElementById('newAbsenceTime').value); if(!currentDiscSigla || !selectedStudent || selectedStudent.status === 'Transferido') return; const { error } = await window.supabaseClient.from('frequencias').upsert({ ra_aluno: selectedStudent.ra, sigla_disciplina: currentDiscSigla, id_turma: selectedStudent.id_turma, data_presenca: d, numero_tempo: t, presente: false }); if(!error) { showToast("Falta lançada"); refreshFrequency(); } }
+        async function removeAbsence(id) { if (!confirm("Remover esta falta?") || selectedStudent.status === 'Transferido') return; const { error } = await window.supabaseClient.from('frequencias').delete().eq('id', id); if (!error) { showToast("Registo removido"); refreshFrequency(); } }
 
-        // TASK: Roteador Dinâmico de Grade e Avaliações por Matriz
         async function refreshGrades() {
             if (!selectedStudent || !currentDiscSigla) return;
             const container = document.getElementById('notas-grid-container');
-            
             const nivel = selectedStudent.turmas?.nivel || '';
             const isEF = nivel.startsWith('EF');
             const currentMatriz = isEF ? 'FUNDAMENTAL' : (currentDiscType === 'BCC' ? 'BASICA' : 'TECNICA');
+            const isTransf = selectedStudent.status === 'Transferido';
 
-            let notas = [];
-            let anual = null;
-            let nTec = [];
+            let notas = [], anual = null, nTec = [];
 
-            // Se o aluno não tiver currentMatriculaId, as notas retornarão vazias (0) mas o painel ainda será renderizado
             if (currentMatriculaId) {
-                if (currentMatriz === 'FUNDAMENTAL') {
-                    const { data: n } = await window.supabaseClient.from('notas_fundamental').select('*').eq('id_matricula', currentMatriculaId).eq('sigla_disciplina', currentDiscSigla);
-                    const { data: a } = await window.supabaseClient.from('anual_fundamental').select('*').eq('id_matricula', currentMatriculaId).eq('sigla_disciplina', currentDiscSigla).maybeSingle();
-                    notas = n || []; anual = a;
-                } else if (currentMatriz === 'BASICA') {
-                    const { data: n } = await window.supabaseClient.from('notas_basica').select('*').eq('id_matricula', currentMatriculaId).eq('sigla_disciplina', currentDiscSigla);
-                    const { data: a } = await window.supabaseClient.from('anual_basica').select('*').eq('id_matricula', currentMatriculaId).eq('sigla_disciplina', currentDiscSigla).maybeSingle();
-                    notas = n || []; anual = a;
-                } else {
-                    const { data: nt } = await window.supabaseClient.from('notas_tecnica').select('*').eq('id_matricula', currentMatriculaId).eq('sigla_disciplina', currentDiscSigla);
-                    nTec = nt || [];
-                }
+                try {
+                    if (currentMatriz === 'FUNDAMENTAL') {
+                        const [n, a] = await Promise.all([
+                            window.supabaseClient.from('notas_fundamental').select('*').eq('id_matricula', currentMatriculaId).eq('sigla_disciplina', currentDiscSigla),
+                            window.supabaseClient.from('anual_fundamental').select('*').eq('id_matricula', currentMatriculaId).eq('sigla_disciplina', currentDiscSigla).maybeSingle()
+                        ]);
+                        notas = n.data || []; anual = a.data;
+                    } else if (currentMatriz === 'BASICA') {
+                        const [n, a] = await Promise.all([
+                            window.supabaseClient.from('notas_basica').select('*').eq('id_matricula', currentMatriculaId).eq('sigla_disciplina', currentDiscSigla),
+                            window.supabaseClient.from('anual_basica').select('*').eq('id_matricula', currentMatriculaId).eq('sigla_disciplina', currentDiscSigla).maybeSingle()
+                        ]);
+                        notas = n.data || []; anual = a.data;
+                    } else {
+                        const { data } = await window.supabaseClient.from('notas_tecnica').select('*').eq('id_matricula', currentMatriculaId).eq('sigla_disciplina', currentDiscSigla);
+                        nTec = data || [];
+                    }
+                } catch (err) { console.error("Erro ao buscar notas:", err); }
             }
 
             if (currentMatriz === 'FUNDAMENTAL') {
                 const periodos = ['1_BIMESTRE', '2_BIMESTRE', '3_BIMESTRE', '4_BIMESTRE'];
-                
                 container.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-100 bg-white";
                 container.innerHTML = periodos.map(p => {
-                    const n = (notas || []).find(x => x.periodo === p) || { p1: 0, p2: 0, rb: 0, nb: 0 };
-                    return `<div class="p-8 space-y-6"><h5 class="text-[10px] font-black text-fmm-blue uppercase tracking-widest border-b pb-2">${p.replace('_', ' ')}</h5><div class="grid grid-cols-2 gap-4"><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">P1</span><input type="text" id="p1-${p}" value="${n.p1 || '0'}" oninput="handleInputGrade(this, 'FUND', 'p1', '${p}')" class="grade-input"></div><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">P2</span><input type="text" id="p2-${p}" value="${n.p2 || '0'}" oninput="handleInputGrade(this, 'FUND', 'p2', '${p}')" class="grade-input"></div><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">RB</span><input type="text" id="rb-${p}" value="${n.rb || '0'}" oninput="handleInputGrade(this, 'FUND', 'rb', '${p}')" class="grade-input"></div><div class="flex flex-col justify-end pb-1"><span class="text-[9px] font-bold text-slate-400 uppercase">Final</span><span id="nb-${p}" class="text-xl font-black ${n.nb < 6 ? 'text-red-500' : 'text-fmm-blue'}">${Number(n.nb || 0).toFixed(1)}</span></div></div></div>`;
+                    const n = notas.find(x => x.periodo === p) || { p1: 0, p2: 0, rb: 0, nb: 0 };
+                    return `<div class="p-8 space-y-6 text-left"><h5 class="text-[10px] font-black text-fmm-blue uppercase tracking-widest border-b pb-2 text-left">${p.replace('_', ' ')}</h5><div class="grid grid-cols-2 gap-4"><div class="flex flex-col gap-1 text-left"><span class="text-[9px] font-bold text-slate-400 uppercase">P1</span><input type="text" value="${n.p1 || '0'}" ${isTransf ? 'disabled' : ''} oninput="handleInputGrade(this, 'FUND', 'p1', '${p}')" class="grade-input ${n.p1 < 6 && n.p1 > 0 ? 'grade-low' : 'grade-ok'}"></div><div class="flex flex-col gap-1 text-left"><span class="text-[9px] font-bold text-slate-400 uppercase">P2</span><input type="text" value="${n.p2 || '0'}" ${isTransf ? 'disabled' : ''} oninput="handleInputGrade(this, 'FUND', 'p2', '${p}')" class="grade-input ${n.p2 < 6 && n.p2 > 0 ? 'grade-low' : 'grade-ok'}"></div><div class="flex flex-col gap-1 text-left"><span class="text-[9px] font-bold text-slate-400 uppercase">RB</span><input type="text" value="${n.rb || '0'}" ${isTransf ? 'disabled' : ''} oninput="handleInputGrade(this, 'FUND', 'rb', '${p}')" class="grade-input ${n.rb < 6 && n.rb > 0 ? 'grade-low' : 'grade-ok'}"></div><div class="flex flex-col justify-end pb-1 text-left"><span class="text-[9px] font-bold text-slate-400 uppercase">Final</span><span id="nb-${p}" class="text-xl font-black ${n.nb < 6 ? 'text-red-500' : 'text-fmm-blue'}">${Number(n.nb || 0).toFixed(1)}</span></div></div></div>`;
                 }).join('');
-                
                 document.getElementById('anual-consolidado-area').classList.remove('hidden');
                 document.getElementById('label-media-anual').innerText = Number(anual?.media_anual || 0).toFixed(1);
                 document.getElementById('label-media-final').innerText = Number(anual?.media_final || 0).toFixed(1);
                 document.getElementById('in-recup-final').value = anual?.recup_final || '0';
+                document.getElementById('in-recup-final').disabled = isTransf;
                 document.getElementById('in-recup-final').setAttribute('oninput', "handleInputGrade(this, 'ANUAL_FUND', 'recup_final')");
                 document.getElementById('in-conselho').value = anual?.conselho_classe || '0';
+                document.getElementById('in-conselho').disabled = isTransf;
                 document.getElementById('in-conselho').setAttribute('oninput', "handleInputGrade(this, 'ANUAL_FUND', 'conselho_classe')");
-
             } else if (currentMatriz === 'BASICA') {
                 const periodos = ['1_TRIMESTRE', '2_TRIMESTRE', '3_TRIMESTRE'];
-                
                 container.className = "grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100 bg-white";
                 container.innerHTML = periodos.map(p => {
-                    const n = (notas || []).find(x => x.periodo === p) || { p1: 0, p2: 0, rt: 0, nt: 0 };
-                    return `<div class="p-8 space-y-6"><h5 class="text-[10px] font-black text-fmm-blue uppercase tracking-widest border-b pb-2">${p.replace('_', ' ')}</h5><div class="grid grid-cols-2 gap-4"><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">P1</span><input type="text" id="p1-${p}" value="${n.p1 || '0'}" oninput="handleInputGrade(this, 'BCC', 'p1', '${p}')" class="grade-input"></div><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">P2</span><input type="text" id="p2-${p}" value="${n.p2 || '0'}" oninput="handleInputGrade(this, 'BCC', 'p2', '${p}')" class="grade-input"></div><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">RT</span><input type="text" id="rt-${p}" value="${n.rt || '0'}" oninput="handleInputGrade(this, 'BCC', 'rt', '${p}')" class="grade-input"></div><div class="flex flex-col justify-end pb-1"><span class="text-[9px] font-bold text-slate-400 uppercase">Final</span><span id="nt-${p}" class="text-xl font-black ${n.nt < 6 ? 'text-red-500' : 'text-fmm-blue'}">${Number(n.nt || 0).toFixed(1)}</span></div></div></div>`;
+                    const n = notas.find(x => x.periodo === p) || { p1: 0, p2: 0, rt: 0, nt: 0 };
+                    return `<div class="p-8 space-y-6 text-left"><h5 class="text-[10px] font-black text-fmm-blue uppercase tracking-widest border-b pb-2 text-left">${p.replace('_', ' ')}</h5><div class="grid grid-cols-2 gap-4"><div class="flex flex-col gap-1 text-left"><span class="text-[9px] font-bold text-slate-400 uppercase">P1</span><input type="text" value="${n.p1 || '0'}" ${isTransf ? 'disabled' : ''} oninput="handleInputGrade(this, 'BCC', 'p1', '${p}')" class="grade-input ${n.p1 < 6 && n.p1 > 0 ? 'grade-low' : 'grade-ok'}"></div><div class="flex flex-col gap-1 text-left"><span class="text-[9px] font-bold text-slate-400 uppercase">P2</span><input type="text" value="${n.p2 || '0'}" ${isTransf ? 'disabled' : ''} oninput="handleInputGrade(this, 'BCC', 'p2', '${p}')" class="grade-input ${n.p2 < 6 && n.p2 > 0 ? 'grade-low' : 'grade-ok'}"></div><div class="flex flex-col gap-1 text-left"><span class="text-[9px] font-bold text-slate-400 uppercase">RT</span><input type="text" value="${n.rt || '0'}" ${isTransf ? 'disabled' : ''} oninput="handleInputGrade(this, 'BCC', 'rt', '${p}')" class="grade-input ${n.rt < 6 && n.rt > 0 ? 'grade-low' : 'grade-ok'}"></div><div class="flex flex-col justify-end pb-1 text-left"><span class="text-[9px] font-bold text-slate-400 uppercase">Final</span><span id="nt-${p}" class="text-xl font-black ${n.nt < 6 ? 'text-red-500' : 'text-fmm-blue'}">${Number(n.nt || 0).toFixed(1)}</span></div></div></div>`;
                 }).join('');
-                
                 document.getElementById('anual-consolidado-area').classList.remove('hidden');
                 document.getElementById('label-media-anual').innerText = Number(anual?.media_anual || 0).toFixed(1);
                 document.getElementById('label-media-final').innerText = Number(anual?.media_final || 0).toFixed(1);
                 document.getElementById('in-recup-final').value = anual?.recup_final || '0';
+                document.getElementById('in-recup-final').disabled = isTransf;
                 document.getElementById('in-recup-final').setAttribute('oninput', "handleInputGrade(this, 'ANUAL_BCC', 'recup_final')");
                 document.getElementById('in-conselho').value = anual?.conselho_classe || '0';
+                document.getElementById('in-conselho').disabled = isTransf;
                 document.getElementById('in-conselho').setAttribute('oninput', "handleInputGrade(this, 'ANUAL_BCC', 'conselho_classe')");
-
             } else {
                 const periodos = ['1_SEMESTRE', '2_SEMESTRE'];
-                
                 container.className = "grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100 bg-white";
                 container.innerHTML = periodos.map(p => {
-                    const n = (nTec || []).find(x => x.periodo === p) || { p1: 0, p2: 0, media_1: 0, recup_parcial: 0, conselho_semestral: 0, media_2: 0, recup_final_semestral: 0, nota_final_periodo: 0 };
-                    return `<div class="p-8 space-y-6"><h5 class="text-[10px] font-black text-fmm-green uppercase tracking-widest border-b pb-2">${p.replace('_', ' ')}</h5><div class="grid grid-cols-2 gap-4"><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">P1</span><input type="text" value="${n.p1 || '0'}" oninput="handleInputGrade(this, 'TEC', 'p1', '${p}')" class="grade-input"></div><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">P2</span><input type="text" value="${n.p2 || '0'}" oninput="handleInputGrade(this, 'TEC', 'p2', '${p}')" class="grade-input"></div><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">Rec. P.</span><input type="text" value="${n.recup_parcial || '0'}" oninput="handleInputGrade(this, 'TEC', 'recup_parcial', '${p}')" class="grade-input"></div><div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-slate-400 uppercase">Cons.</span><input type="text" value="${n.conselho_semestral || '0'}" oninput="handleInputGrade(this, 'TEC', 'conselho_semestral', '${p}')" class="grade-input"></div><div class="flex flex-col col-span-2 border-t pt-3 mt-2"><span class="text-[9px] font-bold text-slate-400 uppercase">Nota Final</span><span class="text-2xl font-black ${n.nota_final_periodo < 6 ? 'text-red-500' : 'text-fmm-green'}">${Number(n.nota_final_periodo || 0).toFixed(1)}</span></div></div></div>`;
+                    const n = nTec.find(x => x.periodo === p) || { p1: 0, p2: 0, media_1: 0, recup_parcial: 0, conselho_semestral: 0, media_2: 0, recup_final_semestral: 0, nota_final_periodo: 0 };
+                    return `<div class="p-8 space-y-6 text-left"><h5 class="text-[10px] font-black text-fmm-green uppercase tracking-widest border-b pb-2 text-left">${p.replace('_', ' ')}</h5><div class="grid grid-cols-2 gap-4"><div class="flex flex-col gap-1 text-left"><span class="text-[9px] font-bold text-slate-400 uppercase">P1</span><input type="text" value="${n.p1 || '0'}" ${isTransf ? 'disabled' : ''} oninput="handleInputGrade(this, 'TEC', 'p1', '${p}')" class="grade-input ${n.p1 < 6 && n.p1 > 0 ? 'grade-low' : 'grade-ok'}"></div><div class="flex flex-col gap-1 text-left"><span class="text-[9px] font-bold text-slate-400 uppercase">P2</span><input type="text" value="${n.p2 || '0'}" ${isTransf ? 'disabled' : ''} oninput="handleInputGrade(this, 'TEC', 'p2', '${p}')" class="grade-input ${n.p2 < 6 && n.p2 > 0 ? 'grade-low' : 'grade-ok'}"></div><div class="flex flex-col gap-1 text-left"><span class="text-[9px] font-bold text-slate-400 uppercase">Rec. P.</span><input type="text" value="${n.recup_parcial || '0'}" ${isTransf ? 'disabled' : ''} oninput="handleInputGrade(this, 'TEC', 'recup_parcial', '${p}')" class="grade-input ${n.recup_parcial < 6 && n.recup_parcial > 0 ? 'grade-low' : 'grade-ok'}"></div><div class="flex flex-col gap-1 text-left"><span class="text-[9px] font-bold text-slate-400 uppercase">Cons.</span><input type="text" value="${n.conselho_semestral || '0'}" ${isTransf ? 'disabled' : ''} oninput="handleInputGrade(this, 'TEC', 'conselho_semestral', '${p}')" class="grade-input ${n.conselho_semestral < 6 && n.conselho_semestral > 0 ? 'grade-low' : 'grade-ok'}"></div><div class="flex flex-col col-span-2 border-t pt-3 mt-2 text-left"><span class="text-[9px] font-bold text-slate-400 uppercase">Nota Final</span><span class="text-2xl font-black ${n.nota_final_periodo < 6 ? 'text-red-500' : 'text-fmm-green'}">${Number(n.nota_final_periodo || 0).toFixed(1)}</span></div></div></div>`;
                 }).join('');
                 document.getElementById('anual-consolidado-area').classList.add('hidden');
             }
         }
 
         function handleInputGrade(el, type, field, p = null) {
-            const vS = el.value.replace(',', '.'); if (vS !== '' && (isNaN(vS) || vS < 0 || vS > 10)) { el.classList.add('ring-2', 'ring-red-500'); return; } el.classList.remove('ring-2', 'ring-red-500');
+            if(!selectedStudent || selectedStudent.status === 'Transferido') return;
+            const vS = el.value.replace(',', '.'); 
+            if (vS !== '' && (isNaN(vS) || vS < 0 || vS > 10)) { el.classList.add('ring-2', 'ring-red-500'); return; } 
+            el.classList.remove('ring-2', 'ring-red-500');
             const v = vS === '' ? 0 : parseFloat(vS);
             const timerKey = `${field}-${p}`; if (saveTimers[timerKey]) clearTimeout(saveTimers[timerKey]);
             document.getElementById('sync-status').classList.remove('hidden');
@@ -425,28 +399,21 @@
 
         async function saveData(type, field, val, periodo) {
             try {
-                if (!currentMatriculaId) throw new Error("Aluno sem matrícula ativa no ano vigente (Impossível salvar notas).");
-
-                let error, table, conflict;
+                if (!currentMatriculaId) throw new Error("Aluno sem matrícula ativa.");
+                if (selectedStudent.status === 'Transferido') throw new Error("Edição bloqueada para alunos transferidos.");
+                let table, conflict;
                 if (type === 'BCC') { table = 'notas_basica'; conflict = 'id_matricula,sigla_disciplina,periodo'; }
                 else if (type === 'FUND') { table = 'notas_fundamental'; conflict = 'id_matricula,sigla_disciplina,periodo'; }
                 else if (type === 'TEC') { table = 'notas_tecnica'; conflict = 'id_matricula,sigla_disciplina,periodo'; }
                 else if (type === 'ANUAL_BCC') { table = 'anual_basica'; conflict = 'id_matricula,sigla_disciplina'; }
                 else if (type === 'ANUAL_FUND') { table = 'anual_fundamental'; conflict = 'id_matricula,sigla_disciplina'; }
-
                 const payload = { id_matricula: currentMatriculaId, sigla_disciplina: currentDiscSigla, [field]: val };
                 if (periodo && !type.startsWith('ANUAL')) payload.periodo = periodo;
-                
-                ({ error } = await window.supabaseClient.from(table).upsert(payload, { onConflict: conflict }));
+                const { error } = await window.supabaseClient.from(table).upsert(payload, { onConflict: conflict });
                 if (error) throw error; 
-                showToast("Sincronizado"); 
-                refreshGrades();
-            } catch (err) { 
-                console.error(err); 
-                alert("Erro ao salvar: " + err.message); 
-            } finally { 
-                document.getElementById('sync-status').classList.add('hidden'); 
-            }
+                showToast("Sincronizado"); refreshGrades();
+            } catch (err) { alert("Erro ao salvar: " + err.message); } 
+            finally { document.getElementById('sync-status').classList.add('hidden'); }
         }
 
         function switchStudentTab(tab) { activeTab = tab; document.getElementById('tab-freq').classList.toggle('active', tab === 'frequencia'); document.getElementById('tab-notas').classList.toggle('active', tab === 'notas'); document.getElementById('content-frequencia').classList.toggle('hidden', tab !== 'frequencia'); document.getElementById('content-notas').classList.toggle('hidden', tab !== 'notas'); loadContextData(); }

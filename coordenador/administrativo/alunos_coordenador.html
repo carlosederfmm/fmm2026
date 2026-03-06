@@ -57,7 +57,7 @@
         .table-row-fast { contain: layout paint; }
     </style>
 </head>
-<body class="flex h-screen w-screen overflow-hidden">
+<body class="flex h-screen w-screen overflow-hidden text-left">
 
     <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
 
@@ -81,7 +81,7 @@
                 </div>
                 
                 <div class="flex flex-wrap gap-2">
-                    <select id="filterTurma" onchange="fetchAlunos()" class="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-slate-600 font-bold text-sm min-w-[150px] cursor-pointer">
+                    <select id="filterTurma" onchange="fetchAlunos()" class="px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-slate-600 font-bold text-sm min-w-[150px] cursor-pointer">
                         <option value="">Todas as Turmas</option>
                     </select>
 
@@ -128,7 +128,7 @@
     <!-- MODAL DE CADASTRO / EDIÇÃO -->
     <div id="studentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
         <div class="bg-white w-full max-w-4xl rounded-[32px] shadow-2xl flex flex-col max-h-[90vh] animate-fade-in-up">
-            <div class="p-8 border-b border-slate-100 flex justify-between items-center">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white rounded-t-[32px]">
                 <h2 class="text-2xl font-bold text-fmm-dark" id="modalTitle">Novo Aluno</h2>
                 <button onclick="window.closeModal()" class="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-slate-100 transition-colors">
                     <i data-lucide="x" class="w-6 h-6"></i>
@@ -155,19 +155,19 @@
                             </div>
                         </div>
                         <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-5 w-full">
-                            <div class="space-y-1.5 md:col-span-2">
+                            <div class="space-y-1.5 md:col-span-2 text-left">
                                 <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Nome Completo</label>
-                                <input type="text" id="inName" placeholder="Nome do aluno" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue uppercase">
+                                <input type="text" id="inName" placeholder="Nome do aluno" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue uppercase font-bold text-slate-700">
                             </div>
-                            <div class="space-y-1.5">
+                            <div class="space-y-1.5 text-left">
                                 <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">RA</label>
-                                <input type="text" id="inRA" placeholder="Ex: 260001" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue">
+                                <input type="text" id="inRA" placeholder="Ex: 260001" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue font-bold text-slate-700">
                             </div>
-                            <div class="space-y-1.5">
+                            <div class="space-y-1.5 text-left">
                                 <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">E-mail Institucional</label>
-                                <input type="email" id="inEmailInst" placeholder="aluno@fmm.org.br" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue">
+                                <input type="email" id="inEmailInst" placeholder="aluno@fmm.org.br" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue font-medium">
                             </div>
-                            <div class="space-y-1.5">
+                            <div class="space-y-1.5 text-left">
                                 <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Origem</label>
                                 <select id="inOrigem" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-slate-600">
                                     <option value="FMM">FMM</option>
@@ -175,12 +175,16 @@
                                     <option value="Semed">Semed</option>
                                 </select>
                             </div>
-                            <div class="space-y-1.5">
-                                <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Status</label>
-                                <select id="inStatus" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-slate-600">
+                            <div class="space-y-1.5 text-left">
+                                <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Status Global</label>
+                                <select id="inStatus" onchange="window.toggleDataTransf()" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-slate-600">
                                     <option value="Cursando">Cursando</option>
                                     <option value="Transferido">Transferido</option>
                                 </select>
+                            </div>
+                            <div class="space-y-1.5 hidden text-left" id="divDataTransf">
+                                <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Data da Transferência</label>
+                                <input type="date" id="inDataTransf" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue font-bold text-slate-600">
                             </div>
                         </div>
                     </div>
@@ -194,23 +198,23 @@
                         <div class="p-6 bg-slate-50/50 rounded-3xl border border-slate-100 space-y-4">
                             <h4 class="text-[10px] font-black text-slate-400 uppercase">Responsável Primário</h4>
                             <div class="space-y-3">
-                                <input type="text" id="resp1Name" placeholder="Nome" class="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm">
-                                <input type="email" id="resp1Email" placeholder="E-mail" class="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm">
-                                <input type="tel" id="resp1Tel" placeholder="Telefone" class="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm">
+                                <input type="text" id="resp1Name" placeholder="Nome" class="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm font-medium">
+                                <input type="email" id="resp1Email" placeholder="E-mail" class="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm font-medium">
+                                <input type="tel" id="resp1Tel" placeholder="Telefone" class="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm font-medium">
                             </div>
                         </div>
                         <div class="p-6 bg-slate-50/50 rounded-3xl border border-slate-100 space-y-4">
                             <h4 class="text-[10px] font-black text-slate-400 uppercase">Responsável Secundário</h4>
                             <div class="space-y-3">
-                                <input type="text" id="resp2Name" placeholder="Nome" class="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm">
-                                <input type="email" id="resp2Email" placeholder="E-mail" class="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm">
-                                <input type="tel" id="resp2Tel" placeholder="Telefone" class="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm">
+                                <input type="text" id="resp2Name" placeholder="Nome" class="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm font-medium">
+                                <input type="email" id="resp2Email" placeholder="E-mail" class="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm font-medium">
+                                <input type="tel" id="resp2Tel" placeholder="Telefone" class="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm font-medium">
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="p-8 border-t bg-slate-50/50 rounded-b-[32px] flex justify-end gap-4">
+            <div class="p-8 border-t bg-slate-50/50 rounded-b-[32px] flex justify-end gap-4 shrink-0">
                 <button onclick="window.closeModal()" class="px-6 py-3 text-sm font-bold text-slate-500">Cancelar</button>
                 <button id="btnSave" onclick="saveStudent()" class="px-10 py-3.5 bg-fmm-lime text-fmm-dark font-bold text-sm rounded-2xl shadow-xl">Guardar Registo</button>
             </div>
@@ -234,7 +238,6 @@
         let searchTimeout = null;
         let isFetching = false; 
 
-        // TASK: Refinamento robusto para links do Google Drive (Usando ID direto para evitar bloqueios)
         function formatDriveUrl(url) {
             if (!url || typeof url !== 'string') return null;
             if (url.includes('drive.google.com')) {
@@ -248,7 +251,6 @@
         async function init() {
             const { data: { user } } = await window.supabaseClient.auth.getUser();
             if (!user) return window.location.href = '../../index.html'; 
-
             if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
 
             const { data: profile } = await window.supabaseClient.from('perfis').select('cargo, niveis_acesso').eq('id', user.id).single();
@@ -383,27 +385,62 @@
             } else { preview.src = ''; preview.classList.add('hidden'); placeholder.classList.remove('hidden'); }
         }
 
+        window.toggleDataTransf = function() {
+            const status = document.getElementById('inStatus').value;
+            const div = document.getElementById('divDataTransf');
+            if (status === 'Transferido') div.classList.remove('hidden');
+            else div.classList.add('hidden');
+        }
+
+        // TASK: SINCRONIZAÇÃO ATIVA (Alunos + Matrículas)
         async function saveStudent() {
             const ra = document.getElementById('inRA').value;
             const nome = document.getElementById('inName').value;
             const email = document.getElementById('inEmailInst').value;
+            const status = document.getElementById('inStatus').value;
+            const dataTransf = status === 'Transferido' ? document.getElementById('inDataTransf').value : null;
+
             if (!ra || !nome || !email) return alert("Preencha RA, Nome e E-mail.");
+            if (status === 'Transferido' && !dataTransf) return alert("Por favor, informe a data da transferência.");
+
             const respData = {
                 resp1: { nome: document.getElementById('resp1Name').value, email: document.getElementById('resp1Email').value, tel: document.getElementById('resp1Tel').value },
                 resp2: { nome: document.getElementById('resp2Name').value, email: document.getElementById('resp2Email').value, tel: document.getElementById('resp2Tel').value }
             };
             const btn = document.getElementById('btnSave');
-            btn.disabled = true; btn.innerText = "Salvando...";
-            const { error } = await window.supabaseClient.from('alunos').upsert({
-                ra, nome_completo: nome.toUpperCase(), email_institucional: email,
-                origem: document.getElementById('inOrigem').value,
-                status: document.getElementById('inStatus').value,
-                url_foto: document.getElementById('inPhoto').value,
-                informacoes_responsaveis: respData
-            });
-            if (error) alert("Erro: " + error.message);
-            else { window.closeModal(); fetchAlunos(); }
-            btn.disabled = false; btn.innerText = "Guardar Registo";
+            btn.disabled = true; btn.innerText = "Sincronizando...";
+            
+            try {
+                // 1. Atualiza Tabela de Alunos (Pessoa)
+                const { error: errAluno } = await window.supabaseClient.from('alunos').upsert({
+                    ra, nome_completo: nome.toUpperCase(), email_institucional: email,
+                    origem: document.getElementById('inOrigem').value,
+                    status: status,
+                    data_transferencia: dataTransf,
+                    url_foto: document.getElementById('inPhoto').value,
+                    informacoes_responsaveis: respData
+                });
+
+                if (errAluno) throw errAluno;
+
+                // 2. Se for TRANSFERIDO, sincroniza também a Matrícula (Contrato)
+                if (status === 'Transferido') {
+                    const { error: errMat } = await window.supabaseClient
+                        .from('matriculas')
+                        .update({ status: 'TRANSFERIDO' })
+                        .eq('ra_aluno', ra)
+                        .eq('ano_letivo', 2026);
+                    
+                    if (errMat) console.warn("Aviso: Falha ao sincronizar matrícula, mas aluno atualizado.");
+                }
+
+                window.closeModal(); 
+                fetchAlunos();
+            } catch (err) { 
+                alert("Erro ao guardar: " + err.message); 
+            } finally {
+                btn.disabled = false; btn.innerText = "Guardar Registo";
+            }
         }
 
         function prepEdit(aluno) {
@@ -414,8 +451,12 @@
             document.getElementById('inEmailInst').value = aluno.email_institucional;
             document.getElementById('inOrigem').value = aluno.origem || 'FMM';
             document.getElementById('inStatus').value = aluno.status || 'Cursando';
+            document.getElementById('inDataTransf').value = aluno.data_transferencia || '';
             document.getElementById('inPhoto').value = aluno.url_foto || '';
+            
+            window.toggleDataTransf();
             window.updatePhotoPreview();
+
             const resp = aluno.informacoes_responsaveis || {};
             document.getElementById('resp1Name').value = resp.resp1?.nome || '';
             document.getElementById('resp1Email').value = resp.resp1?.email || '';
@@ -427,7 +468,7 @@
         }
 
         window.deleteStudent = async function(ra) {
-            if(!confirm("Deseja excluir este aluno?")) return;
+            if(!confirm("Deseja excluir este aluno permanentemente?")) return;
             const { error } = await window.supabaseClient.from('alunos').delete().eq('ra', ra);
             if(error) alert(error.message); else fetchAlunos();
         }
@@ -437,6 +478,7 @@
             document.getElementById('studentModal').classList.add('hidden'); 
             document.getElementById('inRA').disabled = false;
             document.querySelectorAll('#studentModal input').forEach(i => i.value = '');
+            document.getElementById('divDataTransf').classList.add('hidden');
             document.getElementById('modalTitle').innerText = "Novo Aluno";
             window.updatePhotoPreview();
         }
@@ -450,8 +492,6 @@
         window.closePhotoZoom = function() { 
             document.getElementById('photoZoomModal').classList.add('hidden'); 
         }
-
-        async function logout() { if(confirm("Sair?")) { await window.supabaseClient.auth.signOut(); window.location.href = "../../index.html"; } }
 
         window.onload = init;
     </script>

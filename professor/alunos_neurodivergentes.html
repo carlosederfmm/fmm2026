@@ -39,7 +39,6 @@
         /* Ajuste para Sidebar e Estado Colapsado */
         .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         
-        /* Lógica de ocultação quando a sidebar está minimizada */
         .sidebar-collapsed .sidebar-text, 
         .sidebar-collapsed .sidebar-category-header, 
         .sidebar-collapsed .chevron-icon, 
@@ -55,10 +54,8 @@
         .category-content.open { max-height: 1000px; }
         .rotate-180 { transform: rotate(180deg); }
         
-        /* Estilo do item ativo na sidebar */
         .sidebar-item-active { background-color: rgba(255, 255, 255, 0.05); border-right: 4px solid #c8d400; color: #ffffff !important; }
 
-        /* Estilos da Tabela Moderna */
         .table-container {
             background: white;
             border-radius: 24px;
@@ -81,7 +78,7 @@
         .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
     </style>
 </head>
-<body class="flex h-screen w-screen overflow-hidden">
+<body class="flex h-screen w-screen overflow-hidden text-left">
 
     <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
 
@@ -93,15 +90,15 @@
                 <div class="w-10 h-10 bg-fmm-blue/10 rounded-xl flex items-center justify-center text-fmm-blue">
                     <i data-lucide="brain" class="w-5 h-5"></i>
                 </div>
-                <div>
-                    <h1 class="text-lg font-black text-fmm-dark uppercase tracking-tight">Alunos Neurodivergentes</h1>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Consulta de orientações pedagógicas</p>
+                <div class="text-left">
+                    <h1 class="text-lg font-black text-fmm-dark uppercase tracking-tight leading-none">Alunos Neurodivergentes</h1>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Consulta de orientações pedagógicas</p>
                 </div>
             </div>
             
             <div class="flex items-center gap-4">
-                <div class="relative w-64">
-                    <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
+                <div class="relative w-64 group">
+                    <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
                     <input type="text" id="searchInput" onkeyup="filterResults()" placeholder="Nome ou RA..." 
                            class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
                 </div>
@@ -168,11 +165,13 @@
         let allNeuroStudents = [];
         let todasTurmas = [];
 
+        // TASK: Estabilidade de Imagem - Utilizando endpoint de thumbnail para evitar erro 500
         function formatDriveUrl(url) {
-            if (!url) return null;
-            if (url.includes('drive.google.com') && url.includes('/file/d/')) {
-                const idMatch = url.match(/\/d\/(.*?)\//);
-                if (idMatch && idMatch[1]) return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
+            if (!url || typeof url !== 'string') return null;
+            if (url.includes('drive.google.com')) {
+                const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+                const id = idMatch ? idMatch[1] : null;
+                if (id) return `https://drive.google.com/thumbnail?id=${id}&sz=w500`;
             }
             return url;
         }
@@ -188,13 +187,13 @@
             loading.classList.remove('hidden');
 
             try {
-                // Carrega alunos que possuem laudo
+                // TASK: Filtro Crítico de Status 'Cursando' para foco pedagógico imediato
                 const { data: alunos, error: errorAlunos } = await window.supabaseClient
                     .from('alunos')
-                    .select('ra, nome_completo, url_foto, laudo, turmas(id, nome, serie)')
+                    .select('ra, nome_completo, url_foto, laudo, status, turmas(id, nome, serie)')
                     .not('laudo', 'is', null)
                     .neq('laudo', '')
-                    .eq('status', 'Cursando')
+                    .ilike('status', 'Cursando') // Sincronizado com padrão de banco
                     .order('nome_completo');
 
                 if (errorAlunos) throw errorAlunos;
@@ -249,11 +248,13 @@
                 
                 const initials = s.nome_completo.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
                 const urlFoto = formatDriveUrl(s.url_foto);
-                const fullPhotoUrl = urlFoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=003c5b&color=fff`;
+                const avatarImg = urlFoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=003c5b&color=fff`;
 
-                const avatarHtml = urlFoto 
-                    ? `<img src="${urlFoto}" class="avatar-clickable mx-auto" onclick="openPhotoZoom('${fullPhotoUrl}', '${s.nome_completo}')" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=003c5b&color=fff'">`
-                    : `<div class="avatar-clickable mx-auto flex items-center justify-center bg-fmm-blue text-white font-black text-[10px]" onclick="openPhotoZoom('${fullPhotoUrl}', '${s.nome_completo}')">${initials}</div>`;
+                const avatarHtml = `
+                    <img src="${avatarImg}" 
+                         class="avatar-clickable mx-auto" 
+                         onclick="openPhotoZoom('${avatarImg}', '${s.nome_completo}')" 
+                         onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=003c5b&color=fff'">`;
                 
                 tr.innerHTML = `
                     <td class="px-6 py-4">${avatarHtml}</td>
@@ -261,19 +262,19 @@
                     <td class="px-6 py-4">
                         <span class="text-fmm-dark font-black uppercase text-xs tracking-tight">${s.nome_completo}</span>
                     </td>
-                    <td class="px-6 py-4">
+                    <td class="px-6 py-4 text-left">
                         <div class="flex flex-col">
-                            <span class="text-[11px] font-black text-fmm-blue uppercase">${s.turmas?.nome || 'S/T'}</span>
-                            <span class="text-[9px] font-bold text-slate-400 uppercase">${s.turmas?.serie || '---'}</span>
+                            <span class="text-[11px] font-black text-fmm-blue uppercase leading-none">${s.turmas?.nome || 'S/T'}</span>
+                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mt-1">${s.turmas?.serie || '---'}</span>
                         </div>
                     </td>
-                    <td class="px-6 py-4">
-                        <p class="text-xs text-slate-500 font-medium leading-relaxed max-w-xl whitespace-pre-line">
+                    <td class="px-6 py-4 text-left">
+                        <p class="text-xs text-slate-500 font-medium leading-relaxed max-w-xl whitespace-pre-line line-clamp-3 hover:line-clamp-none transition-all">
                             ${s.laudo}
                         </p>
                     </td>
                     <td class="px-6 py-4 text-center">
-                        <a href="individual_professor.html?ra=${s.ra}" class="p-2.5 bg-slate-50 text-slate-400 hover:text-fmm-blue hover:bg-blue-50 rounded-xl transition-all inline-flex items-center justify-center" title="Ficha Individual">
+                        <a href="individual_professor.html?ra=${s.ra}" class="p-2.5 bg-slate-50 text-slate-400 hover:text-fmm-blue hover:bg-blue-50 rounded-xl transition-all inline-flex items-center justify-center shadow-sm" title="Ficha Individual">
                             <i data-lucide="user-search" class="w-4 h-4"></i>
                         </a>
                     </td>

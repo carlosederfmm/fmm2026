@@ -85,7 +85,7 @@
     <!-- SIDEBAR CONTAINER -->
     <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
 
-    <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden text-left">
         
         <!-- TOP BAR -->
         <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-30 shadow-sm flex-shrink-0 text-left">
@@ -147,7 +147,7 @@
             <div id="table-wrapper" class="hidden inline-block align-middle min-w-full">
                 <table class="min-w-full border-separate border-spacing-0 text-left" id="attendanceTable">
                     <thead id="tableHeader"></thead>
-                    <tbody id="tableBody" class="bg-white"></tbody>
+                    <tbody id="tableBody" class="bg-white text-left"></tbody>
                 </table>
             </div>
         </div>
@@ -298,11 +298,12 @@
                 const { data: discInfo } = await window.supabaseClient.from('disciplinas').select('nome').eq('sigla', currentDiscSigla).maybeSingle();
                 const isIngles = currentDiscSigla === 'L.ING' || discInfo?.nome?.toUpperCase().includes('INGLÊS');
 
-                // Adicionado a busca de status na tabela alunos para o Fallback
+                // CORREÇÃO: Filtramos pelo status 'CURSANDO' na tabela de matrículas (ENUM)
                 let matriculasQuery = window.supabaseClient.from('matriculas')
                     .select('ra_aluno, status, alunos!inner(nome_completo, url_foto, id_subturma_ingles, status)')
                     .eq('id_turma', currentTurmaId)
-                    .eq('ano_letivo', 2026);
+                    .eq('ano_letivo', 2026)
+                    .eq('status', 'CURSANDO'); 
 
                 let subturmaId = null;
 
@@ -328,11 +329,12 @@
 
                 let { data: matriculas, error: matErr } = await matriculasQuery;
 
-                // TASK: Fallback de Segurança - Se a tabela 'matriculas' retornar vazia, tentamos localizar a turma diretamente pela tabela de 'alunos'
+                // FALLBACK: Se houver falha, buscamos em alunos filtrando explicitamente por 'Cursando' (String)
                 if (matErr || !matriculas || matriculas.length === 0) {
                     let fallbackQuery = window.supabaseClient.from('alunos')
                         .select('ra, nome_completo, url_foto, id_subturma_ingles, status')
-                        .eq('id_turma', currentTurmaId);
+                        .eq('id_turma', currentTurmaId)
+                        .eq('status', 'Cursando');
                     
                     if (subturmaId) {
                         fallbackQuery = fallbackQuery.eq('id_subturma_ingles', subturmaId);
@@ -354,9 +356,9 @@
                     }
                 }
 
-                // Filtro de status em memória para aceitar Cursando, CURSANDO, Ativo...
+                // TASK: Filtro final em memória por precaução para garantir apenas alunos ativos
                 globalMatriculas = (matriculas || []).filter(m => {
-                    const st = (m.status || m.alunos?.status || 'CURSANDO').toUpperCase();
+                    const st = (m.alunos?.status || m.status || 'CURSANDO').toUpperCase();
                     return st === 'CURSANDO' || st === 'ATIVO';
                 });
 
@@ -382,8 +384,12 @@
                 document.getElementById('btnSave').classList.remove('hidden');
                 if(freq && freq.length > 0) document.getElementById('btnDelete').classList.remove('hidden');
                 else document.getElementById('btnDelete').classList.add('hidden');
-            } catch (err) { console.error(err); } 
-            finally { document.getElementById('loading-overlay').classList.add('hidden'); lucide.createIcons(); }
+            } catch (err) { 
+                console.error("Erro ao carregar tabela:", err); 
+            } finally { 
+                document.getElementById('loading-overlay').classList.add('hidden'); 
+                lucide.createIcons(); 
+            }
         }
 
         function renderTable() {
@@ -391,13 +397,13 @@
             const body = document.getElementById('tableBody');
             const tempos = parseInt(document.getElementById('selectTempos').value);
 
-            let headHTML = `<tr><th class="px-8 py-6 sticky-intersect min-w-[320px] text-white text-[10px] font-black uppercase tracking-widest">Estudante</th>`;
+            let headHTML = `<tr><th class="px-8 py-6 sticky-intersect min-w-[320px] text-white text-[10px] font-black uppercase tracking-widest text-left">Estudante</th>`;
             if (tempos === 1) headHTML += `<th class="px-8 py-6 sticky-header text-center text-white text-[10px] font-black uppercase tracking-widest">Controle de Frequência</th>`;
             else headHTML += `<th class="px-8 py-6 sticky-header text-center text-white text-[10px] font-black uppercase tracking-widest border-r border-white/10">Tempo 1</th><th class="px-8 py-6 sticky-header text-center text-white text-[10px] font-black uppercase tracking-widest">Tempo 2</th>`;
             header.innerHTML = headHTML + `</tr>`;
 
             if (globalMatriculas.length === 0) {
-                body.innerHTML = `<tr><td colspan="${tempos === 1 ? 2 : 3}" class="px-8 py-20 text-center text-slate-300 italic">Nenhum aluno vinculado a este grupo.</td></tr>`;
+                body.innerHTML = `<tr><td colspan="${tempos === 1 ? 2 : 3}" class="px-8 py-20 text-center text-slate-300 italic">Nenhum aluno ativo vinculado a este grupo.</td></tr>`;
                 return;
             }
 
@@ -405,7 +411,7 @@
                 const p = localPresenceState[m.ra_aluno];
                 const urlFoto = formatDriveUrl(m.alunos?.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.alunos?.nome_completo)}&background=random&color=fff`;
 
-                let rowHTML = `<tr class="group transition-colors"><td class="px-8 py-5 font-bold text-fmm-dark sticky-col attendance-cell"><div class="flex items-center gap-4"><img src="${urlFoto}" class="student-photo" onclick="openPhotoModal('${urlFoto}', '${m.alunos?.nome_completo}')"><div class="flex flex-col"><span class="text-sm font-extrabold truncate max-w-[180px]">${m.alunos?.nome_completo || 'N/A'}</span><span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span></div></div></td>`;
+                let rowHTML = `<tr class="group transition-colors"><td class="px-8 py-5 font-bold text-fmm-dark sticky-col attendance-cell text-left"><div class="flex items-center gap-4 text-left"><img src="${urlFoto}" class="student-photo" onclick="openPhotoModal('${urlFoto}', '${m.alunos?.nome_completo}')" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(m.alunos?.nome_completo)}&background=random&color=fff'"><div class="flex flex-col text-left"><span class="text-sm font-extrabold truncate max-w-[180px]">${m.alunos?.nome_completo || 'N/A'}</span><span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span></div></div></td>`;
 
                 if (tempos === 1) {
                     rowHTML += `<td class="px-8 py-5 attendance-cell"><div class="flex items-center justify-center"><button onclick="togglePresence('${m.ra_aluno}', 1)" class="btn-presence ${p.tempo1 ? 'btn-present' : 'btn-absent'}"><i data-lucide="${p.tempo1 ? 'check' : 'x'}" class="w-4 h-4"></i>${p.tempo1 ? 'Presente' : 'Ausente'}</button></div></td>`;

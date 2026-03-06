@@ -60,6 +60,7 @@
         .freq-f { color: #ef4444; font-weight: 900; background-color: #fef2f2 !important; } /* Falta */
         .freq-p { color: #94a3b8; font-weight: 900; } /* Presença (.) */
         .freq-missing { background-color: #fff1f2 !important; color: #fb7185; font-weight: 900; } /* Alerta: Registro Vazio */
+        .freq-transf { background-color: #f8fafc !important; color: #cbd5e1; font-size: 8px; font-weight: 800; } /* Aluno Transferido */
 
         /* Navegação */
         .tab-btn { transition: all 0.2s; border-bottom: 3px solid transparent; }
@@ -75,8 +76,6 @@
 </head>
 <body class="h-screen w-screen overflow-hidden text-left bg-white">
 
-    <!-- Sidebar removida para maximizar o espaço de auditoria detalhada -->
-
     <main class="flex h-full w-full flex-col overflow-hidden relative">
         
         <!-- CABEÇALHO CONTEXTUAL -->
@@ -86,7 +85,7 @@
                 <button onclick="handleBackAction()" class="p-3 bg-slate-100 hover:bg-slate-200 rounded-2xl transition-all text-slate-500 active:scale-95">
                     <i data-lucide="arrow-left" class="w-6 h-6"></i>
                 </button>
-                <div class="flex flex-col">
+                <div class="flex flex-col text-left">
                     <div class="flex items-center gap-3">
                         <h1 id="viewProfessor" class="text-2xl font-black text-fmm-dark uppercase tracking-tight leading-none">Carregando...</h1>
                         <span class="h-6 w-px bg-slate-200"></span>
@@ -124,7 +123,7 @@
                 </div>
             </div>
 
-            <!-- FASE 2: DIÁRIO DE FREQUÊNCIA ESTILO EXCEL (SUPORTE A GEMINADAS) -->
+            <!-- FASE 2: DIÁRIO DE FREQUÊNCIA ESTILO EXCEL -->
             <div id="viewFreq" class="hidden h-full overflow-auto custom-scrollbar relative bg-white">
                 <table class="excel-table">
                     <thead id="freqHead"></thead>
@@ -132,7 +131,7 @@
                 </table>
             </div>
 
-            <!-- FASE 2: DIÁRIO DE CONTEÚDO (TIMELINE DE QUALIDADE) -->
+            <!-- FASE 2: DIÁRIO DE CONTEÚDO (TIMELINE) -->
             <div id="viewCont" class="hidden h-full overflow-y-auto p-10 custom-scrollbar">
                 <div id="contList" class="max-w-4xl mx-auto space-y-6">
                     <!-- Gerado dinamicamente -->
@@ -152,25 +151,20 @@
 
         let teacherData = null;
         let turmasDoProfessor = [];
-        let calendarDates = [];
         let auditRawData = []; 
-        let currentLevel = 'turmas'; // Controle de navegação: 'turmas' ou 'diario'
+        let currentLevel = 'turmas'; 
 
         const MONTH_NAMES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
         async function init() {
-            // Sidebar removida do init para manter o foco total nos dados
             if(!idProf || !sigla) return window.location.href = "auditoria_coordenador.html";
-
             document.getElementById('viewPeriodo').innerText = `Mês de Referência: ${MONTH_NAMES[monthIndex]} / ${currentYear}`;
-            
             await loadInitialData();
             lucide.createIcons();
         }
 
         async function loadInitialData() {
             try {
-                // 1. Carregar perfil e disciplina
                 const [pRes, dRes] = await Promise.all([
                     window.supabaseClient.from('perfis').select('nome_completo').eq('id', idProf).single(),
                     window.supabaseClient.from('disciplinas').select('nome').eq('sigla', sigla).single()
@@ -179,7 +173,6 @@
                 document.getElementById('viewProfessor').innerText = teacherData.nome;
                 document.getElementById('viewDisciplina').innerText = teacherData.disciplina;
 
-                // 2. Buscar TODOS os registros da View para este professor no mês (Gera os Previews dos Cards)
                 const startDate = new Date(currentYear, monthIndex, 1).toISOString().split('T')[0];
                 const endDate = new Date(currentYear, monthIndex + 1, 0).toISOString().split('T')[0];
                 
@@ -189,7 +182,6 @@
                 
                 auditRawData = audit || [];
 
-                // 3. Mapear turmas e indicadores
                 const turmasMap = new Map();
                 auditRawData.forEach(r => {
                     if(!turmasMap.has(r.id_turma)) {
@@ -225,8 +217,7 @@
                     <h3 class="text-lg font-black text-fmm-dark uppercase tracking-tight">${t.nome}</h3>
                     <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">${t.totalAulas} Aulas Previstas</p>
                     
-                    <div class="mt-6 w-full space-y-3">
-                        <!-- Chamadas -->
+                    <div class="mt-6 w-full space-y-3 text-left">
                         <div class="flex justify-between items-center text-[10px] font-black uppercase">
                             <span class="text-slate-400">Chamadas</span>
                             <span class="${percChamada < 100 ? 'text-red-500' : 'text-fmm-green'}">${t.chamadasOK}/${t.totalAulas}</span>
@@ -235,7 +226,6 @@
                             <div class="h-full ${percChamada < 100 ? 'bg-red-400' : 'bg-fmm-green'}" style="width: ${percChamada}%"></div>
                         </div>
 
-                        <!-- Conteúdos -->
                         <div class="flex justify-between items-center text-[10px] font-black uppercase">
                             <span class="text-slate-400">Conteúdos</span>
                             <span class="${percConteudo < 100 ? 'text-red-500' : 'text-fmm-green'}">${t.conteudosOK}/${t.totalAulas}</span>
@@ -265,7 +255,7 @@
             const endDate = new Date(currentYear, monthIndex + 1, 0).toISOString().split('T')[0];
 
             try {
-                // 1. Pegar a Grade Horária dessa turma para saber OS TEMPOS (Geminadas)
+                // 1. Pegar a Grade Horária dessa turma para saber OS TEMPOS
                 const { data: grade } = await window.supabaseClient.from('grade_horaria')
                     .select('dia_semana, numero_tempo')
                     .eq('id_professor', idProf).eq('sigla_disciplina', sigla).eq('id_turma', idTurma)
@@ -282,24 +272,31 @@
                     const dowNum = new Date(dia.data + 'T12:00:00').getDay();
                     const aulasNoDia = grade.filter(g => dayMap[g.dia_semana] === dowNum);
                     
-                    // Adicionamos o "índice interno" da aula no dia para bater com o lançamento do professor
                     aulasNoDia.forEach((aula, index) => {
                         expectedGrid.push({ 
                             data: dia.data, 
                             tempoGrade: aula.numero_tempo, 
-                            ordemNoDia: index + 1 // 1ª aula do dia, 2ª aula do dia...
+                            ordemNoDia: index + 1
                         });
                     });
                 });
 
-                // 4. Buscar Alunos e Registros Reais
-                const [mRes, fRes, cRes] = await Promise.all([
-                    window.supabaseClient.from('matriculas').select('ra_aluno, alunos(nome_completo)').eq('id_turma', idTurma).eq('status', 'CURSANDO').eq('ano_letivo', 2026),
+                // 4. Buscar Alunos e Registros Reais (Com join de alunos para pegar data_transferencia)
+                const { data: mats } = await window.supabaseClient.from('matriculas')
+                    .select('ra_aluno, status, alunos(nome_completo, data_transferencia)')
+                    .eq('id_turma', idTurma).eq('ano_letivo', 2026);
+
+                const [fRes, cRes] = await Promise.all([
                     window.supabaseClient.from('frequencias').select('*').eq('id_turma', idTurma).eq('sigla_disciplina', sigla).gte('data_presenca', startDate).lte('data_presenca', endDate),
                     window.supabaseClient.from('conteudos_aula').select('*').eq('id_turma', idTurma).eq('sigla_disciplina', sigla).gte('data_aula', startDate).lte('data_aula', endDate)
                 ]);
 
-                const alunos = (mRes.data || []).sort((a,b) => a.alunos.nome_completo.localeCompare(b.alunos.nome_completo));
+                const alunos = (mats || []).map(m => ({
+                    ra: m.ra_aluno,
+                    nome: m.alunos?.nome_completo || 'N/A',
+                    status: m.status,
+                    data_transferencia: m.alunos?.data_transferencia
+                })).sort((a,b) => a.nome.localeCompare(b.nome));
 
                 renderFrequencyTable(alunos, expectedGrid, fRes.data || []);
                 renderContentTimeline(expectedGrid, cRes.data || []);
@@ -314,7 +311,6 @@
             const head = document.getElementById('freqHead');
             const body = document.getElementById('freqBody');
 
-            // Header (Com suporte a múltiplas colunas na mesma data para geminadas)
             let hHTML = `<tr><th class="sticky-intersect w-12">Nº</th><th class="aluno-nome sticky-intersect" style="left: 48px;">ESTUDANTE</th>`;
             gridExpectativa.forEach(aula => {
                 const parts = aula.data.split('-');
@@ -322,20 +318,26 @@
             });
             head.innerHTML = hHTML + '</tr>';
 
-            // Corpo - Lógica de Mapeamento por Ordem
             body.innerHTML = alunos.map((m, idx) => {
-                let row = `<tr><td class="w-12 font-bold text-slate-300 bg-slate-50/50">${idx + 1}</td><td class="aluno-nome" style="left: 48px;">${m.alunos.nome_completo}</td>`;
+                let row = `<tr><td class="w-12 font-bold text-slate-300 bg-slate-50/50">${idx + 1}</td><td class="aluno-nome" style="left: 48px;">${m.nome}</td>`;
                 
                 gridExpectativa.forEach(aula => {
-                    // TASK: Mapeamento Inteligente por ordem do lançamento no dia
-                    const f = freqReal.find(x => 
-                        x.ra_aluno === m.ra_aluno && 
-                        x.data_presenca === aula.data && 
-                        x.numero_tempo === aula.ordemNoDia
-                    );
-                    
-                    if (!f) row += `<td class="freq-missing">!</td>`;
-                    else row += `<td class="${f.presente ? 'freq-p' : 'freq-f'}">${f.presente ? '.' : 'F'}</td>`;
+                    const dataAula = new Date(aula.data + 'T00:00:00');
+                    const dataTransf = m.data_transferencia ? new Date(m.data_transferencia + 'T00:00:00') : null;
+
+                    // TASK: Lógica de Linha do Tempo para Transferidos
+                    if (dataTransf && dataAula > dataTransf) {
+                        row += `<td class="freq-transf">TR</td>`;
+                    } else {
+                        const f = freqReal.find(x => 
+                            x.ra_aluno === m.ra && 
+                            x.data_presenca === aula.data && 
+                            x.numero_tempo === aula.ordemNoDia
+                        );
+                        
+                        if (!f) row += `<td class="freq-missing">!</td>`;
+                        else row += `<td class="${f.presente ? 'freq-p' : 'freq-f'}">${f.presente ? '.' : 'F'}</td>`;
+                    }
                 });
                 return row + '</tr>';
             }).join('');
@@ -344,14 +346,13 @@
         function renderContentTimeline(gridExpectativa, contReal) {
             const list = document.getElementById('contList');
             
-            // Na timeline de conteúdo, iteramos sobre cada TEMPO previsto na grade
             list.innerHTML = gridExpectativa.map(aula => {
                 const c = contReal.find(x => x.data_aula === aula.data && x.numero_tempos >= aula.ordemNoDia);
                 const dateObj = new Date(aula.data + 'T12:00:00');
 
                 if (c) {
                     return `
-                        <div class="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm flex gap-8 animate-fade">
+                        <div class="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm flex gap-8 animate-fade text-left">
                             <div class="flex flex-col items-center justify-center bg-slate-50 rounded-2xl w-24 h-24 shrink-0 border border-slate-100">
                                 <span class="text-3xl font-black text-fmm-dark">${dateObj.getDate()}</span>
                                 <span class="text-[10px] font-bold text-fmm-blue uppercase">${MONTH_NAMES[dateObj.getMonth()].substring(0,3)}</span>
@@ -360,21 +361,21 @@
                             <div class="flex-1 space-y-3">
                                 <div class="flex justify-between items-center border-b border-slate-50 pb-2">
                                     <span class="text-[10px] font-black text-fmm-dark uppercase tracking-widest">${c.numero_tempos} Tempo(s) Registrados</span>
-                                    <span class="px-3 py-1 bg-green-50 text-green-600 text-[8px] font-black uppercase rounded-lg">Lançamento OK</span>
+                                    <span class="px-3 py-1 bg-green-50 text-green-600 text-[8px] font-black uppercase rounded-lg">LANÇAMENTO OK</span>
                                 </div>
                                 <p class="text-sm font-medium text-slate-600 leading-relaxed">${c.conteudo}</p>
                             </div>
                         </div>`;
                 } else {
                     return `
-                        <div class="bg-red-50/30 p-8 rounded-[32px] border-2 border-dashed border-red-100 flex gap-8 animate-fade opacity-80">
+                        <div class="bg-red-50/30 p-8 rounded-[32px] border-2 border-dashed border-red-100 flex gap-8 animate-fade opacity-80 text-left">
                             <div class="flex flex-col items-center justify-center bg-red-100/50 rounded-2xl w-24 h-24 shrink-0">
                                 <span class="text-3xl font-black text-red-400">${dateObj.getDate()}</span>
                                 <span class="text-[10px] font-bold text-red-400 uppercase">${MONTH_NAMES[dateObj.getMonth()].substring(0,3)}</span>
                                 <span class="text-[8px] font-black text-red-400 mt-1 uppercase">Tempo ${aula.tempoGrade}</span>
                             </div>
-                            <div class="flex-1 flex flex-col justify-center text-left">
-                                <h4 class="text-sm font-black text-red-600 uppercase tracking-tight">Conteúdo não localizado</h4>
+                            <div class="flex-1 flex flex-col justify-center">
+                                <h4 class="text-sm font-black text-red-600 uppercase tracking-tight">Registro Ausente</h4>
                                 <p class="text-[10px] font-bold text-red-400 uppercase mt-1 tracking-widest">Aula prevista no ${aula.tempoGrade}º tempo da grade</p>
                             </div>
                             <div class="flex items-center"><i data-lucide="alert-circle" class="w-8 h-8 text-red-300"></i></div>
@@ -392,10 +393,7 @@
                 document.getElementById('tabContainer').classList.add('hidden');
                 document.getElementById('jTurmaTag').classList.add('hidden');
                 document.getElementById('turmasView').classList.remove('hidden');
-            } else {
-                // Redireciona para o radar, onde a sidebar está disponível
-                window.location.href = "auditoria_coordenador.html";
-            }
+            } else { window.location.href = "auditoria_coordenador.html"; }
         }
 
         function switchTab(tab) {

@@ -168,7 +168,7 @@
     <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden relative print:block print:h-auto print:overflow-visible print:p-0 print:m-0 print:bg-white">
         
         <!-- HEADER UI DO SISTEMA -->
-        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-30 shadow-sm flex-shrink-0 no-print print:hidden">
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-30 shadow-sm flex-shrink-0 no-print print:hidden text-left">
             <div class="flex flex-col text-left">
                 <h1 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none">Listas de Assinatura</h1>
                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Gerador de Documentos Institucionais</p>
@@ -194,9 +194,9 @@
 
         <!-- LISTAGEM PARA SELEÇÃO -->
         <div id="uiContainer" class="flex-1 overflow-y-auto p-8 custom-scrollbar no-print print:hidden">
-            <div id="loadingState" class="hidden py-24 flex flex-col items-center justify-center text-slate-300 gap-4">
+            <div id="loadingState" class="hidden py-24 flex flex-col items-center justify-center text-slate-300 gap-4 text-center">
                 <i data-lucide="loader-2" class="w-12 h-12 animate-spin text-fmm-blue"></i>
-                <p class="text-sm font-bold uppercase tracking-widest">Preparando dados...</p>
+                <p class="text-sm font-bold uppercase tracking-widest text-center">Preparando dados...</p>
             </div>
 
             <div id="examsGrid" class="max-w-6xl mx-auto space-y-8 pb-20">
@@ -226,7 +226,7 @@
         }
 
         async function loadInitialData() {
-            // TASK: Ignora o limite de 1000 registros para garantir que 100% das turmas e alunos sejam carregados
+            // Carregamento de turmas
             const { data: turmas } = await window.supabaseClient.from('turmas').select('*').order('nome').limit(2000);
             turmasData = turmas || [];
 
@@ -235,9 +235,10 @@
             const pageSize = 1000;
             
             while(true) {
+                // TASK: Incluída a seleção do status da ficha do ALUNO para garantir integridade pedagógica
                 const { data: mats, error } = await window.supabaseClient
                     .from('matriculas')
-                    .select('ra_aluno, id_turma, status, alunos(nome_completo)')
+                    .select('ra_aluno, id_turma, status, alunos(nome_completo, status)')
                     .eq('status', 'CURSANDO')
                     .eq('ano_letivo', 2026)
                     .range(from, from + pageSize - 1);
@@ -252,7 +253,13 @@
                 
                 from += pageSize;
             }
-            matriculasData = allMats;
+
+            // TASK: Filtro rigoroso: Matricula 'CURSANDO' (Sync) + Aluno 'Cursando' (Global)
+            // Remove transferidos que ainda possam estar com matricula ativa por erro de sincronismo.
+            matriculasData = allMats.filter(m => {
+                const alStatus = (m.alunos?.status || '').toUpperCase();
+                return alStatus === 'CURSANDO' || alStatus === 'ATIVO';
+            });
         }
 
         async function loadExams() {
@@ -293,19 +300,19 @@
                         
                         const examHtml = `
                             <div class="bg-white rounded-[40px] shadow-sm border border-slate-200 overflow-hidden animate-fade">
-                                <div class="p-6 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
-                                    <div class="flex items-center gap-4">
+                                <div class="p-6 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center text-left">
+                                    <div class="flex items-center gap-4 text-left">
                                         <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-fmm-blue shadow-sm border border-slate-100">
                                             <i data-lucide="file-text" class="w-6 h-6"></i>
                                         </div>
                                         <div class="text-left">
-                                            <h3 class="text-base font-black text-fmm-dark uppercase tracking-tight">${exam.disciplinas?.nome || exam.sigla_disciplina}</h3>
+                                            <h3 class="text-base font-black text-fmm-dark uppercase tracking-tight leading-tight">${exam.disciplinas?.nome || exam.sigla_disciplina}</h3>
                                             <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
                                                 ${new Date(exam.data_prova + 'T12:00:00').toLocaleDateString('pt-BR')} • PROVA ${exam.tipo_prova} • ${exam.matriz}
                                             </p>
                                         </div>
                                     </div>
-                                    <button onclick="toggleAllExamsInGroup('${exam.id}', this)" class="text-[10px] font-black text-fmm-blue uppercase tracking-widest hover:underline px-4">Selecionar Todas</button>
+                                    <button onclick="toggleAllExamsInGroup('${exam.id}', this)" class="text-[10px] font-black text-fmm-blue uppercase tracking-widest hover:underline px-4 transition-all">Selecionar Todas</button>
                                 </div>
                                 <div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                                     ${relevantTurmas.map(t => {
@@ -313,10 +320,10 @@
                                         return `
                                             <label class="relative cursor-pointer group">
                                                 <input type="checkbox" class="peer sr-only checkbox-exam-item" data-exam-id="${exam.id}" data-turma-id="${t.id}">
-                                                <div class="p-4 bg-white border-2 border-slate-100 rounded-3xl transition-all group-hover:border-fmm-lime/50 peer-checked:border-fmm-blue peer-checked:bg-blue-50/50">
+                                                <div class="p-4 bg-white border-2 border-slate-100 rounded-3xl transition-all group-hover:border-fmm-lime/50 peer-checked:border-fmm-blue peer-checked:bg-blue-50/50 text-left">
                                                     <div class="flex justify-between items-start mb-2">
-                                                        <span class="text-sm font-black text-fmm-dark uppercase">${t.nome}</span>
-                                                        <span class="px-2 py-0.5 bg-slate-100 text-slate-400 text-[8px] font-black rounded uppercase">${count} ALUNOS</span>
+                                                        <span class="text-sm font-black text-fmm-dark uppercase leading-tight">${t.nome}</span>
+                                                        <span class="px-2 py-0.5 bg-slate-100 text-slate-400 text-[8px] font-black rounded uppercase">${count} ATIVOS</span>
                                                     </div>
                                                     <button onclick="printSingle('${exam.id}', '${t.id}')" class="w-full mt-2 py-2.5 bg-white border border-slate-200 text-slate-500 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-fmm-blue hover:text-white hover:border-fmm-blue transition-all">
                                                         Imprimir Lista
@@ -358,7 +365,6 @@
             setTimeout(() => window.print(), 500);
         }
 
-        // MOTOR DE GERAÇÃO - Integração Idêntica ao Código Base Fornecido
         async function generatePrintLayout(items) {
             const printArea = document.getElementById('printArea');
             printArea.innerHTML = '';

@@ -49,7 +49,7 @@
             padding: 6px 2px; font-weight: 800; font-size: 13px; transition: all 0.2s; background: white;
         }
         .grade-input:focus { border-color: #00638f; outline: none; background: #fff; transform: scale(1.05); z-index: 10; box-shadow: 0 0 0 3px rgba(0, 99, 143, 0.1); }
-        .grade-input:disabled { background: #f8fafc; color: #cbd5e1; cursor: not-allowed; border-color: #f1f5f9; border-style: dashed; }
+        .grade-input:disabled { background: #f8fafc; color: #94a3b8; cursor: not-allowed; border-color: #f1f5f9; border-style: dashed; }
         .grade-low { color: #ef4444; border-color: #fecaca; background: #fef2f2; }
         .grade-ok { color: #00638f; border-color: #e2e8f0; }
 
@@ -306,7 +306,6 @@
 
                 const { data: turmaInfo } = await window.supabaseClient.from('turmas').select('nivel').eq('id', turmaId).maybeSingle();
                 const isEF = turmaInfo?.nivel?.startsWith('EF');
-                const isEMT = turmaInfo?.nivel === 'EMT';
                 currentMatriz = isEF ? 'FUNDAMENTAL' : (currentDiscType === 'BCC' ? 'BASICA' : 'TECNICA');
 
                 const tabsContainer = document.getElementById('period-tabs');
@@ -333,6 +332,7 @@
                     tabsContainer.classList.add('hidden'); 
                 }
 
+                // TASK: Busca todos os alunos vinculados, independentemente do status para posterior filtro inteligente
                 let matriculasQuery = window.supabaseClient.from('matriculas')
                     .select('id, ra_aluno, status, alunos!inner(nome_completo, url_foto, id_subturma_ingles, status)')
                     .eq('id_turma', turmaId)
@@ -361,65 +361,56 @@
 
                 let { data: matriculas, error: matErr } = await matriculasQuery;
 
-                // TASK: Fallback de Segurança - Se 'matriculas' vazio, busca direto na tabela alunos
+                // Fallback de Segurança
                 if (matErr || !matriculas || matriculas.length === 0) {
                     let fallbackQuery = window.supabaseClient.from('alunos')
                         .select('ra, nome_completo, url_foto, id_subturma_ingles, status')
                         .eq('id_turma', turmaId);
-                    
                     if (subturmaId) fallbackQuery = fallbackQuery.eq('id_subturma_ingles', subturmaId);
-
                     const { data: fallbackAlunos } = await fallbackQuery;
-
-                    if (fallbackAlunos && fallbackAlunos.length > 0) {
-                        matriculas = fallbackAlunos.map(a => ({
-                            id: null, // IMPORTANTE: Passamos NULL para não quebrar a consulta UUID nas tabelas de notas
-                            ra_aluno: a.ra,
-                            status: a.status,
-                            alunos: {
-                                nome_completo: a.nome_completo,
-                                url_foto: a.url_foto,
-                                id_subturma_ingles: a.id_subturma_ingles,
-                                status: a.status
-                            }
-                        }));
+                    if (fallbackAlunos) {
+                        matriculas = fallbackAlunos.map(a => ({ id: null, ra_aluno: a.ra, status: a.status, alunos: a }));
                     }
                 }
 
-                globalMatriculas = (matriculas || []).filter(m => {
-                    const st = (m.status || m.alunos?.status || 'CURSANDO').toUpperCase();
-                    return st === 'CURSANDO' || st === 'ATIVO';
-                });
-                
-                if (globalMatriculas.length > 0) {
-                    // Filtra apenas UUIDs válidos para evitar erro 400 Bad Request
-                    const idList = globalMatriculas.map(m => m.id).filter(id => id !== null && id !== undefined);
+                // Lista de IDs para buscar as notas
+                const idList = (matriculas || []).map(m => m.id).filter(id => id !== null);
 
-                    if (idList.length > 0) {
-                        if (currentMatriz === 'FUNDAMENTAL') {
-                            const { data: nf } = await window.supabaseClient.from('notas_fundamental').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList);
-                            const { data: af } = await window.supabaseClient.from('anual_fundamental').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList);
-                            globalNotas = nf || []; globalAnual = af || [];
-                        } else if (currentMatriz === 'BASICA') {
-                            const { data: nb } = await window.supabaseClient.from('notas_basica').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList);
-                            const { data: ab } = await window.supabaseClient.from('anual_basica').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList);
-                            globalNotas = nb || []; globalAnual = ab || [];
-                        } else {
-                            const { data: nt } = await window.supabaseClient.from('notas_tecnica').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList);
-                            globalNotas = nt || [];
-                        }
+                if (idList.length > 0) {
+                    if (currentMatriz === 'FUNDAMENTAL') {
+                        const [nf, af] = await Promise.all([
+                            window.supabaseClient.from('notas_fundamental').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList),
+                            window.supabaseClient.from('anual_fundamental').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList)
+                        ]);
+                        globalNotas = nf.data || []; globalAnual = af.data || [];
+                    } else if (currentMatriz === 'BASICA') {
+                        const [nb, ab] = await Promise.all([
+                            window.supabaseClient.from('notas_basica').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList),
+                            window.supabaseClient.from('anual_basica').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList)
+                        ]);
+                        globalNotas = nb.data || []; globalAnual = ab.data || [];
                     } else {
-                        globalNotas = []; globalAnual = [];
+                        const { data: nt } = await window.supabaseClient.from('notas_tecnica').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList);
+                        globalNotas = nt || [];
                     }
                 } else {
                     globalNotas = []; globalAnual = [];
                 }
 
-                globalMatriculas.sort((a, b) => {
-                    const nomeA = a.alunos?.nome_completo || "";
-                    const nomeB = b.alunos?.nome_completo || "";
-                    return nomeA.localeCompare(nomeB);
-                });
+                // TASK: Filtro Inteligente de Alunos (Integridade Histórica)
+                // 1. Alunos CURSANDO ou ATIVO sempre aparecem.
+                // 2. Alunos TRANSFERIDO só aparecem se tiverem notas no período ou anual.
+                globalMatriculas = (matriculas || []).filter(m => {
+                    const st = (m.alunos?.status || m.status || 'CURSANDO').toUpperCase();
+                    if (st === 'CURSANDO' || st === 'ATIVO') return true;
+                    if (st === 'TRANSFERIDO') {
+                        const hasNoteInPeriod = currentView === 'anual' 
+                            ? (globalNotas.some(n => n.id_matricula === m.id) || globalAnual.some(a => a.id_matricula === m.id))
+                            : globalNotas.some(n => n.id_matricula === m.id && n.periodo === currentView);
+                        return hasNoteInPeriod;
+                    }
+                    return false;
+                }).sort((a, b) => (a.alunos?.nome_completo || "").localeCompare(b.alunos?.nome_completo || ""));
 
                 const countEl = document.getElementById('student-count');
                 if(countEl) countEl.innerText = globalMatriculas.length.toString().padStart(2, '0');
@@ -433,11 +424,9 @@
             const header = document.getElementById('tableHeader');
             const body = document.getElementById('tableBody');
             if (!header || !body) return;
-            
             if (currentMatriz === 'FUNDAMENTAL') renderFundamental(header, body);
             else if (currentMatriz === 'BASICA') renderBCC(header, body);
             else renderTecnica(header, body);
-            
             lucide.createIcons(); 
         }
 
@@ -449,59 +438,30 @@
         function renderFundamental(header, body) {
             let headHTML = `<tr><th class="px-8 py-6 sticky-intersect border-r border-white/5 min-w-[300px] text-white text-[10px] font-black uppercase tracking-widest">Aluno</th>`;
             if (currentView === 'anual') {
-                headHTML += `<th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">1º Bim</th>
-                             <th class="text-center py-6 sticky-header bg-slate-700 text-white text-[10px] font-black uppercase">2º Bim</th>
-                             <th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">3º Bim</th>
-                             <th class="text-center py-6 sticky-header bg-slate-700 text-white text-[10px] font-black uppercase">4º Bim</th>
-                             <th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase">M. Anual</th>
-                             <th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase">R. Final</th>
-                             <th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase border-r border-white/10">Conselho</th>
-                             <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">M. Final</th></tr>`;
+                headHTML += `<th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">1º Bim</th><th class="text-center py-6 sticky-header bg-slate-700 text-white text-[10px] font-black uppercase">2º Bim</th><th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">3º Bim</th><th class="text-center py-6 sticky-header bg-slate-700 text-white text-[10px] font-black uppercase">4º Bim</th><th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase">M. Anual</th><th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase">R. Final</th><th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase border-r border-white/10">Conselho</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">M. Final</th></tr>`;
             } else {
-                headHTML += `<th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 1 (P1)</th>
-                             <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 2 (P2)</th>
-                             <th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">M. Parcial</th>
-                             <th class="text-center py-6 sticky-header bg-orange-600 text-white text-[10px] font-black uppercase">Recup (RB)</th>
-                             <th class="text-center py-6 sticky-header bg-fmm-lime text-fmm-dark text-[10px] font-black uppercase tracking-widest">Bimestral</th></tr>`;
+                headHTML += `<th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 1 (P1)</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 2 (P2)</th><th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">M. Parcial</th><th class="text-center py-6 sticky-header bg-orange-600 text-white text-[10px] font-black uppercase">Recup (RB)</th><th class="text-center py-6 sticky-header bg-fmm-lime text-fmm-dark text-[10px] font-black uppercase tracking-widest">Bimestral</th></tr>`;
             }
             header.innerHTML = headHTML;
-
-            if (globalMatriculas.length === 0) {
-                body.innerHTML = `<tr><td colspan="${currentView === 'anual' ? 9 : 6}" class="px-8 py-20 text-center text-slate-300 italic font-medium">Nenhum aluno encontrado neste grupo.</td></tr>`;
-                return;
-            }
-
             body.innerHTML = globalMatriculas.map(m => {
-                const n = globalNotas.find(x => x.id_matricula === m.id && x.periodo === currentView) || { p1: 0, p2: 0, rb: 0, nb: 0, alterado_pela_coordenacao: false };
-                const a = globalAnual.find(x => x.id_matricula === m.id) || { media_anual: 0, recup_final: 0, conselho_classe: 0, media_final: 0, alterado_pela_coordenacao: false };
+                const isTransf = (m.alunos?.status || m.status || '').toUpperCase() === 'TRANSFERIDO';
+                const n = globalNotas.find(x => x.id_matricula === m.id && x.periodo === currentView) || { p1: 0, p2: 0, rb: 0, nb: 0 };
+                const a = globalAnual.find(x => x.id_matricula === m.id) || { media_anual: 0, recup_final: 0, conselho_classe: 0, media_final: 0 };
                 const n1 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '1_BIMESTRE')?.nb || 0;
                 const n2 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '2_BIMESTRE')?.nb || 0;
                 const n3 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '3_BIMESTRE')?.nb || 0;
                 const n4 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '4_BIMESTRE')?.nb || 0;
 
                 const urlFoto = formatDriveUrl(m.alunos?.url_foto);
-                const avatar = urlFoto 
-                    ? `<img src="${urlFoto}" class="student-photo" onclick="openPhotoModal('${urlFoto}', '${m.alunos?.nome_completo}')" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(m.alunos?.nome_completo)}&background=random&color=fff'">`
-                    : `<div class="student-photo flex items-center justify-center bg-slate-100 text-slate-400 font-bold text-xs border-2 border-white shadow-sm">${m.alunos?.nome_completo.charAt(0)}</div>`;
+                const avatar = urlFoto ? `<img src="${urlFoto}" class="student-photo" onclick="openPhotoModal('${urlFoto}', '${m.alunos?.nome_completo}')" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(m.alunos?.nome_completo)}&background=random&color=fff'">` : `<div class="student-photo flex items-center justify-center bg-slate-100 text-slate-400 font-bold text-xs border-2 border-white shadow-sm">${m.alunos?.nome_completo.charAt(0)}</div>`;
 
-                let rows = `<tr class="group transition-colors hover:bg-slate-50/50 text-left"><td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100"><div class="flex items-center gap-4 text-left">${avatar}<div class="flex flex-col text-left"><span class="text-sm font-extrabold truncate max-w-[180px]">${m.alunos?.nome_completo || 'N/A'}</span><span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span></div></div></td>`;
+                let rows = `<tr class="group transition-colors hover:bg-slate-50/50 text-left"><td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100"><div class="flex items-center gap-4 text-left">${avatar}<div class="flex flex-col text-left"><span class="text-sm font-extrabold truncate max-w-[180px]">${m.alunos?.nome_completo || 'N/A'} ${isTransf ? '<span class="text-red-500 text-[9px] font-black">(TR)</span>' : ''}</span><span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span></div></div></td>`;
 
                 if (currentView === 'anual') {
-                    rows += `<td class="px-4 text-center font-bold ${n1 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n1).toFixed(1)}</td>
-                             <td class="px-4 text-center font-bold ${n2 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n2).toFixed(1)}</td>
-                             <td class="px-4 text-center font-bold ${n3 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n3).toFixed(1)}</td>
-                             <td class="px-4 text-center font-bold ${n4 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n4).toFixed(1)}</td>
-                             <td class="px-4 text-center font-black text-fmm-blue bg-blue-50/30" id="media-anual-display-${m.id}">${Number(a.media_anual).toFixed(1)}</td>
-                             <td class="px-4 text-center">${renderAnualInput(m.id, 'recup_final', a.recup_final, a.media_anual >= 6, a.alterado_pela_coordenacao, 'ANUAL_FUND')}</td>
-                             <td class="px-4 text-center border-r border-slate-100">${renderAnualInput(m.id, 'conselho_classe', a.conselho_classe, false, a.alterado_pela_coordenacao, 'ANUAL_FUND')}</td>
-                             <td class="px-6 text-center"><span id="media-final-display-${m.id}" class="font-black text-base ${a.media_final < 6 ? 'text-red-600' : 'text-fmm-green'}">${Number(a.media_final).toFixed(1)}</span></td>`;
+                    rows += `<td class="px-4 text-center font-bold ${n1 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n1).toFixed(1)}</td><td class="px-4 text-center font-bold ${n2 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n2).toFixed(1)}</td><td class="px-4 text-center font-bold ${n3 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n3).toFixed(1)}</td><td class="px-4 text-center font-bold ${n4 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n4).toFixed(1)}</td><td class="px-4 text-center font-black text-fmm-blue bg-blue-50/30">${Number(a.media_anual).toFixed(1)}</td><td class="px-4 text-center">${renderAnualInput(m.id, 'recup_final', a.recup_final, isTransf || a.media_anual >= 6, a.alterado_pela_coordenacao, 'ANUAL_FUND')}</td><td class="px-4 text-center border-r border-slate-100">${renderAnualInput(m.id, 'conselho_classe', a.conselho_classe, isTransf, a.alterado_pela_coordenacao, 'ANUAL_FUND')}</td><td class="px-6 text-center"><span class="font-black text-base ${a.media_final < 6 ? 'text-red-600' : 'text-fmm-green'}">${Number(a.media_final).toFixed(1)}</span></td>`;
                 } else {
                     const mp = (Number(n.p1 || 0) + Number(n.p2 || 0)) / 2;
-                    rows += `<td class="px-4 text-center">${renderInput(m.id, currentView, 'p1', n.p1, false, n.alterado_pela_coordenacao, 'FUND')}</td>
-                             <td class="px-4 text-center">${renderInput(m.id, currentView, 'p2', n.p2, false, n.alterado_pela_coordenacao, 'FUND')}</td>
-                             <td class="px-4 text-center font-bold bg-slate-50 text-slate-400" id="mp-display-${m.id}-${currentView}">${mp.toFixed(1)}</td>
-                             <td class="px-4 text-center">${renderInput(m.id, currentView, 'rb', n.rb, mp >= 6, n.alterado_pela_coordenacao, 'FUND')}</td>
-                             <td class="px-6 text-center"><span id="nt-display-${m.id}-${currentView}" class="font-black text-base ${n.nb < 6 ? 'text-red-600' : 'text-fmm-blue'}">${Number(n.nb || 0).toFixed(1)}</span></td>`;
+                    rows += `<td class="px-4 text-center">${renderInput(m.id, currentView, 'p1', n.p1, isTransf, n.alterado_pela_coordenacao, 'FUND')}</td><td class="px-4 text-center">${renderInput(m.id, currentView, 'p2', n.p2, isTransf, n.alterado_pela_coordenacao, 'FUND')}</td><td class="px-4 text-center font-bold bg-slate-50 text-slate-400">${mp.toFixed(1)}</td><td class="px-4 text-center">${renderInput(m.id, currentView, 'rb', n.rb, isTransf || mp >= 6, n.alterado_pela_coordenacao, 'FUND')}</td><td class="px-6 text-center"><span class="font-black text-base ${n.nb < 6 ? 'text-red-600' : 'text-fmm-blue'}">${Number(n.nb || 0).toFixed(1)}</span></td>`;
                 }
                 return rows + '</tr>';
             }).join('');
@@ -510,56 +470,29 @@
         function renderBCC(header, body) {
             let headHTML = `<tr><th class="px-8 py-6 sticky-intersect border-r border-white/5 min-w-[300px] text-white text-[10px] font-black uppercase tracking-widest">Aluno</th>`;
             if (currentView === 'anual') {
-                headHTML += `<th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">1º Trim</th>
-                             <th class="text-center py-6 sticky-header bg-slate-700 text-white text-[10px] font-black uppercase">2º Trim</th>
-                             <th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">3º Trim</th>
-                             <th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase">M. Anual</th>
-                             <th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase">R. Final</th>
-                             <th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase border-r border-white/10">Conselho</th>
-                             <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">M. Final</th></tr>`;
+                headHTML += `<th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">1º Trim</th><th class="text-center py-6 sticky-header bg-slate-700 text-white text-[10px] font-black uppercase">2º Trim</th><th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">3º Trim</th><th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase">M. Anual</th><th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase">R. Final</th><th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase border-r border-white/10">Conselho</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">M. Final</th></tr>`;
             } else {
-                headHTML += `<th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 1 (P1)</th>
-                             <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 2 (P2)</th>
-                             <th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">M. Parcial</th>
-                             <th class="text-center py-6 sticky-header bg-orange-600 text-white text-[10px] font-black uppercase">Recup (RT)</th>
-                             <th class="text-center py-6 sticky-header bg-fmm-lime text-fmm-dark text-[10px] font-black uppercase tracking-widest">Trimestral</th></tr>`;
+                headHTML += `<th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 1 (P1)</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 2 (P2)</th><th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">M. Parcial</th><th class="text-center py-6 sticky-header bg-orange-600 text-white text-[10px] font-black uppercase">Recup (RT)</th><th class="text-center py-6 sticky-header bg-fmm-lime text-fmm-dark text-[10px] font-black uppercase tracking-widest">Trimestral</th></tr>`;
             }
             header.innerHTML = headHTML;
-
-            if (globalMatriculas.length === 0) {
-                body.innerHTML = `<tr><td colspan="${currentView === 'anual' ? 8 : 6}" class="px-8 py-20 text-center text-slate-300 italic font-medium">Nenhum aluno encontrado neste grupo.</td></tr>`;
-                return;
-            }
-
             body.innerHTML = globalMatriculas.map(m => {
-                const n = globalNotas.find(x => x.id_matricula === m.id && x.periodo === currentView) || { p1: 0, p2: 0, rt: 0, nt: 0, alterado_pela_coordenacao: false };
-                const a = globalAnual.find(x => x.id_matricula === m.id) || { media_anual: 0, recup_final: 0, conselho_classe: 0, media_final: 0, alterado_pela_coordenacao: false };
+                const isTransf = (m.alunos?.status || m.status || '').toUpperCase() === 'TRANSFERIDO';
+                const n = globalNotas.find(x => x.id_matricula === m.id && x.periodo === currentView) || { p1: 0, p2: 0, rt: 0, nt: 0 };
+                const a = globalAnual.find(x => x.id_matricula === m.id) || { media_anual: 0, recup_final: 0, conselho_classe: 0, media_final: 0 };
                 const n1 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '1_TRIMESTRE')?.nt || 0;
                 const n2 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '2_TRIMESTRE')?.nt || 0;
                 const n3 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '3_TRIMESTRE')?.nt || 0;
 
                 const urlFoto = formatDriveUrl(m.alunos?.url_foto);
-                const avatar = urlFoto 
-                    ? `<img src="${urlFoto}" class="student-photo" onclick="openPhotoModal('${urlFoto}', '${m.alunos?.nome_completo}')" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(m.alunos?.nome_completo)}&background=random&color=fff'">`
-                    : `<div class="student-photo flex items-center justify-center bg-slate-100 text-slate-400 font-bold text-xs border-2 border-white shadow-sm">${m.alunos?.nome_completo.charAt(0)}</div>`;
+                const avatar = urlFoto ? `<img src="${urlFoto}" class="student-photo" onclick="openPhotoModal('${urlFoto}', '${m.alunos?.nome_completo}')" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(m.alunos?.nome_completo)}&background=random&color=fff'">` : `<div class="student-photo flex items-center justify-center bg-slate-100 text-slate-400 font-bold text-xs border-2 border-white shadow-sm">${m.alunos?.nome_completo.charAt(0)}</div>`;
 
-                let rows = `<tr class="group transition-colors hover:bg-slate-50/50 text-left"><td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100"><div class="flex items-center gap-4 text-left">${avatar}<div class="flex flex-col text-left"><span class="text-sm font-extrabold truncate max-w-[180px]">${m.alunos?.nome_completo || 'N/A'}</span><span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span></div></div></td>`;
+                let rows = `<tr class="group transition-colors hover:bg-slate-50/50 text-left"><td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100"><div class="flex items-center gap-4 text-left">${avatar}<div class="flex flex-col text-left"><span class="text-sm font-extrabold truncate max-w-[180px]">${m.alunos?.nome_completo || 'N/A'} ${isTransf ? '<span class="text-red-500 text-[9px] font-black">(TR)</span>' : ''}</span><span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span></div></div></td>`;
 
                 if (currentView === 'anual') {
-                    rows += `<td class="px-4 text-center font-bold ${n1 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n1).toFixed(1)}</td>
-                             <td class="px-4 text-center font-bold ${n2 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n2).toFixed(1)}</td>
-                             <td class="px-4 text-center font-bold ${n3 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n3).toFixed(1)}</td>
-                             <td class="px-4 text-center font-black text-fmm-blue bg-blue-50/30" id="media-anual-display-${m.id}">${Number(a.media_anual).toFixed(1)}</td>
-                             <td class="px-4 text-center">${renderAnualInput(m.id, 'recup_final', a.recup_final, a.media_anual >= 6, a.alterado_pela_coordenacao, 'ANUAL_BCC')}</td>
-                             <td class="px-4 text-center border-r border-slate-100">${renderAnualInput(m.id, 'conselho_classe', a.conselho_classe, false, a.alterado_pela_coordenacao, 'ANUAL_BCC')}</td>
-                             <td class="px-6 text-center"><span id="media-final-display-${m.id}" class="font-black text-base ${a.media_final < 6 ? 'text-red-600' : 'text-fmm-green'}">${Number(a.media_final).toFixed(1)}</span></td>`;
+                    rows += `<td class="px-4 text-center font-bold ${n1 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n1).toFixed(1)}</td><td class="px-4 text-center font-bold ${n2 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n2).toFixed(1)}</td><td class="px-4 text-center font-bold ${n3 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n3).toFixed(1)}</td><td class="px-4 text-center font-black text-fmm-blue bg-blue-50/30">${Number(a.media_anual).toFixed(1)}</td><td class="px-4 text-center">${renderAnualInput(m.id, 'recup_final', a.recup_final, isTransf || a.media_anual >= 6, a.alterado_pela_coordenacao, 'ANUAL_BCC')}</td><td class="px-4 text-center border-r border-slate-100">${renderAnualInput(m.id, 'conselho_classe', a.conselho_classe, isTransf, a.alterado_pela_coordenacao, 'ANUAL_BCC')}</td><td class="px-6 text-center"><span class="font-black text-base ${a.media_final < 6 ? 'text-red-600' : 'text-fmm-green'}">${Number(a.media_final).toFixed(1)}</span></td>`;
                 } else {
                     const mp = (Number(n.p1 || 0) + Number(n.p2 || 0)) / 2;
-                    rows += `<td class="px-4 text-center">${renderInput(m.id, currentView, 'p1', n.p1, false, n.alterado_pela_coordenacao, 'BCC')}</td>
-                             <td class="px-4 text-center">${renderInput(m.id, currentView, 'p2', n.p2, false, n.alterado_pela_coordenacao, 'BCC')}</td>
-                             <td class="px-4 text-center font-bold bg-slate-50 text-slate-400" id="mp-display-${m.id}-${currentView}">${mp.toFixed(1)}</td>
-                             <td class="px-4 text-center">${renderInput(m.id, currentView, 'rt', n.rt, mp >= 6, n.alterado_pela_coordenacao, 'BCC')}</td>
-                             <td class="px-6 text-center"><span id="nt-display-${m.id}-${currentView}" class="font-black text-base ${n.nt < 6 ? 'text-red-600' : 'text-fmm-blue'}">${Number(n.nt || 0).toFixed(1)}</span></td>`;
+                    rows += `<td class="px-4 text-center">${renderInput(m.id, currentView, 'p1', n.p1, isTransf, n.alterado_pela_coordenacao, 'BCC')}</td><td class="px-4 text-center">${renderInput(m.id, currentView, 'p2', n.p2, isTransf, n.alterado_pela_coordenacao, 'BCC')}</td><td class="px-4 text-center font-bold bg-slate-50 text-slate-400">${mp.toFixed(1)}</td><td class="px-4 text-center">${renderInput(m.id, currentView, 'rt', n.rt, isTransf || mp >= 6, n.alterado_pela_coordenacao, 'BCC')}</td><td class="px-6 text-center"><span class="font-black text-base ${n.nt < 6 ? 'text-red-600' : 'text-fmm-blue'}">${Number(n.nt || 0).toFixed(1)}</span></td>`;
                 }
                 return rows + '</tr>';
             }).join('');
@@ -567,47 +500,30 @@
 
         function renderTecnica(header, body) {
             header.innerHTML = `<tr><th class="px-8 py-6 sticky-intersect border-r border-white/5 min-w-[300px] text-white text-[10px] font-black uppercase tracking-widest">Aluno</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">P1</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">P2</th><th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">M1</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Rec. P.</th><th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">Cons.</th><th class="text-center py-6 sticky-header bg-slate-700 text-white text-[10px] font-black uppercase">M2</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Rec. F.</th><th class="text-center py-6 sticky-header bg-fmm-green text-white text-[10px] font-black uppercase tracking-widest">N.F.P</th></tr>`;
-            
-            if (globalMatriculas.length === 0) {
-                body.innerHTML = `<tr><td colspan="9" class="px-8 py-20 text-center text-slate-300 italic font-medium">Nenhum aluno encontrado neste grupo.</td></tr>`;
-                return;
-            }
-
             body.innerHTML = globalMatriculas.map(m => {
-                const n = globalNotas.find(x => x.id_matricula === m.id) || { p1: 0, p2: 0, media_1: 0, recup_parcial: 0, conselho_semestral: 0, media_2: 0, recup_final_semestral: 0, nota_final_periodo: 0, alterado_pela_coordenacao: false };
-                const formattedUrl = formatDriveUrl(m.alunos?.url_foto);
-                const avatar = m.alunos?.url_foto ? `<img src="${formattedUrl}" class="student-photo" onclick="openPhotoModal('${formattedUrl}', '${m.alunos?.nome_completo}')" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(m.alunos?.nome_completo)}&background=random&color=fff'">` : `<div class="student-photo flex items-center justify-center bg-slate-100 text-slate-400 font-bold text-xs border-2 border-white shadow-sm">${m.alunos?.nome_completo.charAt(0)}</div>`;
-                return `<tr class="group transition-colors hover:bg-slate-50/50 text-left"><td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100"><div class="flex items-center gap-4 text-left">${avatar}<div class="flex flex-col text-left"><span class="text-sm font-extrabold truncate max-w-[180px]">${m.alunos?.nome_completo || 'N/A'}</span><span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span></div></div></td><td class="px-2 text-center">${renderTecInput(m.id, 'p1', n.p1, false, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'p2', n.p2, false, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center font-bold bg-slate-50 text-slate-400" id="m1-display-${m.id}">${Number(n.media_1).toFixed(1)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'recup_parcial', n.recup_parcial, n.media_1 >= 6, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'conselho_semestral', n.conselho_semestral, false, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center font-bold bg-slate-50 text-slate-400" id="m2-display-${m.id}">${Number(n.media_2).toFixed(1)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'recup_final_semestral', n.recup_final_semestral, n.media_2 >= 6, n.alterado_pela_coordenacao)}</td><td class="px-4 text-center"><span id="nfp-display-${m.id}" class="font-black text-base text-fmm-green">${Number(n.nota_final_periodo).toFixed(1)}</span></td></tr>`;
+                const isTransf = (m.alunos?.status || m.status || '').toUpperCase() === 'TRANSFERIDO';
+                const n = globalNotas.find(x => x.id_matricula === m.id) || { p1: 0, p2: 0, media_1: 0, recup_parcial: 0, conselho_semestral: 0, media_2: 0, recup_final_semestral: 0, nota_final_periodo: 0 };
+                const urlF = formatDriveUrl(m.alunos?.url_foto);
+                const avatar = urlF ? `<img src="${urlF}" class="student-photo" onclick="openPhotoModal('${urlF}', '${m.alunos?.nome_completo}')" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(m.alunos?.nome_completo)}&background=random&color=fff'">` : `<div class="student-photo flex items-center justify-center bg-slate-100 text-slate-400 font-bold text-xs border-2 border-white shadow-sm">${m.alunos?.nome_completo.charAt(0)}</div>`;
+                return `<tr class="group transition-colors hover:bg-slate-50/50 text-left"><td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100"><div class="flex items-center gap-4 text-left">${avatar}<div class="flex flex-col text-left"><span class="text-sm font-extrabold truncate max-w-[180px]">${m.alunos?.nome_completo || 'N/A'} ${isTransf ? '<span class="text-red-500 text-[9px] font-black">(TR)</span>' : ''}</span><span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span></div></div></td><td class="px-2 text-center">${renderTecInput(m.id, 'p1', n.p1, isTransf, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'p2', n.p2, isTransf, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center font-bold bg-slate-50 text-slate-400">${Number(n.media_1).toFixed(1)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'recup_parcial', n.recup_parcial, isTransf || n.media_1 >= 6, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'conselho_semestral', n.conselho_semestral, isTransf, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center font-bold bg-slate-50 text-slate-400">${Number(n.media_2).toFixed(1)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'recup_final_semestral', n.recup_final_semestral, isTransf || n.media_2 >= 6, n.alterado_pela_coordenacao)}</td><td class="px-4 text-center"><span class="font-black text-base text-fmm-green">${Number(n.nota_final_periodo).toFixed(1)}</span></td></tr>`;
             }).join('');
         }
 
         function renderInput(matId, periodo, field, val, disabled = false, isChanged = false, specificType = 'BCC') {
             const isLow = val < 6 && val !== '' && val !== 0;
             const inputId = `in-${matId}-${field}-${periodo}`;
-            return `
-                <div class="intervention-wrapper">
-                    ${renderInterventionIndicator(isChanged)}
-                    <input type="text" id="${inputId}" name="${inputId}" value="${val === 0 ? '0' : (val || '')}" ${disabled ? 'disabled' : ''} oninput="handleInput(this, '${specificType}', '${matId}', '${currentDiscSigla}', '${periodo}', '${field}')" class="grade-input ${isLow ? 'grade-low' : 'grade-ok'}" placeholder="-">
-                </div>`;
+            return `<div class="intervention-wrapper">${renderInterventionIndicator(isChanged)}<input type="text" id="${inputId}" name="${inputId}" value="${val === 0 ? '0' : (val || '')}" ${disabled ? 'disabled' : ''} oninput="handleInput(this, '${specificType}', '${matId}', '${currentDiscSigla}', '${periodo}', '${field}')" class="grade-input ${isLow ? 'grade-low' : 'grade-ok'}" placeholder="-"></div>`;
         }
 
         function renderAnualInput(matId, field, val, disabled = false, isChanged = false, specificType = 'ANUAL_BCC') {
             const inputId = `in-${matId}-${field}-anual`;
-            return `
-                <div class="intervention-wrapper">
-                    ${renderInterventionIndicator(isChanged)}
-                    <input type="text" id="${inputId}" name="${inputId}" value="${val === 0 ? '0' : (val || '')}" ${disabled ? 'disabled' : ''} oninput="handleInput(this, '${specificType}', '${matId}', '${currentDiscSigla}', null, '${field}')" class="grade-input bg-blue-50/40" placeholder="-">
-                </div>`;
+            return `<div class="intervention-wrapper">${renderInterventionIndicator(isChanged)}<input type="text" id="${inputId}" name="${inputId}" value="${val === 0 ? '0' : (val || '')}" ${disabled ? 'disabled' : ''} oninput="handleInput(this, '${specificType}', '${matId}', '${currentDiscSigla}', null, '${field}')" class="grade-input bg-blue-50/40" placeholder="-"></div>`;
         }
 
         function renderTecInput(matId, field, val, disabled = false, isChanged = false) {
             const isLow = val < 6 && val !== '' && val !== 0;
             const inputId = `in-${matId}-${field}-tec`;
-            return `
-                <div class="intervention-wrapper">
-                    ${renderInterventionIndicator(isChanged)}
-                    <input type="text" id="${inputId}" name="${inputId}" value="${val === 0 ? '0' : (val || '')}" ${disabled ? 'disabled' : ''} oninput="handleInput(this, 'TEC', '${matId}', '${currentDiscSigla}', '1_SEMESTRE', '${field}')" class="grade-input ${isLow ? 'grade-low' : 'grade-ok'}" placeholder="-">
-                </div>`;
+            return `<div class="intervention-wrapper">${renderInterventionIndicator(isChanged)}<input type="text" id="${inputId}" name="${inputId}" value="${val === 0 ? '0' : (val || '')}" ${disabled ? 'disabled' : ''} oninput="handleInput(this, 'TEC', '${matId}', '${currentDiscSigla}', '1_SEMESTRE', '${field}')" class="grade-input ${isLow ? 'grade-low' : 'grade-ok'}" placeholder="-"></div>`;
         }
 
         function handleInput(el, type, matId, sigla, periodo, field) {
@@ -619,78 +535,30 @@
             if (saveTimers[timerKey]) clearTimeout(saveTimers[timerKey]);
             const syncStatus = document.getElementById('sync-status');
             if(syncStatus) syncStatus.classList.remove('hidden');
-            
             saveTimers[timerKey] = setTimeout(() => { saveData(type, matId, sigla, periodo, field, val); }, 700);
         }
 
         async function saveData(type, matId, sigla, periodo, field, val) {
             try {
-                // TASK: Proteção contra RLS Fail (ID Nulo = Aluno sem Matrícula)
-                if (!matId || matId === 'null') {
-                    throw new Error("Aluno sem matrícula ativa no ano letivo (Impossível guardar notas).");
-                }
-
-                let error, data;
+                if (!matId || matId === 'null') throw new Error("Aluno sem matrícula ativa no ano letivo.");
                 let table, conflict;
-                
                 if (type === 'BCC') { table = 'notas_basica'; conflict = 'id_matricula,sigla_disciplina,periodo'; }
                 else if (type === 'FUND') { table = 'notas_fundamental'; conflict = 'id_matricula,sigla_disciplina,periodo'; }
                 else if (type === 'TEC') { table = 'notas_tecnica'; conflict = 'id_matricula,sigla_disciplina,periodo'; }
                 else if (type === 'ANUAL_BCC') { table = 'anual_basica'; conflict = 'id_matricula,sigla_disciplina'; }
                 else if (type === 'ANUAL_FUND') { table = 'anual_fundamental'; conflict = 'id_matricula,sigla_disciplina'; }
-
                 const payload = { id_matricula: matId, sigla_disciplina: sigla, [field]: val };
                 if (periodo && !type.startsWith('ANUAL')) payload.periodo = periodo;
-
-                ({ data, error } = await window.supabaseClient.from(table).upsert(payload, { onConflict: conflict }).select().single());
+                const { error } = await window.supabaseClient.from(table).upsert(payload, { onConflict: conflict });
                 if (error) throw error;
-
-                if (type === 'BCC') {
-                    const ntDisplay = document.getElementById(`nt-display-${matId}-${periodo}`);
-                    if (ntDisplay && data.nt !== undefined) {
-                        ntDisplay.innerText = Number(data.nt).toFixed(1);
-                        ntDisplay.className = `font-black text-base ${data.nt < 6 ? 'text-red-600' : 'text-fmm-blue'}`;
-                    }
-                } else if (type === 'FUND') {
-                    const nbDisplay = document.getElementById(`nt-display-${matId}-${periodo}`);
-                    if (nbDisplay && data.nb !== undefined) {
-                        nbDisplay.innerText = Number(data.nb).toFixed(1);
-                        nbDisplay.className = `font-black text-base ${data.nb < 6 ? 'text-red-600' : 'text-fmm-blue'}`;
-                    }
-                } else if (type === 'ANUAL_BCC' || type === 'ANUAL_FUND') {
-                    const mfDisplay = document.getElementById(`media-final-display-${matId}`);
-                    if (mfDisplay && data.media_final !== undefined) {
-                        mfDisplay.innerText = Number(data.media_final).toFixed(1);
-                        mfDisplay.className = `font-black text-base ${data.media_final < 6 ? 'text-red-600' : 'text-fmm-green'}`;
-                    }
-                    const maDisplay = document.getElementById(`media-anual-display-${matId}`);
-                    if(maDisplay && data.media_anual !== undefined) maDisplay.innerText = Number(data.media_anual).toFixed(1);
-                } else if (type === 'TEC') {
-                    const m1Display = document.getElementById(`m1-display-${matId}`);
-                    if(m1Display && data.media_1 !== undefined) m1Display.innerText = Number(data.media_1).toFixed(1);
-                    const m2Display = document.getElementById(`m2-display-${matId}`);
-                    if(m2Display && data.media_2 !== undefined) m2Display.innerText = Number(data.media_2).toFixed(1);
-                    const nfpDisplay = document.getElementById(`nfp-display-${matId}`);
-                    if (nfpDisplay && data.nota_final_periodo !== undefined) {
-                        nfpDisplay.innerText = Number(data.nota_final_periodo).toFixed(1);
-                        nfpDisplay.className = `font-black text-base ${data.nota_final_periodo < 6 ? 'text-red-600' : 'text-fmm-green'}`;
-                    }
-                }
                 showToast("Sincronizado");
-            } catch (err) { 
-                console.error(err);
-                alert(err.message); 
-            } finally { 
-                const syncStatus = document.getElementById('sync-status'); 
-                if(syncStatus) syncStatus.classList.add('hidden'); 
-            }
+                loadGradeTable();
+            } catch (err) { alert(err.message); } finally { document.getElementById('sync-status').classList.add('hidden'); }
         }
 
         function showToast(msg) { const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = msg; t.classList.replace('opacity-0', 'opacity-100'); t.classList.replace('translate-y-20', 'translate-y-0'); setTimeout(() => { t.classList.replace('opacity-100', 'opacity-0'); t.classList.replace('translate-y-0', 'translate-y-20'); }, 2500); }
-        function openPhotoModal(url, name) { const modal = document.getElementById('photoModal'); document.getElementById('enlargedPhoto').src = url; document.getElementById('enlargedName').innerText = name; modal.classList.remove('hidden'); }
+        function openPhotoModal(url, name) { document.getElementById('enlargedPhoto').src = url; document.getElementById('enlargedName').innerText = name; document.getElementById('photoModal').classList.remove('hidden'); }
         function closePhotoModal() { document.getElementById('photoModal').classList.add('hidden'); }
-        async function logout() { if(confirm("Deseja sair?")) { await window.supabaseClient.auth.signOut(); window.location.href = "../index.html"; } }
-        
         window.onload = init;
     </script>
 </body>

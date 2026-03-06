@@ -128,7 +128,7 @@
                     <div class="p-6 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center">
                         <div>
                             <h3 class="font-bold text-fmm-dark text-sm">Alunos Disponíveis</h3>
-                            <p class="text-[10px] text-slate-400 font-medium">Sem turma vinculada</p>
+                            <p class="text-[10px] text-slate-400 font-medium">Ativos e sem turma vinculada</p>
                         </div>
                         <div class="relative w-48">
                             <i data-lucide="search" class="absolute left-3 top-2 w-3.5 h-3.5 text-slate-400"></i>
@@ -333,14 +333,16 @@
 
         /**
          * Busca alunos sem turma com suporte a busca server-side (evita limite de 1000)
+         * TASK: Filtrar para NÃO listar alunos transferidos
          */
         async function fetchAlunosDisponiveis(termo = '') {
             let query = supabaseClient
                 .from('alunos')
-                .select('ra, nome_completo, url_foto, id_turma, id_subturma_ingles')
+                .select('ra, nome_completo, url_foto, id_turma, id_subturma_ingles, status')
                 .is('id_turma', null)
+                .ilike('status', 'Cursando') // Filtro crítico: Garante que apenas quem está cursando apareça para alocação
                 .order('nome_completo')
-                .limit(200); // Mostra apenas os primeiros 200 sem filtro para performance
+                .limit(200); 
 
             if (termo) {
                 query = query.ilike('nome_completo', `%${termo}%`);
@@ -444,19 +446,37 @@
             }
         }
 
+        /**
+         * LÓGICA SEGURA: Move o aluno para a turma de forma ATÔMICA
+         * Afeta apenas a linha do aluno em questão em 'alunos' e 'matriculas'
+         */
         async function moverParaTurma(ra) {
             if (!turmaAtualId) return;
-            const { error } = await supabaseClient.from('alunos').update({ id_turma: turmaAtualId }).eq('ra', ra);
-            if (!error) {
-                await supabaseClient.from('matriculas').upsert({ ra_aluno: ra, id_turma: turmaAtualId, ano_letivo: 2026, status: 'CURSANDO' }, { onConflict: 'ra_aluno, id_turma, ano_letivo' });
-                // Atualiza as listas locais sem recarregar tudo
+            
+            // 1. Atualizar o ID da turma na tabela principal (Atomic: Apenas um RA)
+            const { error: errorAlu } = await supabaseClient.from('alunos').update({ id_turma: turmaAtualId }).eq('ra', ra);
+            
+            if (!errorAlu) {
+                // 2. Garantir registro na tabela de matrículas (Atomic: Apenas este vínculo)
+                await supabaseClient.from('matriculas').upsert({ 
+                    ra_aluno: ra, 
+                    id_turma: turmaAtualId, 
+                    ano_letivo: 2026, 
+                    status: 'CURSANDO' 
+                }, { onConflict: 'ra_aluno, id_turma, ano_letivo' });
+
+                // Atualiza as listas locais
                 await fetchAlunosAlocados(turmaAtualId);
                 await fetchAlunosDisponiveis(document.getElementById('searchDisponivel').value);
+            } else {
+                alert("Erro ao enturmar aluno: " + errorAlu.message);
             }
         }
 
         async function removerDaTurma(ra) {
             if(!confirm("Remover este aluno da turma?")) return;
+            
+            // Limpa o vínculo sem afetar outros alunos
             const { error } = await supabaseClient.from('alunos').update({ id_turma: null, id_subturma_ingles: null }).eq('ra', ra);
             if (!error) {
                 await fetchAlunosAlocados(turmaAtualId);
