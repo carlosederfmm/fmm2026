@@ -117,14 +117,20 @@
                     <div id="content-frequencia" class="animate-slide space-y-6">
                         <div id="absence-form-area" class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center gap-4 text-left">
                             <div class="flex-1 w-full space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Lançar Falta</label>
-                            <div class="flex gap-2"><input type="date" id="newAbsenceDate" class="flex-1 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold"><select id="newAbsenceTime" class="w-32 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold"><option value="1">1º Tempo</option><option value="2">2º Tempo</option></select><button id="btnLaunchAbsence" onclick="addAbsence()" class="bg-fmm-dark text-white px-6 py-2 rounded-xl text-xs font-black uppercase shadow-sm active:scale-95 transition-transform hover:bg-slate-800">Lançar</button></div></div>
+                            <div class="flex gap-2">
+                                <input type="date" id="newAbsenceDate" onchange="updateAbsenceSlots()" class="flex-1 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold">
+                                <select id="newAbsenceTime" class="w-48 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold">
+                                    <option value="">Aguardando data...</option>
+                                </select>
+                                <button id="btnLaunchAbsence" onclick="addAbsence()" class="bg-fmm-dark text-white px-6 py-2 rounded-xl text-xs font-black uppercase shadow-sm active:scale-95 transition-transform hover:bg-slate-800">Lançar</button>
+                            </div></div>
                         </div>
                         <div class="bg-white rounded-[32px] border border-slate-100 shadow-xl overflow-hidden">
                             <div class="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
                                 <h4 class="font-black text-fmm-dark text-xs uppercase">Registos de Ausência</h4>
                                 <div id="total-faltas" class="px-4 py-1.5 bg-red-50 text-red-600 text-[10px] font-black rounded-full border border-red-100 uppercase">0 FALTAS</div>
                             </div>
-                            <div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left border-collapse"><thead class="bg-slate-50/50 text-[10px] font-black uppercase text-slate-400 tracking-widest"><tr><th class="px-8 py-5">Data</th><th class="px-6 py-5 text-center">Tempo</th><th class="px-8 py-5 text-right">Ações</th></tr></thead><tbody id="freq-list" class="divide-y divide-slate-50 text-sm font-medium"></tbody></table></div>
+                            <div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left border-collapse"><thead class="bg-slate-50/50 text-[10px] font-black uppercase text-slate-400 tracking-widest"><tr><th class="px-8 py-5">Data</th><th class="px-6 py-5 text-center">Tempo na Grade</th><th class="px-8 py-5 text-right">Ações</th></tr></thead><tbody id="freq-list" class="divide-y divide-slate-50 text-sm font-medium"></tbody></table></div>
                         </div>
                     </div>
 
@@ -269,9 +275,43 @@
 
                 document.getElementById('absence-form-area').classList.toggle('hidden', isTransf);
                 
+                updateAbsenceSlots(); // TASK: Atualiza slots dinâmicos para a turma do aluno
                 loadContextData();
                 lucide.createIcons();
             } catch (err) { console.error("Erro ao carregar estudante:", err); }
+        }
+
+        // TASK: Nova lógica de detecção de slots dinâmicos para lançamento individual
+        async function updateAbsenceSlots() {
+            const dateInput = document.getElementById('newAbsenceDate');
+            const slotSelect = document.getElementById('newAbsenceTime');
+            
+            if (!dateInput.value || !selectedStudent || !currentDiscSigla) {
+                slotSelect.innerHTML = '<option value="">Aguardando seleção...</option>';
+                return;
+            }
+
+            try {
+                const daysMap = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+                const dow = daysMap[new Date(dateInput.value + 'T12:00:00').getDay()];
+
+                const { data: slots } = await window.supabaseClient.from('grade_horaria')
+                    .select('numero_tempo')
+                    .eq('id_turma', selectedStudent.id_turma)
+                    .eq('sigla_disciplina', currentDiscSigla)
+                    .eq('dia_semana', dow)
+                    .order('numero_tempo');
+
+                if (slots && slots.length > 0) {
+                    slotSelect.innerHTML = slots.map((s, idx) => 
+                        `<option value="${s.numero_tempo}" data-rank="${idx + 1}">${s.numero_tempo}º Tempo</option>`
+                    ).join('');
+                } else {
+                    slotSelect.innerHTML = '<option value="99" data-rank="1">Extra (99)</option>';
+                }
+            } catch (err) {
+                console.error("Erro ao carregar slots:", err);
+            }
         }
 
         function denyAccess(msg) {
@@ -305,11 +345,42 @@
             const isTransf = selectedStudent.status === 'Transferido';
 
             if (!faltas || faltas.length === 0) list.innerHTML = `<tr><td colspan="3" class="px-8 py-12 text-center text-slate-300 italic font-medium uppercase">Nenhum registo de falta.</td></tr>`;
-            else list.innerHTML = faltas.map(f => `<tr class="hover:bg-red-50/20 text-left"><td class="px-8 py-5 font-black text-slate-700 text-left">${f.data_presenca.split('-').reverse().join('/')}</td><td class="px-6 py-5 text-center"><span class="px-3 py-1 bg-fmm-blue/5 text-fmm-blue text-[10px] font-black rounded-lg uppercase">TEMPO ${f.numero_tempo}</span></td><td class="px-8 py-5 text-right">${isTransf ? '<span class="text-[8px] font-black text-slate-300 uppercase">BLOQUEADO</span>' : `<button onclick="removeAbsence('${f.id}')" class="p-2 text-slate-300 hover:text-red-500 transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`}</td></tr>`).join('');
+            else list.innerHTML = faltas.map(f => {
+                // TASK: Prioriza exibir o slot_oficial se preenchido
+                const tempoExibicao = f.slot_oficial || f.numero_tempo;
+                const labelTempo = f.slot_oficial === 99 ? 'EXTRA' : `TEMPO ${tempoExibicao}`;
+                
+                return `<tr class="hover:bg-red-50/20 text-left"><td class="px-8 py-5 font-black text-slate-700 text-left">${f.data_presenca.split('-').reverse().join('/')}</td><td class="px-6 py-5 text-center"><span class="px-3 py-1 bg-fmm-blue/5 text-fmm-blue text-[10px] font-black rounded-lg uppercase">${labelTempo}</span></td><td class="px-8 py-5 text-right">${isTransf ? '<span class="text-[8px] font-black text-slate-300 uppercase">BLOQUEADO</span>' : `<button onclick="removeAbsence('${f.id}')" class="p-2 text-slate-300 hover:text-red-500 transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`}</td></tr>`;
+            }).join('');
             lucide.createIcons();
         }
 
-        async function addAbsence() { const d = document.getElementById('newAbsenceDate').value, t = parseInt(document.getElementById('newAbsenceTime').value); if(!currentDiscSigla || !selectedStudent || selectedStudent.status === 'Transferido') return; const { error } = await window.supabaseClient.from('frequencias').upsert({ ra_aluno: selectedStudent.ra, sigla_disciplina: currentDiscSigla, id_turma: selectedStudent.id_turma, data_presenca: d, numero_tempo: t, presente: false }); if(!error) { showToast("Falta lançada"); refreshFrequency(); } }
+        async function addAbsence() { 
+            const d = document.getElementById('newAbsenceDate').value;
+            const select = document.getElementById('newAbsenceTime');
+            const slotVal = parseInt(select.value);
+            const rankVal = parseInt(select.options[select.selectedIndex]?.dataset.rank || 1);
+
+            if(!currentDiscSigla || !selectedStudent || selectedStudent.status === 'Transferido' || !slotVal) return; 
+
+            const { error } = await window.supabaseClient.from('frequencias').upsert({ 
+                ra_aluno: selectedStudent.ra, 
+                sigla_disciplina: currentDiscSigla, 
+                id_turma: selectedStudent.id_turma, 
+                data_presenca: d, 
+                numero_tempo: rankVal, // TASK: Mantém rank para auditoria legado
+                slot_oficial: slotVal,  // TASK: Nova lógica de Slot Oficial
+                presente: false 
+            }, { onConflict: 'ra_aluno,sigla_disciplina,data_presenca,numero_tempo' }); 
+
+            if(!error) { 
+                showToast("Falta lançada"); 
+                refreshFrequency(); 
+            } else {
+                alert("Erro ao lançar falta: " + error.message);
+            }
+        }
+        
         async function removeAbsence(id) { if (!confirm("Remover esta falta?") || selectedStudent.status === 'Transferido') return; const { error } = await window.supabaseClient.from('frequencias').delete().eq('id', id); if (!error) { showToast("Registo removido"); refreshFrequency(); } }
 
         async function refreshGrades() {

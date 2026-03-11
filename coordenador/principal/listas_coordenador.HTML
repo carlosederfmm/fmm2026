@@ -96,7 +96,6 @@
 
         /* =========================================================================
            COMPORTAMENTO REAL DE IMPRESSÃO DO NAVEGADOR
-           Oculta qualquer menu e força a tabela a ter o tamanho preciso para 50 linhas
            ========================================================================= */
         @media print {
             @page { size: A4 portrait; margin: 8mm; }
@@ -107,11 +106,9 @@
                 background: #fff !important; 
             }
             
-            /* Ocultar TUDO exceto a área de impressão. Mata menus do PWA. */
             body > *:not(main) { display: none !important; }
             main > *:not(#printArea) { display: none !important; }
             
-            /* Ocultar explicitamente classes do Sidebar Component */
             .bottom-nav, #mobile-menu-hub, #toast, #sidebar-container, header, aside, button, #uiContainer { 
                 display: none !important; 
                 opacity: 0 !important; 
@@ -132,12 +129,10 @@
                 break-inside: avoid;
             }
             
-            /* Ajustes Finos Tipográficos - Menores para caber 50 alunos na folha */
             .sheet .s1 { font-size: 11pt !important; padding: 2px !important; }
             .sheet .s2 { font-size: 7.5pt !important; padding: 2px !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .sheet .s3 { font-size: 7.5pt !important; padding: 1px 2px !important; line-height: 1 !important; }
             
-            /* Anti-Quebra de Linha: Impede que um nome longo dobre a altura da linha e roube espaço */
             .sheet .s4 { 
                 font-size: 7.5pt !important; 
                 padding: 1px 4px !important; 
@@ -147,7 +142,6 @@
                 text-overflow: ellipsis !important; 
             }
             
-            /* Alturas Forçadas para o papel (18px garante as 50 linhas sem estourar) */
             .sheet .data-row { height: 18px !important; }
             .sheet .data-row td { height: 18px !important; }
             .sheet .r1, .sheet .r2, .sheet .r3, .sheet .r4 { height: 17px !important; }
@@ -155,7 +149,6 @@
 
             .logo-cell img { max-height: 55px !important; padding: 2px !important; }
             
-            /* Reforço das bordas pretas na impressão */
             table.layout, table.layout td, table.layout th { border-color: #000 !important; border-width: 1px !important; }
             .s0, .s1, .s2 { border-width: 1px !important; border-style: solid !important; border-color: #000 !important; }
         }
@@ -165,7 +158,7 @@
 
     <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20 print:hidden"></aside>
 
-    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden relative print:block print:h-auto print:overflow-visible print:p-0 print:m-0 print:bg-white">
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden relative print:block print:h-auto print:overflow-visible print:p-0 print:m-0 print:bg-white text-left">
         
         <!-- HEADER UI DO SISTEMA -->
         <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-30 shadow-sm flex-shrink-0 no-print print:hidden text-left">
@@ -196,7 +189,7 @@
         <div id="uiContainer" class="flex-1 overflow-y-auto p-8 custom-scrollbar no-print print:hidden">
             <div id="loadingState" class="hidden py-24 flex flex-col items-center justify-center text-slate-300 gap-4 text-center">
                 <i data-lucide="loader-2" class="w-12 h-12 animate-spin text-fmm-blue"></i>
-                <p class="text-sm font-bold uppercase tracking-widest text-center">Preparando dados...</p>
+                <p class="text-sm font-bold uppercase tracking-widest text-center" id="loadingText">Preparando dados...</p>
             </div>
 
             <div id="examsGrid" class="max-w-6xl mx-auto space-y-8 pb-20">
@@ -213,6 +206,7 @@
         let examsData = [];
         let turmasData = [];
         let matriculasData = [];
+        let userLevels = [];
 
         async function init() {
             if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
@@ -220,46 +214,86 @@
             const { data: { user } } = await window.supabaseClient.auth.getUser();
             if(!user) return window.location.href = "../../index.html";
 
+            // Buscar perfil para filtrar turmas autorizadas
+            const { data: profile } = await window.supabaseClient.from('perfis').select('cargo, niveis_acesso').eq('id', user.id).single();
+            if (profile) {
+                userLevels = (profile.cargo === 'diretor' || profile.cargo === 'coordenador') 
+                    ? (profile.niveis_acesso && profile.niveis_acesso.length > 0 ? profile.niveis_acesso : ['EF1', 'EF2', 'EMT']) 
+                    : [];
+            }
+            console.log("DEBUG: Níveis de acesso:", userLevels);
+
             await loadInitialData();
             await loadExams();
             lucide.createIcons();
         }
 
-        async function loadInitialData() {
-            // Carregamento de turmas
-            const { data: turmas } = await window.supabaseClient.from('turmas').select('*').order('nome').limit(2000);
-            turmasData = turmas || [];
-
-            let allMats = [];
+        async function fetchTablePaginated(tableName, selectStr, filterFn = null) {
+            let allData = [];
             let from = 0;
             const pageSize = 1000;
-            
+            const loadingText = document.getElementById('loadingText');
+
             while(true) {
-                // TASK: Incluída a seleção do status da ficha do ALUNO para garantir integridade pedagógica
-                const { data: mats, error } = await window.supabaseClient
-                    .from('matriculas')
-                    .select('ra_aluno, id_turma, status, alunos(nome_completo, status)')
-                    .eq('status', 'CURSANDO')
-                    .eq('ano_letivo', 2026)
+                if (loadingText) loadingText.innerText = `Baixando ${tableName}: ${allData.length} registros...`;
+                
+                let query = window.supabaseClient
+                    .from(tableName)
+                    .select(selectStr)
                     .range(from, from + pageSize - 1);
+
+                if (filterFn) query = filterFn(query);
+
+                const { data, error } = await query;
                 
                 if (error) {
-                    console.error("Erro ao buscar matrículas:", error);
+                    console.error(`ERRO ao buscar ${tableName}:`, error);
                     break;
                 }
                 
-                if (mats) allMats = allMats.concat(mats);
-                if (!mats || mats.length < pageSize) break;
+                if (data) allData = allData.concat(data);
+                if (!data || data.length < pageSize) break;
                 
                 from += pageSize;
             }
+            return allData;
+        }
 
-            // TASK: Filtro rigoroso: Matricula 'CURSANDO' (Sync) + Aluno 'Cursando' (Global)
-            // Remove transferidos que ainda possam estar com matricula ativa por erro de sincronismo.
-            matriculasData = allMats.filter(m => {
-                const alStatus = (m.alunos?.status || '').toUpperCase();
-                return alStatus === 'CURSANDO' || alStatus === 'ATIVO';
+        async function loadInitialData() {
+            document.getElementById('loadingState').classList.remove('hidden');
+
+            // 1. Carregar Turmas (Paginação de Segurança)
+            const allTurmas = await fetchTablePaginated('turmas', '*');
+            turmasData = allTurmas.filter(t => userLevels.includes(t.nivel));
+            console.log(`DEBUG: Turmas Autorizadas: ${turmasData.length}`);
+
+            // 2. Carregar Matrículas (Paginação Crítica - Bypass do limite de 1000)
+            const allMats = await fetchTablePaginated('matriculas', 'ra_aluno, id_turma, status, alunos(nome_completo, status)', (q) => {
+                return q.eq('ano_letivo', 2026);
             });
+
+            console.log(`DEBUG: Matrículas Raw carregadas: ${allMats.length}`);
+
+            // 3. TASK FIX: Filtro Ultra-Inclusivo
+            // Para resolver o vácuo de 109 alunos, agora aceitamos QUALQUER status que não seja 'TRANSFERIDO' ou 'SAIU'.
+            matriculasData = allMats.filter(m => {
+                const matStatus = (m.status || '').toUpperCase();
+                const alStatus = (m.alunos?.status || '').toUpperCase();
+                
+                // Excluímos apenas quem saiu explicitamente. Todo o resto entra na contagem.
+                const isTransferido = matStatus.includes('TRANSF') || alStatus.includes('TRANSF') || 
+                                     matStatus.includes('SAIU') || alStatus.includes('SAIU') || 
+                                     matStatus.includes('CANCEL') || alStatus.includes('CANCEL');
+
+                return !isTransferido;
+            });
+            
+            console.log(`DEBUG: Alunos Carregados após filtro inclusivo: ${matriculasData.length}`);
+            
+            // Log de diagnóstico por turma para identificar vazios
+            const stats = {};
+            matriculasData.forEach(m => stats[m.id_turma] = (stats[m.id_turma] || 0) + 1);
+            console.log("DEBUG: Mapa de Ocupação Real (Turmas com Alunos):", stats);
         }
 
         async function loadExams() {
@@ -271,14 +305,9 @@
             loading.classList.remove('hidden');
 
             try {
-                const { data, error } = await window.supabaseClient
-                    .from('calendario_referencia_provas')
-                    .select('*, disciplinas(nome)')
-                    .eq('periodo_ref', periodo)
-                    .order('data_prova', { ascending: true });
-
-                if(error) throw error;
-                examsData = data || [];
+                examsData = await fetchTablePaginated('calendario_referencia_provas', '*, disciplinas(nome)', (q) => {
+                    return q.eq('periodo_ref', periodo).order('data_prova', { ascending: true });
+                });
 
                 if(examsData.length === 0) {
                     container.innerHTML = `
@@ -288,14 +317,25 @@
                         </div>`;
                 } else {
                     examsData.forEach(exam => {
-                        // TASK: Filtra as turmas que pertencem à série da prova E que possuem alunos ativos
                         const relevantTurmas = turmasData.filter(t => {
-                            const isMatch = exam.series.includes(t.serie) && t.nivel.startsWith(exam.matriz === 'Fundamental' ? 'EF' : 'EMT');
+                            // Normalização rigorosa para evitar erro de Case em séries e matriz
+                            const normalizedSerie = (t.serie || "").trim().toUpperCase().replace('º', '').replace('ª', '');
+                            const isSerieMatch = exam.series.some(s => s.trim().toUpperCase().replace('º', '').replace('ª', '') === normalizedSerie);
+                            
+                            // Normalização da Matriz para garantir match independente de Maiúsculas
+                            const isFundamental = exam.matriz.toUpperCase() === 'FUNDAMENTAL';
+                            const isNivelMatch = t.nivel.startsWith(isFundamental ? 'EF' : 'EMT');
+                            
                             const count = matriculasData.filter(m => m.id_turma === t.id).length;
-                            return isMatch && count > 0;
+                            
+                            // Log apenas se a série bater mas os alunos não (Diagnóstico)
+                            if (isSerieMatch && isNivelMatch && count === 0) {
+                                console.warn(`ALERTA: Turma ${t.nome} deveria ter prova, mas tem 0 alunos carregados.`);
+                            }
+
+                            return isSerieMatch && isNivelMatch && count > 0;
                         });
 
-                        // TASK: Ignora a prova se nenhuma turma tiver alunos registrados (Turmas Vazias)
                         if (relevantTurmas.length === 0) return;
                         
                         const examHtml = `
@@ -306,7 +346,7 @@
                                             <i data-lucide="file-text" class="w-6 h-6"></i>
                                         </div>
                                         <div class="text-left">
-                                            <h3 class="text-base font-black text-fmm-dark uppercase tracking-tight leading-tight">${exam.disciplinas?.nome || exam.sigla_disciplina}</h3>
+                                            <h3 class="text-base font-black text-fmm-dark uppercase tracking-tight leading-none">${exam.disciplinas?.nome || exam.sigla_disciplina}</h3>
                                             <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
                                                 ${new Date(exam.data_prova + 'T12:00:00').toLocaleDateString('pt-BR')} • PROVA ${exam.tipo_prova} • ${exam.matriz}
                                             </p>
@@ -337,7 +377,7 @@
                         container.innerHTML += examHtml;
                     });
                 }
-            } catch (err) { console.error(err); } 
+            } catch (err) { console.error("DEBUG CRITICAL:", err); } 
             finally { loading.classList.add('hidden'); lucide.createIcons(); }
         }
 
@@ -398,7 +438,7 @@
                         <thead>
                             <tr class="r1">
                                 <td class="logo-cell s0" rowspan="4" colspan="3">
-                                    <img alt="Cabeçalho institucional FMM" src="../../assets/logo-fmm-color.png" />
+                                    <img alt="FMM" src="../../assets/logo-fmm-color.png" onerror="this.src='https://ui-avatars.com/api/?name=FMM&background=003c5b&color=fff&size=128'" />
                                 </td>
                                 <td class="s1" rowspan="2" colspan="2">${tituloProva}</td>
                                 <td class="s1" rowspan="2">${dataProva}</td>
@@ -421,7 +461,6 @@
                         <tbody>
                 `;
 
-                // Garante que o template tenha no mínimo 50 linhas para o fit perfeito na A4
                 const totalLinhas = Math.max(50, alunos.length);
                 
                 for (let i = 0; i < totalLinhas; i++) {
@@ -438,11 +477,7 @@
                     `;
                 }
 
-                tableHtml += `
-                        </tbody>
-                    </table>
-                `;
-
+                tableHtml += `</tbody></table>`;
                 sheet.innerHTML = tableHtml;
                 printArea.appendChild(sheet);
             }
