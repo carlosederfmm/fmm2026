@@ -84,7 +84,6 @@
                     <select id="selectDisc" onchange="loadHistory()" class="top-bar-select font-bold">
                         <option value="">Selecione a Disciplina...</option>
                     </select>
-                    <!-- TASK: Novo Filtro de Data para Histórico -->
                     <div class="relative">
                         <input type="date" id="filterDate" onchange="loadHistory()" class="top-bar-select font-bold w-40" title="Filtrar Histórico por Data">
                         <button onclick="document.getElementById('filterDate').value=''; loadHistory();" class="absolute right-3 top-2.5 text-slate-300 hover:text-red-500" title="Limpar Filtro de Data"><i data-lucide="x-circle" class="w-4 h-4"></i></button>
@@ -124,7 +123,7 @@
                         <i data-lucide="calendar-days" class="w-4 h-4 text-fmm-blue"></i> 
                         Histórico de Lançamentos
                     </h2>
-                    <span id="history-count" class="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-black text-fmm-dark shadow-sm">0 REGISTROS</span>
+                    <span id="history-count" class="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-black text-fmm-dark shadow-sm uppercase tracking-widest">0 REGISTROS</span>
                 </div>
                 
                 <div id="history-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade">
@@ -145,7 +144,6 @@
                 <button onclick="closeModal()" class="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-all text-slate-400"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
 
-            <!-- TASK: Área de Avisos Dinâmicos -->
             <div id="modalWarnings" class="px-8 pt-6 hidden">
                 <div id="warningGradeEmpty" class="hidden p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-700 warning-banner">
                     <i data-lucide="alert-octagon" class="w-5 h-5 flex-shrink-0"></i>
@@ -161,7 +159,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
                     <div class="space-y-2 text-left">
                         <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Data da Aula</label>
-                        <input type="date" id="inDate" onchange="updateModalSlots()" class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-fmm-blue">
+                        <input type="date" id="inDate" onchange="updateModalSlots()" class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
                     </div>
                     
                     <div class="space-y-2 text-left">
@@ -174,31 +172,44 @@
 
                 <div class="space-y-2 text-left">
                     <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Conteúdo Ministrado</label>
-                    <textarea id="inConteudo" rows="6" class="w-full p-6 bg-slate-50 border border-slate-200 rounded-3xl text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-fmm-blue/5 focus:bg-white transition-all" placeholder="O que foi trabalhado hoje?"></textarea>
+                    <textarea id="inConteudo" rows="6" class="w-full p-6 bg-slate-50 border border-slate-200 rounded-3xl text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-fmm-blue/5 focus:bg-white transition-all resize-none" placeholder="O que foi trabalhado hoje?"></textarea>
                 </div>
 
                 <div class="space-y-2 text-left">
                     <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Observações (Opcional)</label>
-                    <textarea id="inObs" rows="3" class="w-full p-6 bg-slate-50 border border-slate-200 rounded-3xl text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-fmm-blue/5 focus:bg-white transition-all" placeholder="Anotações extras..."></textarea>
+                    <textarea id="inObs" rows="3" class="w-full p-6 bg-slate-50 border border-slate-200 rounded-3xl text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-fmm-blue/5 focus:bg-white transition-all resize-none" placeholder="Anotações extras..."></textarea>
                 </div>
             </div>
 
             <div class="p-8 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3 shrink-0">
-                <button id="btnDelete" onclick="deleteRecord()" class="hidden px-6 py-3 text-xs font-black text-red-500 uppercase rounded-2xl hover:bg-red-50 transition-all mr-auto">Excluir</button>
-                <button onclick="closeModal()" class="px-8 py-3.5 text-xs font-black text-slate-400 uppercase rounded-2xl hover:bg-white transition-all">Cancelar</button>
-                <button id="btnSubmit" onclick="saveContent()" class="px-10 py-3.5 bg-fmm-dark text-white text-xs font-black uppercase rounded-2xl shadow-xl shadow-fmm-dark/20 hover:scale-105 active:scale-95 transition-all">Salvar Registro</button>
+                <button id="btnDelete" onclick="deleteRecord()" class="hidden px-6 py-3 text-xs font-black text-red-500 uppercase rounded-xl hover:bg-red-50 mr-auto transition-all"><i data-lucide="trash-2" class="w-4 h-4 inline mr-1"></i> Excluir Registro</button>
+                <button onclick="closeModal()" class="px-8 py-3.5 text-xs font-black text-slate-400 uppercase rounded-xl hover:bg-white transition-all border border-slate-200">Cancelar</button>
+                <button onclick="saveContent()" id="btnSubmit" class="px-10 py-3.5 bg-fmm-dark text-white text-xs font-black uppercase rounded-xl shadow-xl shadow-fmm-dark/20 hover:scale-105 active:scale-95 transition-all">Salvar Registro</button>
             </div>
         </div>
     </div>
 
+    <!-- TOAST -->
+    <div id="toast" class="fixed bottom-8 right-8 z-[200] translate-y-20 opacity-0 transition-all duration-500">
+        <div class="bg-slate-900 text-white px-8 py-5 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/5">
+            <i data-lucide="check-circle" class="w-5 h-5 text-fmm-lime"></i>
+            <span class="text-xs font-bold tracking-tight" id="toast-msg">Sincronizado</span>
+        </div>
+    </div>
+
     <script>
-        let currentUser = null;
-        let currentRecordId = null; 
-        let globalGrade = [];
-        let teachesProjetoDeVida = false;
-        let currentHistory = [];
-        let modalSelectedSlots = [];
-        let scheduledSlotsCount = 0; // Para validação de geminadas
+        let currentUser = null, currentRecordId = null, globalGrade = [], currentHistory = [], modalSelectedSlots = [], scheduledSlotsCount = 0;
+
+        // Função utilitária para prevenir erro de InnerText de NULL
+        function safeSetText(id, text) {
+            const el = document.getElementById(id);
+            if (el) el.innerText = text;
+        }
+
+        function safeSetValue(id, val) {
+            const el = document.getElementById(id);
+            if (el) el.value = val;
+        }
 
         async function init() {
             if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
@@ -206,204 +217,243 @@
             if (!user) return window.location.href = '../index.html';
             const { data: profile } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).single();
             currentUser = profile;
-
             await populateSelectors();
             lucide.createIcons();
         }
 
         async function populateSelectors() {
             const selectT = document.getElementById('selectTurma');
-            const selectD = document.getElementById('selectDisc');
             try {
                 const { data: grade } = await window.supabaseClient.from('grade_horaria').select('id_turma, sigla_disciplina, turmas(*), disciplinas(*)').eq('id_professor', currentUser.id);
                 globalGrade = grade || [];
                 const turmas = Array.from(new Map(globalGrade.map(g => [g.id_turma, g.turmas])).values()).filter(t => t);
                 turmas.sort((a, b) => a.nome.localeCompare(b.nome, undefined, { numeric: true }));
-                selectT.innerHTML = '<option value="">Selecione a Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
+                if(selectT) selectT.innerHTML = '<option value="">Selecione a Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
             } catch (err) { console.error(err); }
         }
 
         function handleTurmaChange() {
             const turmaId = document.getElementById('selectTurma').value;
             const selectD = document.getElementById('selectDisc');
-            if (!turmaId) selectD.innerHTML = '<option value="">Selecione a Disciplina...</option>';
-            else {
+            if (!turmaId) {
+                if(selectD) selectD.innerHTML = '<option value="">Selecione a Disciplina...</option>';
+            } else {
                 const myDiscs = Array.from(new Map(globalGrade.filter(g => g.id_turma === turmaId).map(g => [g.sigla_disciplina, g.disciplinas])).values()).filter(d => d);
-                const sorted = myDiscs.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
-                selectD.innerHTML = '<option value="">Selecione a Disciplina...</option>' + sorted.map(d => `<option value="${d.sigla}">${d.nome} (${d.sigla})</option>`).join('');
+                if(selectD) selectD.innerHTML = '<option value="">Selecione a Disciplina...</option>' + myDiscs.sort((a, b) => (a.nome || '').localeCompare(b.nome || '')).map(d => `<option value="${d.sigla}">${d.nome}</option>`).join('');
             }
             loadHistory();
         }
 
         async function loadHistory() {
-            const turmaId = document.getElementById('selectTurma').value;
-            const sigla = document.getElementById('selectDisc').value;
-            const filterDate = document.getElementById('filterDate').value;
-            const grid = document.getElementById('history-grid');
-            const empty = document.getElementById('empty-view');
-            const container = document.getElementById('history-container');
-            const btnAdd = document.getElementById('btnAdd');
+            const tId = document.getElementById('selectTurma').value, sigla = document.getElementById('selectDisc').value, fDate = document.getElementById('filterDate').value;
+            const grid = document.getElementById('history-grid'), empty = document.getElementById('empty-view'), cont = document.getElementById('history-container'), btnAdd = document.getElementById('btnAdd');
 
-            if (!turmaId || !sigla) { container.classList.add('hidden'); empty.classList.remove('hidden'); btnAdd.classList.add('hidden'); return; }
+            if (!tId || !sigla) { 
+                if(cont) cont.classList.add('hidden'); 
+                if(empty) empty.classList.remove('hidden'); 
+                if(btnAdd) btnAdd.classList.add('hidden'); 
+                return; 
+            }
 
-            empty.classList.add('hidden');
-            document.getElementById('loading-overlay').classList.remove('hidden');
-            container.classList.add('hidden');
+            if(empty) empty.classList.add('hidden');
+            const overlay = document.getElementById('loading-overlay');
+            if(overlay) overlay.classList.remove('hidden');
+            if(cont) cont.classList.add('hidden');
 
             try {
-                let query = window.supabaseClient.from('conteudos_aula').select('*, prof:perfis(nome_completo)').eq('id_turma', turmaId).eq('sigla_disciplina', sigla);
-                
-                // TASK: Aplicar filtro de data se preenchido
-                if (filterDate) query = query.eq('data_aula', filterDate);
+                let query = window.supabaseClient.from('conteudos_aula').select('*, prof:perfis(nome_completo)').eq('id_turma', tId).eq('sigla_disciplina', sigla);
+                if (fDate) query = query.eq('data_aula', fDate);
 
                 const { data: history } = await query.order('data_aula', { ascending: false }).order('slot_oficial', { ascending: true });
                 currentHistory = history || [];
-                document.getElementById('history-count').innerText = `${currentHistory.length} REGISTROS`;
+                
+                safeSetText('history-count', `${currentHistory.length} REGISTROS`);
 
-                if (currentHistory.length === 0) grid.innerHTML = `<div class="col-span-full py-20 text-center opacity-30 italic">Sem registros para os filtros selecionados.</div>`;
-                else grid.innerHTML = currentHistory.map(item => `<div onclick="openModal('${item.id}')" class="history-card p-6 flex flex-col gap-4 animate-fade text-left"><div class="flex justify-between items-start"><div class="bg-fmm-blue/5 p-2 rounded-xl text-fmm-blue"><i data-lucide="book-open" class="w-5 h-5"></i></div><div class="text-right"><span class="text-[10px] font-black text-fmm-dark block uppercase">${new Date(item.data_aula + 'T12:00:00').toLocaleDateString('pt-BR')}</span><span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">${item.slot_oficial === 99 ? 'Aula Extra' : item.slot_oficial + 'º Tempo'}</span></div></div><div class="flex-1"><p class="text-[11px] font-medium text-slate-500 line-clamp-3 leading-relaxed">${item.conteudo}</p></div><div class="pt-4 border-t border-slate-50 flex items-center justify-between"><div class="flex items-center gap-2"><span class="text-[9px] font-bold text-slate-400 uppercase">${item.prof?.nome_completo?.split(' ')[0] || 'Docente'}</span></div><i data-lucide="chevron-right" class="w-4 h-4 text-slate-200"></i></div></div>`).join('');
+                if (currentHistory.length === 0) {
+                    if(grid) grid.innerHTML = `<div class="col-span-full py-20 text-center opacity-30 italic font-bold uppercase tracking-widest">Sem registros para os filtros selecionados.</div>`;
+                } else {
+                    if(grid) grid.innerHTML = currentHistory.map(item => `
+                        <div onclick="openModal('${item.id}')" class="history-card p-6 flex flex-col gap-4 animate-fade text-left">
+                            <div class="flex justify-between items-start">
+                                <div class="bg-fmm-blue/5 p-2 rounded-xl text-fmm-blue">
+                                    <i data-lucide="book-open" class="w-5 h-5"></i>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[10px] font-black text-fmm-dark block uppercase">${new Date(item.data_aula + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                                    <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">${item.slot_oficial === 99 ? 'Aula Extra' : item.slot_oficial + 'º Tempo'}</span>
+                                </div>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-[11px] font-medium text-slate-500 line-clamp-3 leading-relaxed">${item.conteudo}</p>
+                            </div>
+                            <div class="pt-4 border-t border-slate-50 flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[9px] font-bold text-slate-400 uppercase">${item.prof?.nome_completo?.split(' ')[0] || 'Docente'}</span>
+                                </div>
+                                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-200"></i>
+                            </div>
+                        </div>`).join('');
+                }
 
-                container.classList.remove('hidden'); btnAdd.classList.remove('hidden'); lucide.createIcons();
-            } catch (err) { console.error(err); } finally { document.getElementById('loading-overlay').classList.add('hidden'); }
+                if(cont) cont.classList.remove('hidden'); 
+                if(btnAdd) btnAdd.classList.remove('hidden'); 
+                lucide.createIcons();
+            } catch (err) { console.error(err); } finally { if(overlay) overlay.classList.add('hidden'); }
         }
 
         async function updateModalSlots() {
-            const date = document.getElementById('inDate').value;
-            const turmaId = document.getElementById('selectTurma').value;
-            const disc = document.getElementById('selectDisc').value;
-            const container = document.getElementById('modalSlotPicker');
-            const warnGrade = document.getElementById('warningGradeEmpty');
-            const warnings = document.getElementById('modalWarnings');
-
-            if (!date || !turmaId || !disc) return;
-
-            container.innerHTML = '<i class="animate-spin text-fmm-blue" data-lucide="loader-2"></i>';
-            warnings.classList.add('hidden');
-            warnGrade.classList.add('hidden');
+            const date = document.getElementById('inDate').value, turmaId = document.getElementById('selectTurma').value, sigla = document.getElementById('selectDisc').value, container = document.getElementById('modalSlotPicker'), warnGrade = document.getElementById('warningGradeEmpty'), warnings = document.getElementById('modalWarnings');
+            if (!date || !turmaId || !sigla) return;
+            if(container) container.innerHTML = '<i class="animate-spin text-fmm-blue w-5 h-5" data-lucide="loader-2"></i>';
+            if(warnings) warnings.classList.add('hidden'); 
+            if(warnGrade) warnGrade.classList.add('hidden'); 
             lucide.createIcons();
-
             try {
-                const daysMap = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
-                const dow = daysMap[new Date(date + 'T12:00:00').getDay()];
-
-                const { data: slots } = await window.supabaseClient.from('grade_horaria')
-                    .select('numero_tempo')
-                    .eq('id_turma', turmaId)
-                    .eq('sigla_disciplina', disc)
-                    .eq('dia_semana', dow)
-                    .order('numero_tempo');
-
+                const daysMap = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'], dow = daysMap[new Date(date + 'T12:00:00').getDay()];
+                const { data: slots } = await window.supabaseClient.from('grade_horaria').select('numero_tempo').eq('id_turma', turmaId).eq('sigla_disciplina', sigla).eq('dia_semana', dow).order('numero_tempo');
                 scheduledSlotsCount = (slots || []).length;
-
-                // TASK: Aviso visual de "VOCÊ NÃO TEM AULA AGORA"
-                if (scheduledSlotsCount === 0) {
-                    warnings.classList.remove('hidden');
-                    warnGrade.classList.remove('hidden');
+                if (scheduledSlotsCount === 0) { 
+                    if(warnings) warnings.classList.remove('hidden'); 
+                    if(warnGrade) warnGrade.classList.remove('hidden'); 
                 }
-
                 let html = (slots || []).map(s => `<button onclick="toggleModalSlot(${s.numero_tempo})" id="mod-slot-${s.numero_tempo}" class="slot-btn">${s.numero_tempo}º Tempo</button>`).join('');
-                html += `<div class="h-6 w-px bg-slate-100 mx-1"></div><button onclick="toggleModalSlot(99)" id="mod-slot-99" class="slot-btn slot-btn-extra">Extra (99)</button>`;
-                container.innerHTML = html;
-                
-                modalSelectedSlots.forEach(s => { const btn = document.getElementById(`mod-slot-${s}`); if(btn) btn.classList.add('active'); });
+                html += `<div class="h-8 w-px bg-slate-100 mx-1"></div><button onclick="toggleModalSlot(99)" id="mod-slot-99" class="slot-btn slot-btn-extra" title="Uso em substituições ou aulas extras">Extra (99)</button>`;
+                if(container) container.innerHTML = html;
+                modalSelectedSlots.forEach(s => { 
+                    const btn = document.getElementById(`mod-slot-${s}`); 
+                    if(btn) btn.classList.add('active'); 
+                });
                 checkSlotSelectionWarning();
+                lucide.createIcons();
             } catch (err) { console.error(err); }
         }
 
         function toggleModalSlot(num) {
             const btn = document.getElementById(`mod-slot-${num}`);
-            if (modalSelectedSlots.includes(num)) { modalSelectedSlots = modalSelectedSlots.filter(s => s !== num); btn.classList.remove('active'); } 
-            else { modalSelectedSlots.push(num); btn.classList.add('active'); }
+            if (modalSelectedSlots.includes(num)) { 
+                modalSelectedSlots = modalSelectedSlots.filter(s => s !== num); 
+                if(btn) btn.classList.remove('active'); 
+            } else { 
+                modalSelectedSlots.push(num); 
+                if(btn) btn.classList.add('active'); 
+            }
             checkSlotSelectionWarning();
         }
 
-        // TASK: Aviso de tempos pendentes (ex: tem 2 tempos, mas marcou 1)
         function checkSlotSelectionWarning() {
-            const warnings = document.getElementById('modalWarnings');
-            const warnSlot = document.getElementById('warningMissingSlot');
-            const txt = document.getElementById('txtWarningSlot');
-            
+            const warnings = document.getElementById('modalWarnings'), warnSlot = document.getElementById('warningMissingSlot'), txt = document.getElementById('txtWarningSlot');
             if (scheduledSlotsCount > 1 && modalSelectedSlots.length > 0 && modalSelectedSlots.length < scheduledSlotsCount && !modalSelectedSlots.includes(99)) {
-                warnings.classList.remove('hidden');
-                warnSlot.classList.remove('hidden');
-                txt.innerText = `Atenção: Você possui ${scheduledSlotsCount} tempos previstos na grade hoje.`;
-            } else {
-                warnSlot.classList.add('hidden');
-                if (scheduledSlotsCount > 0) warnings.classList.add('hidden');
+                if(warnings) warnings.classList.remove('hidden'); 
+                if(warnSlot) warnSlot.classList.remove('hidden');
+                if(txt) txt.innerText = `Atenção: Você possui ${scheduledSlotsCount} tempos previstos na grade hoje.`;
+            } else { 
+                if(warnSlot) warnSlot.classList.add('hidden'); 
+                if (scheduledSlotsCount > 0 && warnings) warnings.classList.add('hidden'); 
             }
         }
 
         function openModal(id = null) {
-            currentRecordId = id;
-            const modal = document.getElementById('contentModal');
-            const btnDel = document.getElementById('btnDelete');
-            modalSelectedSlots = [];
-            document.getElementById('modalWarnings').classList.add('hidden');
-
+            currentRecordId = id; 
+            const modal = document.getElementById('contentModal'), btnDel = document.getElementById('btnDelete');
+            modalSelectedSlots = []; 
+            const warnings = document.getElementById('modalWarnings');
+            if(warnings) warnings.classList.add('hidden');
+            
             if (id) {
                 const record = currentHistory.find(r => r.id === id);
-                document.getElementById('modalTitle').innerText = "Editar Conteúdo";
-                document.getElementById('inDate').value = record.data_aula;
-                document.getElementById('inConteudo').value = record.conteudo;
-                document.getElementById('inObs').value = record.observacoes || "";
+                safeSetText('modalTitle', "Editar Registro");
+                safeSetValue('inDate', record.data_aula);
+                safeSetValue('inConteudo', record.conteudo);
+                safeSetValue('inObs', record.observacoes || "");
                 modalSelectedSlots = [record.slot_oficial];
-                btnDel.classList.remove('hidden');
+                if(btnDel) btnDel.classList.remove('hidden');
             } else {
-                document.getElementById('modalTitle').innerText = "Novo Registro";
-                document.getElementById('inDate').valueAsDate = new Date();
-                document.getElementById('inConteudo').value = "";
-                document.getElementById('inObs').value = "";
-                btnDel.classList.add('hidden');
+                safeSetText('modalTitle', "Novo Registro");
+                const dEl = document.getElementById('inDate');
+                if(dEl) dEl.valueAsDate = new Date();
+                safeSetValue('inConteudo', ""); 
+                safeSetValue('inObs', "");
+                if(btnDel) btnDel.classList.add('hidden');
             }
-            modal.classList.remove('hidden');
+            if(modal) modal.classList.remove('hidden'); 
             updateModalSlots();
         }
 
-        function closeModal() { document.getElementById('contentModal').classList.add('hidden'); }
+        function closeModal() { 
+            const modal = document.getElementById('contentModal');
+            if(modal) modal.classList.add('hidden'); 
+        }
 
+        // TASK: Lógica de Salvamento Explosiva (Trata múltiplos slots corretamente)
         async function saveContent() {
-            const turmaId = document.getElementById('selectTurma').value;
-            const discSigla = document.getElementById('selectDisc').value;
-            const date = document.getElementById('inDate').value;
-            const conteudo = document.getElementById('inConteudo').value.trim();
-
-            if (!conteudo) return alert("Descreva o conteúdo da aula.");
-            if (modalSelectedSlots.length === 0) return alert("Selecione ao menos um tempo de aula.");
-
-            const btn = document.getElementById('btnSubmit');
-            btn.disabled = true; btn.innerText = "Sincronizando...";
+            const tId = document.getElementById('selectTurma').value, sigla = document.getElementById('selectDisc').value, date = document.getElementById('inDate').value, conteudo = document.getElementById('inConteudo').value.trim();
+            if (!conteudo) return alert("Por favor, descreva o conteúdo da aula.");
+            if (modalSelectedSlots.length === 0) return alert("Selecione um tempo de aula.");
+            
+            const btn = document.getElementById('btnSubmit'); 
+            const originalText = btn ? btn.innerText : "Salvar Registro";
+            if(btn) { 
+                btn.disabled = true; 
+                btn.innerText = "Sincronizando..."; 
+            }
 
             try {
-                const records = modalSelectedSlots.map(slot => ({
-                    id_turma: turmaId, sigla_disciplina: discSigla, data_aula: date, id_professor: currentUser.id,
-                    numero_tempos: 1, slot_oficial: slot, conteudo, observacoes: document.getElementById('inObs').value.trim(), migracao_v2_status: true
+                const obsValue = document.getElementById('inObs') ? document.getElementById('inObs').value.trim() : "";
+                
+                // Prepara os objetos de cada slot
+                const records = modalSelectedSlots.map(slot => ({ 
+                    id_turma: tId, 
+                    sigla_disciplina: sigla, 
+                    data_aula: date, 
+                    id_professor: currentUser.id, 
+                    numero_tempos: 1, 
+                    slot_oficial: slot, 
+                    conteudo, 
+                    observacoes: obsValue, 
+                    migracao_v2_status: true 
                 }));
 
-                if (currentRecordId) {
-                    const { error } = await window.supabaseClient.from('conteudos_aula').update(records[0]).eq('id', currentRecordId);
-                    if (error) throw error;
-                } else {
-                    const { error } = await window.supabaseClient.from('conteudos_aula').insert(records);
-                    if (error) throw error;
+                if (currentRecordId) { 
+                    // Edição: Atualiza o registro principal com o primeiro slot selecionado
+                    // Nota: Se o usuário selecionou 2 slots na edição, o sistema atualiza o atual e ignora extras
+                    // para evitar criar duplicatas sem querer.
+                    const { error } = await window.supabaseClient.from('conteudos_aula').update(records[0]).eq('id', currentRecordId); 
+                    if(error) throw error;
+                } else { 
+                    // Novo Registro: Insere todos os slots selecionados de uma vez (Explosão Atômica)
+                    const { error } = await window.supabaseClient.from('conteudos_aula').insert(records); 
+                    if(error) throw error;
                 }
-                showToast("Sucesso!"); closeModal(); await loadHistory();
-            } catch (err) { alert("Erro: " + err.message); } finally { btn.disabled = false; btn.innerText = "Salvar Registro"; }
+                
+                showToast("Sucesso!"); 
+                closeModal(); 
+                await loadHistory();
+            } catch (err) { 
+                alert("Erro ao salvar: " + err.message); 
+            } finally { 
+                if(btn) { 
+                    btn.disabled = false; 
+                    btn.innerText = originalText; 
+                } 
+            }
         }
 
         async function deleteRecord() {
-            if (!confirm("Excluir este registro?")) return;
+            if (!confirm("Excluir este registro permanentemente?")) return;
             try {
                 const { error } = await window.supabaseClient.from('conteudos_aula').delete().eq('id', currentRecordId);
-                if (error) throw error;
+                if(error) throw error;
                 showToast("Removido."); closeModal(); await loadHistory();
             } catch (err) { alert(err.message); }
         }
 
         function showToast(msg) {
-            const t = document.getElementById('toast');
-            document.getElementById('toast-msg').innerText = msg;
-            t.classList.replace('opacity-0', 'opacity-100'); t.classList.replace('translate-y-20', 'translate-y-0');
-            setTimeout(() => { t.classList.replace('opacity-100', 'opacity-0'); t.classList.replace('translate-y-0', 'translate-y-20'); }, 3000);
+            const t = document.getElementById('toast'), tMsg = document.getElementById('toast-msg');
+            if (tMsg) tMsg.innerText = msg;
+            if (t) {
+                t.classList.replace('opacity-0', 'opacity-100'); t.classList.replace('translate-y-20', 'translate-y-0');
+                setTimeout(() => { if(t) { t.classList.replace('opacity-100', 'opacity-0'); t.classList.replace('translate-y-0', 'translate-y-20'); } }, 3000);
+            }
         }
 
         window.onload = init;

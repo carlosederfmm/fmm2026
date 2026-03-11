@@ -145,11 +145,21 @@
                 <p class="text-sm text-slate-300 italic max-w-xs mt-2 text-center">Selecione a turma e disciplina para visualizar a grade completa do mês.</p>
             </div>
 
-            <div id="table-wrapper" class="hidden w-full h-full">
-                <table class="attendance-table">
-                    <thead id="tableHeader"></thead>
-                    <tbody id="tableBody"></tbody>
-                </table>
+            <div id="table-wrapper" class="hidden w-full h-full flex flex-col">
+                <!-- Banner de Instrução -->
+                <div id="instruction-banner" class="bg-blue-50 border-b border-blue-100 px-8 py-3 flex items-center gap-3 animate-fade shrink-0">
+                    <i data-lucide="info" class="w-4 h-4 text-fmm-blue"></i>
+                    <p class="text-[10px] font-bold text-fmm-blue uppercase tracking-wider">
+                        Professor, clique em qualquer aluno para iniciar a chamada do dia. Todos começarão presentes (.), marque apenas os ausentes (F) e salve.
+                    </p>
+                </div>
+
+                <div class="flex-1 overflow-auto custom-scrollbar">
+                    <table class="attendance-table">
+                        <thead id="tableHeader"></thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </main>
@@ -170,16 +180,6 @@
         let currentYear = 2026;
         let globalGrade = [];
 
-        function formatDriveUrl(url) {
-            if (!url || typeof url !== 'string') return null;
-            if (url.includes('drive.google.com')) {
-                const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
-                const id = idMatch ? (idMatch[1]) : null;
-                if (id) return `https://lh3.googleusercontent.com/d/${id}`;
-            }
-            return url;
-        }
-
         async function init() {
             if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
             const { data: { user } } = await window.supabaseClient.auth.getUser();
@@ -193,7 +193,6 @@
 
         async function populateSelectors() {
             const selectT = document.getElementById('selectTurma');
-            // TASK: Corrigido o SELECT para incluir a coluna sigla_disciplina (evita o erro undefined)
             const { data: grade } = await window.supabaseClient.from('grade_horaria')
                 .select('id_turma, sigla_disciplina, turmas(*)')
                 .eq('id_professor', currentUser.id);
@@ -208,10 +207,7 @@
         function handleTurmaChange() {
             const turmaId = document.getElementById('selectTurma').value;
             const selectD = document.getElementById('selectDisc');
-            
-            // TASK: Garantir que a sigla_disciplina seja capturada corretamente da globalGrade
             const myDiscs = Array.from(new Set(globalGrade.filter(g => g.id_turma === turmaId).map(g => g.sigla_disciplina)));
-            
             selectD.innerHTML = '<option value="">Disciplina...</option>' + myDiscs.map(d => `<option value="${d}">${d}</option>`).join('');
             handleContextChange();
         }
@@ -232,7 +228,6 @@
             document.getElementById('loading-overlay').classList.remove('hidden');
 
             try {
-                // 1. Gerar Expectativa de Aulas
                 const startDate = new Date(currentYear, month, 1).toISOString().split('T')[0];
                 const endDate = new Date(currentYear, month + 1, 0).toISOString().split('T')[0];
                 
@@ -251,7 +246,6 @@
                     });
                 });
 
-                // 2. Carregar Alunos (Apenas Cursando)
                 const { data: matriculas } = await window.supabaseClient.from('matriculas')
                     .select('ra_aluno, alunos!inner(nome_completo, status)')
                     .eq('id_turma', turmaId)
@@ -259,7 +253,6 @@
                 
                 globalMatriculas = (matriculas || []).sort((a,b) => a.alunos.nome_completo.localeCompare(b.alunos.nome_completo));
 
-                // 3. Carregar Presenças Existentes
                 const { data: freq } = await window.supabaseClient.from('frequencias')
                     .select('ra_aluno, data_presenca, slot_oficial, numero_tempo, presente')
                     .eq('id_turma', turmaId).eq('sigla_disciplina', disc).gte('data_presenca', startDate).lte('data_presenca', endDate);
@@ -285,7 +278,6 @@
             const header = document.getElementById('tableHeader');
             const body = document.getElementById('tableBody');
 
-            // Header: Aluno + Datas
             let hHTML = `<tr class="sticky-header-row"><th class="sticky-intersect p-4 text-left text-[9px] font-black uppercase text-slate-400 min-w-[280px]">Estudante</th>`;
             expectedGrid.forEach(aula => {
                 const day = aula.data.split('-')[2];
@@ -293,9 +285,8 @@
             });
             header.innerHTML = hHTML + '</tr>';
 
-            // Body: Linhas dos alunos
             body.innerHTML = globalMatriculas.map(m => {
-                let row = `<tr class="border-b border-slate-50"><td class="sticky-col px-6 py-3 bg-white font-bold text-fmm-dark text-[11px] uppercase truncate text-left">${m.alunos.nome_completo}</td>`;
+                let row = `<tr class="border-b border-slate-50 text-left"><td class="sticky-col px-6 py-3 bg-white font-bold text-fmm-dark text-[11px] uppercase truncate text-left">${m.alunos.nome_completo}</td>`;
                 
                 expectedGrid.forEach(aula => {
                     const key = `${m.ra_aluno}|${aula.data}|${aula.slot}`;
@@ -312,24 +303,26 @@
             }).join('');
         }
 
+        // TASK: Lógica de Iniciação Automática (Se clicar em '!', marca todos como presentes)
         function toggleCell(ra, data, slot) {
             const key = `${ra}|${data}|${slot}`;
-            const current = presenceData[key];
-            
-            // Ciclo: undefined (!) -> true (.) -> false (F) -> true (.)
-            let next;
-            if (current === undefined) next = true;
-            else if (current === true) next = false;
-            else next = true;
+            const currentStatus = presenceData[key];
 
-            // Update UI instantâneo (Apenas local)
-            presenceData[key] = next;
+            if (currentStatus === undefined) {
+                // Iniciação da chamada para este dia e slot
+                globalMatriculas.forEach(m => {
+                    presenceData[`${m.ra_aluno}|${data}|${slot}`] = true; // Todos começam presentes
+                });
+            } else {
+                // Toggle normal entre Presente (.) e Falta (F)
+                presenceData[key] = !currentStatus;
+            }
+
             renderMatrix();
         }
 
         async function saveAttendance() {
             if (!globalMatriculas.length || !expectedGrid.length) return;
-
             const btn = document.getElementById('btnSave');
             btn.disabled = true;
             btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Salvando...';
@@ -339,13 +332,10 @@
             const disc = document.getElementById('selectDisc').value;
             const turmaId = document.getElementById('selectTurma').value;
 
-            // Coleta todas as alterações da matriz para salvar em lote
             globalMatriculas.forEach(m => {
                 expectedGrid.forEach(aula => {
                     const key = `${m.ra_aluno}|${aula.data}|${aula.slot}`;
                     const status = presenceData[key];
-
-                    // Apenas prepara para salvar se houver uma definição (presente ou falta)
                     if (status !== undefined) {
                         records.push({
                             ra_aluno: m.ra_aluno,
@@ -354,28 +344,21 @@
                             data_presenca: aula.data,
                             presente: status,
                             slot_oficial: aula.slot,
-                            numero_tempo: aula.rank // Rank para compatibilidade histórica
+                            numero_tempo: aula.rank 
                         });
                     }
                 });
             });
 
             try {
-                if (records.length === 0) {
-                    showToast("Nenhuma alteração para salvar.");
-                    return;
-                }
-
+                if (records.length === 0) { showToast("Nenhuma alteração para salvar."); return; }
                 const { error } = await window.supabaseClient.from('frequencias').upsert(records, { 
                     onConflict: 'ra_aluno,sigla_disciplina,data_presenca,numero_tempo' 
                 });
-
                 if (error) throw error;
                 showToast("Presença salva com sucesso!");
                 await handleContextChange();
-            } catch (err) {
-                alert("Erro ao salvar: " + err.message);
-            } finally {
+            } catch (err) { alert("Erro ao salvar: " + err.message); } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Salvar Chamada';
                 lucide.createIcons();
