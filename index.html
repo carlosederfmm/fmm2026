@@ -96,7 +96,7 @@
 
         <div class="w-full max-w-md z-10 animate-slide-up">
             <div class="glass-effect p-10 rounded-[40px] shadow-2xl border border-white/20">
-                <div class="flex flex-col items-center mb-10">
+                <div class="flex flex-col items-center mb-10 text-center">
                     <div class="bg-fmm-dark p-4 rounded-3xl mb-4 shadow-xl border border-white/5">
                         <img src="assets/logo-fmm-white.png" alt="FMM Logo" class="h-10" onerror="this.src='https://ui-avatars.com/api/?name=FMM&background=003c5b&color=fff&size=128'">
                     </div>
@@ -105,7 +105,7 @@
                 </div>
 
                 <form id="loginFormDesktop" class="space-y-5">
-                    <div class="space-y-2">
+                    <div class="space-y-2 text-left">
                         <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">E-mail Institucional</label>
                         <div class="relative group">
                             <i data-lucide="mail" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
@@ -114,7 +114,7 @@
                         </div>
                     </div>
 
-                    <div class="space-y-2">
+                    <div class="space-y-2 text-left">
                         <div class="flex justify-between items-center px-2">
                             <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Senha de Acesso</label>
                             <a href="#" class="text-[10px] font-black text-fmm-blue uppercase tracking-widest hover:underline">Esqueci a senha</a>
@@ -126,14 +126,14 @@
                         </div>
                     </div>
 
-                    <div class="flex items-center justify-between px-2">
+                    <div class="flex items-center justify-between px-2 text-left">
                         <label class="flex items-center gap-2 cursor-pointer group">
                             <input type="checkbox" id="keepConnected" class="w-4 h-4 rounded border-slate-200 text-fmm-blue focus:ring-fmm-blue transition-all">
                             <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wide group-hover:text-slate-600 transition-colors">Manter conectado</span>
                         </label>
                     </div>
 
-                    <button type="submit" id="submitBtnDesktop" class="w-full bg-fmm-blue hover:bg-fmm-dark text-white py-4 rounded-2xl font-bold text-sm shadow-xl shadow-fmm-blue/20 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 mt-4">
+                    <button type="submit" id="submitBtnDesktop" class="w-full bg-fmm-blue hover:bg-fmm-dark text-white py-4 rounded-2xl font-bold text-sm shadow-xl shadow-fmm-blue/20 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 mt-4 uppercase tracking-widest">
                         <span>Entrar no Sistema</span>
                         <i data-lucide="arrow-right" class="w-4 h-4"></i>
                     </button>
@@ -163,7 +163,7 @@
                     <h1 class="text-secondary dark:text-blue-400 text-3xl font-bold mb-1">Bem-vindo de Volta</h1>
                     <p class="text-slate-500 dark:text-slate-400 text-sm">Acesse sua conta institucional</p>
                 </div>
-                <form id="loginFormMobile" class="w-full space-y-5">
+                <form id="loginFormMobile" class="w-full space-y-5 text-left">
                     <div>
                         <label class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1.5 ml-1 tracking-widest uppercase">
                             E-mail Institucional
@@ -187,7 +187,7 @@
                             <input id="mobilePassword" class="w-full h-14 pl-12 pr-4 bg-white dark:bg-slate-800 border-none rounded-xl text-slate-700 dark:text-slate-200 placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:ring-2 focus:ring-primary shadow-sm" placeholder="digite sua senha" type="password" required/>
                         </div>
                     </div>
-                    <button id="submitBtnMobile" class="w-full h-14 bg-primary hover:bg-secondary text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-primary/20 mt-4" type="submit">
+                    <button id="submitBtnMobile" class="w-full h-14 bg-primary hover:bg-secondary text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-primary/20 mt-4 uppercase tracking-widest" type="submit">
                         <span>Acessar Sistema</span>
                         <span class="material-icons-outlined text-xl">login</span>
                     </button>
@@ -209,17 +209,15 @@
     <!-- Toast de Notificação (Global) -->
     <div id="toast" class="hidden fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-slate-900 text-white p-5 rounded-3xl shadow-2xl flex items-center gap-4 animate-slide-up z-[100] border border-white/10">
         <div id="toastIconContainer" class="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0">
-            <!-- O ícone será inserido dinamicamente via script -->
             <i id="toastIcon" class="w-5 h-5"></i>
         </div>
-        <div class="flex flex-col">
+        <div class="flex flex-col text-left">
             <span id="toastTitle" class="text-[10px] font-black uppercase tracking-widest opacity-60">Mensagem do Sistema</span>
             <p id="toastText" class="text-xs font-bold"></p>
         </div>
     </div>
 
     <script>
-        // Registro do Service Worker para PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
@@ -228,7 +226,6 @@
             });
         }
 
-        // Função de Toast Corrigida para PWA
         function showToast(text, type = 'info') {
             const toast = document.getElementById('toast');
             const iconContainer = document.getElementById('toastIconContainer');
@@ -236,7 +233,6 @@
             
             toastText.innerText = text;
             
-            // Re-insere o elemento <i> para evitar bug de substituição do Lucide
             if (type === 'error') {
                 iconContainer.innerHTML = '<i data-lucide="alert-circle" class="w-5 h-5"></i>';
                 iconContainer.className = "w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 bg-red-500/20 text-red-500";
@@ -246,7 +242,6 @@
             }
             
             toast.classList.remove('hidden');
-            // Força o display flex para garantir visibilidade no mobile
             toast.style.display = 'flex';
             
             if (window.lucide) lucide.createIcons();
@@ -257,7 +252,6 @@
             }, 4000);
         }
 
-        // Lógica de Login Unificada
         async function handleAuth(e, email, password, btn) {
             e.preventDefault();
             const originalContent = btn.innerHTML;
@@ -273,9 +267,10 @@
 
                 if (perfError || !perfil) throw new Error("Perfil não localizado.");
 
+                // TASK: Atualização de caminhos sincronizada com a nova estrutura de pastas v2
                 const destinos = {
-                    'diretor': 'coordenador/principal/dashboard_coordenador.html',
-                    'coordenador': 'coordenador/principal/dashboard_coordenador.html',
+                    'diretor': 'coordenador/operacional/dashboard_coordenador.html',
+                    'coordenador': 'coordenador/operacional/dashboard_coordenador.html',
                     'professor': 'professor/dashboard_professor.html',
                     'orientador': 'orientador/dashboard_orientador.html',
                     'secretaria': 'secretaria/dashboard_secretaria.html',
@@ -283,7 +278,7 @@
                 };
 
                 const cargo = perfil.cargo ? perfil.cargo.toLowerCase() : '';
-                const urlDestino = destinos[cargo] || 'coordenador/principal/dashboard_coordenador.html';
+                const urlDestino = destinos[cargo] || 'coordenador/operacional/dashboard_coordenador.html';
 
                 showToast("Acesso autorizado!");
                 setTimeout(() => window.location.href = urlDestino, 800);
@@ -296,7 +291,6 @@
             }
         }
 
-        // Listeners para os dois formulários
         document.getElementById('loginFormDesktop').addEventListener('submit', (e) => {
             const email = document.getElementById('loginEmail').value;
             const pass = document.getElementById('loginPassword').value;
@@ -311,7 +305,6 @@
             handleAuth(e, email, pass, btn);
         });
 
-        // Inicializar ícones
         lucide.createIcons();
     </script>
 </body>

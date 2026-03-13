@@ -36,7 +36,6 @@
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
-        /* Matriz de Auditoria - Performance e Sticky */
         .audit-table { border-collapse: separate; border-spacing: 0; table-layout: fixed; width: 100%; }
         
         .sticky-intersect { 
@@ -45,10 +44,13 @@
         }
 
         .sticky-header-row th { position: sticky; top: 0; z-index: 40; background: #f8fafc; }
+        
+        /* Ajuste UX: Cabeçalho Centralizado e Amarelo */
         .header-day { 
             min-width: 32px; width: 32px; text-align: center; font-size: 10px; 
-            font-weight: 800; color: #64748b; border-bottom: 2px solid #e2e8f0;
-            padding: 8px 0; background: #f8fafc;
+            font-weight: 900; color: #003c5b; border-bottom: 2px solid #000;
+            padding: 10px 0; background-color: #c8d400 !important;
+            border-right: 1px solid rgba(0,0,0,0.1);
         }
 
         .sticky-col { 
@@ -57,7 +59,6 @@
             transition: background 0.2s;
         }
 
-        /* Cores de Status */
         .audit-cell { 
             width: 28px; height: 28px; border-radius: 4px; 
             display: flex; align-items: center; justify-content: center;
@@ -74,30 +75,29 @@
         @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
         .critical-pulse { animation: pulse-red 2s infinite; }
 
-        /* Drawer */
         .drawer-overlay { background: rgba(0, 60, 91, 0.4); backdrop-filter: blur(4px); transition: all 0.3s ease; }
         .drawer-content { transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         .drawer-content.open { transform: translateX(0); }
+
+        /* Espaçamento entre tabela e assinaturas no Drawer */
+        .drawer-footer-spacing { margin-top: 60px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
     </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden text-left">
 
     <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
 
-    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden relative">
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden relative text-left">
         
-        <!-- HEADER -->
         <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-30 shadow-sm flex-shrink-0">
             <div class="flex items-center gap-6">
                 <div class="flex flex-col text-left">
-                    <h1 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none">Radar de Auditoria</h1>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Visão Geral de Conformidade</p>
+                    <h1 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none text-left">Radar de Auditoria</h1>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 text-left">Conformidade Académica</p>
                 </div>
-
                 <div class="h-8 w-px bg-slate-100 hidden md:block"></div>
-
                 <div class="flex items-center gap-3">
-                    <select id="selectMonth" onchange="loadAuditData()" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-fmm-blue">
+                    <select id="selectMonth" onchange="loadAuditData()" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-fmm-blue cursor-pointer">
                         <option value="0">Janeiro</option>
                         <option value="1">Fevereiro</option>
                         <option value="2" selected>Março</option>
@@ -111,15 +111,13 @@
                         <option value="10">Novembro</option>
                         <option value="11">Dezembro</option>
                     </select>
-                    
-                    <select id="selectSegmento" onchange="loadAuditData()" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-fmm-blue">
+                    <select id="selectSegmento" onchange="loadAuditData()" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-fmm-blue cursor-pointer">
                         <option value="all">Todos os Segmentos</option>
                         <option value="EMT">Ensino Médio</option>
                         <option value="EF">Fundamental</option>
                     </select>
                 </div>
             </div>
-
             <div class="flex items-center gap-6">
                 <div class="flex flex-col items-end">
                     <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Aulas Críticas</span>
@@ -133,11 +131,10 @@
             </div>
         </header>
 
-        <!-- CONTEÚDO DA MATRIZ -->
         <div class="flex-1 overflow-auto custom-scrollbar bg-white" id="mainScroll">
-            <div id="loadingState" class="hidden py-32 flex flex-col items-center justify-center text-slate-300 gap-4">
+            <div id="loadingState" class="hidden py-32 px-10 flex flex-col items-center justify-center text-slate-300 gap-4">
                 <i data-lucide="loader-2" class="w-12 h-12 animate-spin text-fmm-blue"></i>
-                <p id="loadingText" class="text-sm font-bold uppercase tracking-widest text-center">Cruzando dados acadêmicos...</p>
+                <p id="loadingText" class="text-sm font-bold uppercase tracking-widest text-center">Processando dados...</p>
             </div>
 
             <div id="auditContainer" class="hidden w-full h-full">
@@ -148,20 +145,25 @@
             </div>
         </div>
 
-        <!-- DRAWER DE INSPEÇÃO RÁPIDA (DIA ESPECÍFICO) -->
+        <!-- DRAWER -->
         <div id="drawer" class="hidden fixed inset-0 z-[100] flex justify-end overflow-hidden">
             <div class="drawer-overlay absolute inset-0" onclick="closeDrawer()"></div>
-            <div class="drawer-content w-full max-w-lg bg-white h-full shadow-2xl relative z-10 flex flex-col">
-                <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+            <div class="drawer-content w-full max-w-lg bg-white h-full shadow-2xl relative z-10 flex flex-col translate-x-full transition-transform duration-300">
+                <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 text-left">
                     <div class="text-left">
-                        <h2 id="drawerTeacher" class="text-xl font-black text-fmm-dark uppercase tracking-tight">Nome do Professor</h2>
-                        <p id="drawerDate" class="text-[10px] text-fmm-blue font-bold uppercase tracking-widest mt-2">Data: --/--/----</p>
+                        <h2 id="drawerTeacher" class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none text-left">Professor</h2>
+                        <p id="drawerDate" class="text-[10px] text-fmm-blue font-bold uppercase tracking-widest mt-2 text-left">Data</p>
                     </div>
                     <button onclick="closeDrawer()" class="p-3 hover:bg-slate-100 rounded-2xl transition-all text-slate-400"><i data-lucide="x" class="w-6 h-6"></i></button>
                 </div>
-                <div class="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar bg-slate-50/50" id="drawerList"></div>
-                <div class="p-6 border-t border-slate-100 bg-white text-center shrink-0">
-                    <p class="text-[9px] text-slate-400 font-bold uppercase italic tracking-widest">Clique no nome do professor na matriz para abrir o diário completo.</p>
+                <div class="flex-1 overflow-y-auto p-8 space-y-4 custom-scrollbar bg-slate-50/50 text-left" id="drawerList"></div>
+                <div class="p-8 border-t bg-white drawer-footer-spacing">
+                    <div class="flex justify-between items-center">
+                        <div class="text-center w-full">
+                            <div class="h-px bg-slate-300 w-48 mx-auto mb-2"></div>
+                            <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Assinatura da Coordenação</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -172,6 +174,7 @@
         let auditData = [];
         let calendarLetivo = [];
         let currentYear = 2026;
+        let turmaStudentCounts = {};
 
         async function init() {
             if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
@@ -184,8 +187,41 @@
         }
 
         async function loadCalendar() {
-            const { data } = await window.supabaseClient.from('calendario_letivo').select('*').eq('ano_letivo', currentYear);
-            calendarLetivo = data || [];
+            try {
+                const { data } = await window.supabaseClient.from('calendario_letivo').select('*').eq('ano_letivo', currentYear);
+                calendarLetivo = data || [];
+            } catch (e) { console.error("Falha ao carregar calendário:", e); }
+        }
+
+        /**
+         * Busca a população para aplicar a regra de "> 5 alunos"
+         * Fallback integrado para contornar erro 404 na tabela matriculas
+         */
+        async function fetchTurmaStudentCounts() {
+            let counts = {};
+            try {
+                // Tenta buscar por 'matriculas'
+                const { data, error } = await window.supabaseClient
+                    .from('matriculas')
+                    .select('id_turma')
+                    .eq('ano_letivo', currentYear)
+                    .ilike('status', 'CURSANDO');
+                
+                if (error) {
+                    console.warn("Tabela 'matriculas' retornou erro. Tentando fallback via 'alunos'...");
+                    const { data: fallbackData } = await window.supabaseClient
+                        .from('alunos')
+                        .select('id_turma')
+                        .ilike('status', 'Cursando');
+                    
+                    if (fallbackData) {
+                        fallbackData.forEach(a => { if(a.id_turma) counts[a.id_turma] = (counts[a.id_turma] || 0) + 1; });
+                    }
+                } else if (data) {
+                    data.forEach(m => { if(m.id_turma) counts[m.id_turma] = (counts[m.id_turma] || 0) + 1; });
+                }
+            } catch (e) { console.error("Erro no fetch de contagem:", e); }
+            return counts;
         }
 
         async function loadAuditData() {
@@ -197,43 +233,57 @@
 
             container.classList.add('hidden');
             loading.classList.remove('hidden');
+            loadingText.innerHTML = "Sincronizando registros...";
 
             const startDate = new Date(currentYear, month, 1).toISOString().split('T')[0];
             const endDate = new Date(currentYear, month + 1, 0).toISOString().split('T')[0];
 
             try {
-                // TASK: LOOP DE PAGINAÇÃO (Garante que carregamos os 82+ professores sem limite de 1000)
+                turmaStudentCounts = await fetchTurmaStudentCounts();
+
                 let allRows = [];
                 let from = 0;
-                const pageSize = 1000;
-                let hasMore = true;
-
-                while (hasMore) {
-                    let query = window.supabaseClient
-                        .from('v_auditoria_diarios')
-                        .select('*')
-                        .gte('data', startDate)
-                        .lte('data', endDate)
-                        .range(from, from + pageSize - 1);
-
+                const step = 1000;
+                
+                while (true) {
+                    loadingText.innerText = `Processando registros: ${from}...`;
+                    let query = window.supabaseClient.from('v_auditoria_diarios').select('*').gte('data', startDate).lte('data', endDate).range(from, from + step - 1);
                     if (segmento !== 'all') query = query.ilike('nivel_turma', `${segmento}%`);
 
                     const { data, error } = await query;
-                    if (error) throw error;
-                    if (data && data.length > 0) {
-                        allRows = allRows.concat(data);
-                        from += pageSize;
-                        loadingText.innerText = `Processando: ${allRows.length} registros...`;
-                        if (data.length < pageSize) hasMore = false;
-                    } else { hasMore = false; }
+                    
+                    if (error) {
+                        console.error("ERRO NA VIEW:", error);
+                        loadingText.innerHTML = `<span class="text-red-500 font-black">ERRO NA VIEW DE AUDITORIA.<br>Certifique-se de que a v_auditoria_diarios existe no banco.</span>`;
+                        return;
+                    }
+
+                    if (!data || data.length === 0) break;
+                    
+                    // APLICAÇÃO DA REGRA: Somente turmas com >= 5 alunos
+                    const validBatch = data.filter(row => {
+                        const count = turmaStudentCounts[row.id_turma] || 0;
+                        return count >= 5;
+                    });
+                    
+                    allRows = allRows.concat(validBatch);
+
+                    if (data.length < step) break;
+                    from += step;
                 }
 
                 auditData = allRows;
                 renderAuditMatrix(month);
                 calculateKPIs();
 
-            } catch (err) { console.error(err); } 
-            finally { loading.classList.add('hidden'); container.classList.remove('hidden'); }
+            } catch (err) { 
+                console.error("EXCEÇÃO:", err); 
+            } finally { 
+                if (auditData.length > 0) {
+                    loading.classList.add('hidden'); 
+                    container.classList.remove('hidden'); 
+                }
+            }
         }
 
         function calculateKPIs() {
@@ -245,7 +295,7 @@
                 if(item.conteudo_registrado) done++;
                 if(!item.chamada_realizada && !item.conteudo_registrado) critical++;
             });
-            const rate = Math.round((done / totalExpected) * 100);
+            const rate = Math.round((done / totalExpected) * 100) || 0;
             document.getElementById('complianceRate').innerText = `${rate}%`;
             document.getElementById('criticalCount').innerText = critical;
             document.getElementById('complianceRate').className = `text-xl font-black ${rate < 70 ? 'text-red-500' : 'text-fmm-green'}`;
@@ -257,20 +307,16 @@
             const daysInMonth = new Date(currentYear, month + 1, 0).getDate();
 
             let headHTML = `<tr class="sticky-header-row"><th class="sticky-intersect p-4 text-left text-[9px] font-black uppercase text-slate-400 min-w-[280px]">Professor / Disciplina</th>`;
-            for (let i = 1; i <= daysInMonth; i++) headHTML += `<th class="header-day">${i}</th>`;
+            for (let i = 1; i <= daysInMonth; i++) {
+                // TASK: Cabeçalho Amarelo Centralizado
+                headHTML += `<th class="header-day">${i}</th>`;
+            }
             head.innerHTML = headHTML + '</tr>';
 
             const groups = {};
             auditData.forEach(item => {
                 const key = `${item.id_professor}|${item.sigla_disciplina}`;
-                if(!groups[key]) groups[key] = { 
-                    idProf: item.id_professor, 
-                    nomeProf: item.nome_professor, 
-                    sigla: item.sigla_disciplina,
-                    nomeDisc: item.nome_disciplina,
-                    days: {} 
-                };
-                
+                if(!groups[key]) groups[key] = { idProf: item.id_professor, nomeProf: item.nome_professor, sigla: item.sigla_disciplina, nomeDisc: item.nome_disciplina, days: {} };
                 const day = new Date(item.data + 'T12:00:00').getDate();
                 if(!groups[key].days[day]) groups[key].days[day] = [];
                 groups[key].days[day].push(item);
@@ -279,27 +325,22 @@
             const sortedKeys = Object.keys(groups).sort((a, b) => groups[a].nomeProf.localeCompare(groups[b].nomeProf));
             body.innerHTML = sortedKeys.map(key => {
                 const g = groups[key];
-                // TASK: Link para a tela de detalhes no nome do professor
                 const detailUrl = `auditoria_detalhes_coordenador.html?idProf=${g.idProf}&sigla=${g.sigla}&month=${month}`;
-                
-                let row = `<tr class="border-b border-slate-50"><td class="sticky-col px-4 py-2 bg-white"><a href="${detailUrl}" class="flex flex-col text-left overflow-hidden hover:bg-fmm-blue/5 p-1 rounded-lg transition-colors group"><span class="text-[11px] font-black text-fmm-dark uppercase truncate group-hover:text-fmm-blue">${g.nomeProf}</span><span class="text-[8px] font-bold text-fmm-blue uppercase tracking-widest truncate group-hover:text-fmm-blue/80">${g.nomeDisc}</span></a></td>`;
+                let row = `<tr class="border-b border-slate-50 text-left"><td class="sticky-col px-4 py-2 bg-white text-left"><a href="${detailUrl}" class="flex flex-col text-left overflow-hidden hover:bg-fmm-blue/5 p-1 rounded-lg transition-all group"><span class="text-[11px] font-black text-fmm-dark uppercase truncate group-hover:text-fmm-blue text-left">${g.nomeProf}</span><span class="text-[8px] font-bold text-fmm-blue uppercase tracking-widest truncate group-hover:text-fmm-blue/80 text-left">${g.nomeDisc}</span></a></td>`;
 
                 for (let d = 1; d <= daysInMonth; d++) {
                     const records = g.days[d] || [];
                     const dateStr = `${currentYear}-${(month+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
                     const isLetivo = calendarLetivo.find(c => c.data === dateStr && c.tipo === 'letivo');
-
                     if (records.length === 0) {
                         row += `<td class="p-0 border-r border-slate-50"><div class="audit-cell cell-none">${isLetivo ? '•' : ''}</div></td>`;
                     } else {
                         const totalTurmas = new Set(records.map(r => r.id_turma)).size;
                         const doneChamadas = new Set(records.filter(r => r.chamada_realizada).map(r => r.id_turma)).size;
                         const doneConteudos = new Set(records.filter(r => r.conteudo_registrado).map(r => r.id_turma)).size;
-
                         let statusClass = 'cell-perfect';
                         if (doneChamadas === 0 && doneConteudos === 0) statusClass = 'cell-missing critical-pulse';
                         else if (doneChamadas < totalTurmas || doneConteudos < totalTurmas) statusClass = 'cell-partial';
-
                         row += `<td class="p-0 border-r border-slate-50"><div onclick="inspectDay('${g.idProf}', '${dateStr}', '${g.sigla}')" class="audit-cell ${statusClass}">${totalTurmas}</div></td>`;
                     }
                 }
@@ -311,45 +352,40 @@
         async function inspectDay(idProf, date, sigla) {
             const items = auditData.filter(a => a.id_professor === idProf && a.data === date && a.sigla_disciplina === sigla);
             if(items.length === 0) return;
-
             document.getElementById('drawerTeacher').innerText = items[0].nome_professor;
             document.getElementById('drawerDate').innerText = `${new Date(date + 'T12:00:00').toLocaleDateString('pt-BR')} • ${items[0].nome_disciplina}`;
-            
             const list = document.getElementById('drawerList');
             list.innerHTML = items.map(item => `
-                <div class="bg-white p-5 rounded-[28px] border border-slate-100 shadow-sm space-y-4 animate-fade">
-                    <div class="flex justify-between items-center">
-                        <div class="flex items-center gap-3">
+                <div class="bg-white p-5 rounded-[28px] border border-slate-100 shadow-sm space-y-4 animate-fade text-left">
+                    <div class="flex justify-between items-center text-left">
+                        <div class="flex items-center gap-3 text-left">
                             <div class="w-10 h-10 bg-fmm-blue/5 rounded-2xl flex items-center justify-center text-fmm-blue font-black text-xs">${item.numero_tempo}º</div>
                             <div>
-                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tempo de Aula</p>
-                                <p class="text-sm font-black text-fmm-dark uppercase">${item.nome_turma}</p>
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left">Tempo de Aula</p>
+                                <p class="text-sm font-black text-fmm-dark uppercase text-left">${item.nome_turma}</p>
                             </div>
                         </div>
-                        <div class="flex flex-col gap-1">
+                        <div class="flex flex-col gap-1 text-left">
                             ${renderStatusBadge('Chamada', item.chamada_realizada)}
                             ${renderStatusBadge('Conteúdo', item.conteudo_registrado)}
                         </div>
                     </div>
-                </div>
-            `).join('');
-
-            document.getElementById('drawer').classList.remove('hidden');
-            setTimeout(() => document.querySelector('.drawer-content').classList.add('open'), 10);
+                </div>`).join('');
+            const dr = document.getElementById('drawer');
+            dr.classList.remove('hidden');
+            setTimeout(() => dr.querySelector('.drawer-content').classList.add('open'), 10);
             lucide.createIcons();
         }
 
         function renderStatusBadge(label, ok) {
             const color = ok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
-            return `<div class="px-2 py-1 ${color} rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 min-w-[85px]">
-                <div class="w-1.5 h-1.5 rounded-full ${ok ? 'bg-green-500' : 'bg-red-500'}"></div>
-                ${label}
-            </div>`;
+            return `<div class="px-2 py-1 ${color} rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 min-w-[85px] text-left"><div class="w-1.5 h-1.5 rounded-full ${ok ? 'bg-green-500' : 'bg-red-500'}"></div>${label}</div>`;
         }
 
         function closeDrawer() {
-            document.querySelector('.drawer-content').classList.remove('open');
-            setTimeout(() => document.getElementById('drawer').classList.add('hidden'), 400);
+            const dr = document.getElementById('drawer');
+            dr.querySelector('.drawer-content').classList.remove('open');
+            setTimeout(() => dr.classList.add('hidden'), 300);
         }
 
         window.onload = init;

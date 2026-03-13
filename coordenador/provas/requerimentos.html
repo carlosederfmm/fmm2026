@@ -41,9 +41,9 @@
         .request-card.active { background-color: #f0f9ff; border-left-color: #00638f; }
         
         .status-badge { font-size: 9px; font-weight: 800; padding: 2px 10px; border-radius: 99px; text-transform: uppercase; }
-        .status-pending { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; } /* Vermelho para Pendente */
-        .status-approved { background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7; } /* Verde para Aprovado */
-        .status-rejected { background: #fefce8; color: #a16207; border: 1px solid #fef08a; } /* Amarelo para Reprovado */
+        .status-pending { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+        .status-approved { background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7; }
+        .status-rejected { background: #fefce8; color: #a16207; border: 1px solid #fef08a; }
 
         .view-tab.active { color: #00638f; border-bottom: 3px solid #00638f; }
         
@@ -57,21 +57,77 @@
 
         .exam-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
         .exam-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); border-color: #00638f; }
+
+        /* =========================================================================
+           ESTILOS DE IMPRESSÃO (LAYOUT ULTRA OTIMIZADO)
+           ========================================================================= */
+        @media print {
+            @page { size: A4 portrait; margin: 8mm; }
+            body > *:not(main) { display: none !important; }
+            main > *:not(#printArea) { display: none !important; }
+            #printArea { display: block !important; width: 100%; color: #000; font-family: Arial, Helvetica, sans-serif; }
+            
+            .print-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
+            .print-header img { height: 45px; }
+            .print-header .doc-title { text-align: right; }
+            .print-header h1 { font-size: 14pt; font-weight: 900; margin: 0; text-transform: uppercase; }
+            .print-header p { font-size: 9pt; font-weight: 700; margin: 2px 0 0 0; text-transform: uppercase; color: #333; }
+
+            .print-info-grid { display: grid; grid-template-columns: 3fr 1.5fr; gap: 10px; margin-bottom: 15px; }
+            .info-box { border: 1px solid #000; padding: 6px 10px; }
+            .info-box label { font-size: 7pt; font-weight: 900; color: #444; display: block; margin-bottom: 2px; text-transform: uppercase; }
+            .info-box span { font-size: 10pt; font-weight: 900; text-transform: uppercase; }
+
+            table.print-table { width: 100%; border-collapse: collapse; border: 1.5px solid #000; table-layout: fixed; }
+            table.print-table th { 
+                background-color: #c8d400 !important; 
+                -webkit-print-color-adjust: exact; 
+                border: 1px solid #000; 
+                padding: 4px 2px; 
+                font-size: 7.5pt; 
+                font-weight: 900; 
+                text-transform: uppercase; 
+                text-align: center;
+                vertical-align: middle;
+            }
+            table.print-table td { 
+                border: 1px solid #000; 
+                padding: 0 6px; 
+                font-size: 6.5pt; 
+                font-weight: 700; 
+                height: 20px; 
+                vertical-align: middle; 
+                text-align: center;
+            }
+            
+            .col-num { width: 25px; }
+            .col-ra { width: 60px; }
+            .col-turma { width: 55px; }
+            .col-aluno { width: 220px; text-align: left !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .col-signature { width: auto; } 
+
+            .print-footer { margin-top: 100px; display: flex; justify-content: space-around; }
+            .signature-line { width: 220px; border-top: 1px solid #000; text-align: center; padding-top: 6px; font-size: 7.5pt; font-weight: 900; text-transform: uppercase; }
+        }
     </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden text-slate-700">
 
-    <aside id="sidebar-container" class="w-72 flex-shrink-0 bg-fmm-dark text-white z-20 shadow-2xl"></aside>
+    <aside id="sidebar-container" class="w-72 flex-shrink-0 bg-fmm-dark text-white z-20 shadow-2xl print:hidden"></aside>
 
-    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden text-left">
         <!-- Header Principal -->
-        <header class="bg-white border-b border-slate-200 flex flex-col shrink-0 z-10 shadow-sm">
+        <header class="bg-white border-b border-slate-200 flex flex-col shrink-0 z-10 shadow-sm text-left print:hidden">
             <div class="h-20 px-8 flex items-center justify-between">
-                <div>
+                <div class="text-left">
                     <h1 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-tight">Gestão de Requerimentos</h1>
                     <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Abonos de Faltas e Segundas Chamadas</p>
                 </div>
                 <div class="flex gap-3">
+                    <!-- TASK: Novo Botão de Relatório -->
+                    <button onclick="openSummaryModal()" class="bg-white border-2 border-fmm-blue text-fmm-blue hover:bg-fmm-blue hover:text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-sm">
+                        <i data-lucide="bar-chart-2" class="w-4 h-4"></i> Resumo por Série
+                    </button>
                     <button onclick="openCalendarModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all">
                         <i data-lucide="calendar-plus" class="w-4 h-4"></i> Calendário de Provas
                     </button>
@@ -96,12 +152,12 @@
         </header>
 
         <!-- CONTEÚDO DINÂMICO -->
-        <div class="flex-1 flex overflow-hidden">
+        <div class="flex-1 flex overflow-hidden print:hidden">
             
             <!-- VIEW: ALUNO -->
             <div id="view-student-container" class="flex flex-1 overflow-hidden">
                 <aside class="w-96 bg-white border-r border-slate-200 flex flex-col shrink-0">
-                    <div class="p-4 border-b border-slate-100">
+                    <div class="p-4 border-b border-slate-100 text-left">
                         <div class="relative">
                             <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
                             <input type="text" id="searchBox" onkeyup="filterList()" placeholder="Buscar aluno ou RA..." class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none">
@@ -112,19 +168,19 @@
                     </div>
                 </aside>
 
-                <section class="flex-1 bg-slate-50/50 flex flex-col relative overflow-hidden">
+                <section class="flex-1 bg-slate-50/50 flex flex-col relative overflow-hidden text-left">
                     <div id="emptyStateStudent" class="absolute inset-0 flex flex-col items-center justify-center text-slate-300">
                         <i data-lucide="inbox" class="w-16 h-16 mb-4 opacity-20"></i>
                         <p class="text-sm font-black uppercase tracking-widest opacity-40 text-center">Selecione um aluno para gerenciar<br>suas solicitações</p>
                     </div>
 
                     <div id="studentDetail" class="hidden flex-1 flex flex-col overflow-hidden animate-fade">
-                        <div class="bg-white p-8 border-b border-slate-200 shrink-0 flex justify-between items-center">
-                            <div class="flex gap-6 items-center">
+                        <div class="bg-white p-8 border-b border-slate-200 shrink-0 flex justify-between items-center text-left">
+                            <div class="flex gap-6 items-center text-left">
                                 <div class="w-20 h-20 bg-slate-100 rounded-[24px] flex items-center justify-center overflow-hidden text-4xl shadow-sm border border-slate-200 cursor-pointer hover:scale-105 transition-transform" id="detAvatar">🎓</div>
-                                <div>
-                                    <h2 id="detName" class="text-2xl font-black text-fmm-dark uppercase tracking-tight leading-none">Nome do Aluno</h2>
-                                    <p class="text-xs font-bold text-slate-500 mt-2 uppercase tracking-widest">RA: <span id="detRA" class="text-fmm-blue">---</span> • Turma: <span id="detTurma">---</span></p>
+                                <div class="text-left">
+                                    <h2 id="detName" class="text-2xl font-black text-fmm-dark uppercase tracking-tight leading-none text-left">Nome do Aluno</h2>
+                                    <p class="text-xs font-bold text-slate-500 mt-2 uppercase tracking-widest text-left">RA: <span id="detRA" class="text-fmm-blue">---</span> • Turma: <span id="detTurma">---</span></p>
                                 </div>
                             </div>
                             <div class="bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100 text-center">
@@ -133,7 +189,7 @@
                             </div>
                         </div>
 
-                        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-10">
+                        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-10 text-left">
                             <div class="space-y-4">
                                 <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
                                     <i data-lucide="file-check" class="w-4 h-4 text-slate-300"></i> Abonos de Faltas (Justificativas Simples)
@@ -153,7 +209,7 @@
             </div>
 
             <!-- VIEW: PROVA (CARDS) -->
-            <div id="view-exam-container" class="hidden flex-1 flex flex-col overflow-hidden bg-slate-50/50">
+            <div id="view-exam-container" class="hidden flex-1 flex flex-col overflow-hidden bg-slate-50/50 text-left">
                 <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
                     <div id="examCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         <!-- Cards das Provas Gerados via JS -->
@@ -164,19 +220,56 @@
                     </div>
                 </div>
             </div>
-
         </div>
+
+        <!-- ÁREA DE IMPRESSÃO -->
+        <div id="printArea" class="hidden print:block bg-white"></div>
     </main>
 
+    <!-- MODAL: RESUMO ANALÍTICO DE INSCRIÇÕES -->
+    <div id="summaryModal" class="hidden fixed inset-0 z-[150] flex items-center justify-center p-4 bg-fmm-dark/80 backdrop-blur-md print:hidden text-left">
+        <div class="bg-white w-full max-w-4xl h-[80vh] rounded-[40px] shadow-2xl flex flex-col animate-fade overflow-hidden">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                <div class="text-left">
+                    <h2 class="text-2xl font-black text-fmm-dark uppercase tracking-tight">Resumo de Inscrições Deferidas</h2>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Quantitativo de 2ª Chamada por Disciplina e Série</p>
+                </div>
+                <button onclick="closeSummaryModal()" class="w-12 h-12 flex items-center justify-center hover:bg-slate-100 rounded-full transition-all text-slate-400"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-8 bg-slate-50/30">
+                <div id="summaryTableContainer" class="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                                <th class="p-6">Disciplina</th>
+                                <th class="p-6">Série</th>
+                                <th class="p-6 text-center">Deferidos</th>
+                            </tr>
+                        </thead>
+                        <tbody id="summaryTableBody" class="divide-y divide-slate-50 text-xs font-bold text-slate-600 uppercase"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="p-8 border-t bg-white flex justify-end shrink-0">
+                <button onclick="closeSummaryModal()" class="px-10 py-3.5 bg-fmm-dark text-white text-xs font-black uppercase rounded-2xl shadow-xl active:scale-95 transition-all">Fechar Relatório</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL: LISTAGEM DE ALUNOS POR PROVA -->
-    <div id="examDetailModal" class="hidden fixed inset-0 z-[150] flex items-center justify-center p-4 bg-fmm-dark/80 backdrop-blur-md">
+    <div id="examDetailModal" class="hidden fixed inset-0 z-[150] flex items-center justify-center p-4 bg-fmm-dark/80 backdrop-blur-md print:hidden text-left">
         <div class="bg-white w-full max-w-5xl h-[85vh] rounded-[40px] shadow-2xl flex flex-col animate-fade overflow-hidden">
             <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-                <div>
-                    <h2 id="examModalTitle" class="text-xl font-black text-fmm-dark uppercase tracking-tight">Disciplina - Tipo</h2>
-                    <p id="examModalSubtitle" class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Data Realizada: --/--/---- • Matriz: ---</p>
+                <div class="text-left">
+                    <h2 id="examModalTitle" class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none text-left">Disciplina - Tipo</h2>
+                    <p id="examModalSubtitle" class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2 text-left">Data Realizada: --/--/---- • Matriz: ---</p>
                 </div>
-                <button onclick="closeExamDetailModal()" class="w-12 h-12 flex items-center justify-center hover:bg-slate-100 rounded-full transition-all"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <div class="flex items-center gap-3">
+                    <button onclick="printExamAttendanceList()" class="bg-fmm-blue hover:bg-fmm-dark text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition-all shadow-lg shadow-fmm-blue/10 active:scale-95">
+                        <i data-lucide="printer" class="w-4 h-4"></i> Gerar Lista de Chamada
+                    </button>
+                    <button onclick="closeExamDetailModal()" class="w-12 h-12 flex items-center justify-center hover:bg-slate-100 rounded-full transition-all text-slate-400"><i data-lucide="x" class="w-6 h-6"></i></button>
+                </div>
             </div>
             <div class="flex-1 overflow-y-auto custom-scrollbar p-8">
                 <table class="w-full text-left border-collapse">
@@ -184,37 +277,35 @@
                         <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
                             <th class="pb-4 pr-4">Aluno / RA</th>
                             <th class="pb-4 pr-4">Turma</th>
-                            <th class="pb-4 pr-4">Comprovante</th>
+                            <th class="pb-4 pr-4 text-center">Comprovante</th>
                             <th class="pb-4 pr-4 text-center">Status Atual</th>
                             <th class="pb-4 text-right">Decisão</th>
                         </tr>
                     </thead>
-                    <tbody id="examDetailTableBody" class="divide-y divide-slate-50 text-xs font-bold text-slate-600">
-                        <!-- Linhas geradas via JS -->
-                    </tbody>
+                    <tbody id="examDetailTableBody" class="divide-y divide-slate-50 text-xs font-bold text-slate-600"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
     <!-- MODAL: EDITAR / DETALHES GERAIS -->
-    <div id="editModal" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-4 bg-fmm-dark/80 backdrop-blur-md">
-        <div class="bg-white w-full max-w-xl rounded-[40px] shadow-2xl overflow-hidden animate-fade">
-            <div class="p-8 border-b border-slate-100 flex justify-between items-center text-left">
-                <div>
-                    <h2 class="text-xl font-black text-fmm-dark uppercase tracking-tight">Administrar Requerimento</h2>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Edição de dados e justificativa</p>
+    <div id="editModal" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-4 bg-fmm-dark/80 backdrop-blur-md print:hidden text-left">
+        <div class="bg-white w-full max-w-xl rounded-[40px] shadow-2xl overflow-hidden animate-fade text-left">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 text-left">
+                <div class="text-left">
+                    <h2 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none text-left">Administrar Requerimento</h2>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 text-left">Edição de dados e justificativa</p>
                 </div>
                 <button onclick="closeEditModal()" class="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors"><i data-lucide="x" class="w-6 h-6 text-slate-400"></i></button>
             </div>
             <div class="p-8 space-y-6 text-left">
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-1.5">
-                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">RA do Aluno</label>
+                <div class="grid grid-cols-2 gap-4 text-left">
+                    <div class="space-y-1.5 text-left">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block">RA do Aluno</label>
                         <input type="text" id="editRA" disabled class="w-full p-3 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-400">
                     </div>
-                    <div class="space-y-1.5">
-                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Tipo Documento</label>
+                    <div class="space-y-1.5 text-left">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block">Tipo Documento</label>
                         <select id="editDocType" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600">
                             <option value="MEDICO">Atestado Médico / Odonto</option>
                             <option value="OBITO">Atestado de Óbito</option>
@@ -223,30 +314,30 @@
                         </select>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-1.5">
-                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Data Início</label>
+                <div class="grid grid-cols-2 gap-4 text-left">
+                    <div class="space-y-1.5 text-left">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block">Data Início</label>
                         <input type="date" id="editStart" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600">
                     </div>
-                    <div class="space-y-1.5">
-                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Qtd Dias</label>
+                    <div class="space-y-1.5 text-left">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block">Qtd Dias</label>
                         <input type="number" id="editDays" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600">
                     </div>
                 </div>
-                <div class="space-y-1.5">
-                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">CID / Justificativa</label>
+                <div class="space-y-1.5 text-left">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block">CID / Justificativa</label>
                     <input type="text" id="editExtra" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-fmm-blue">
                 </div>
 
                 <div id="editAnexoArea" class="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-3 text-left">
                         <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-slate-200 text-fmm-blue shadow-sm"><i data-lucide="file-text" class="w-5 h-5"></i></div>
-                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Documento em anexo</p>
+                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest text-left">Documento em anexo</p>
                     </div>
                     <button id="btnVerAnexo" onclick="window.open(this.dataset.url, '_blank')" class="bg-white hover:bg-slate-100 text-fmm-dark px-4 py-2 rounded-xl text-[10px] font-black uppercase border border-slate-200 transition-all shadow-sm">Visualizar Atestado</button>
                 </div>
 
-                <div class="pt-6 flex gap-3">
+                <div class="pt-6 flex gap-3 text-left">
                     <button onclick="deleteRequest()" class="p-4 bg-red-50 text-red-500 hover:bg-red-100 rounded-2xl transition-all shadow-sm"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                     <button onclick="closeEditModal()" class="flex-1 py-4 bg-slate-100 text-slate-500 text-xs font-black uppercase rounded-2xl hover:bg-slate-200 transition-all">Cancelar</button>
                     <button onclick="saveEdit()" class="flex-[2] py-4 bg-fmm-blue text-white text-xs font-black uppercase rounded-2xl shadow-lg hover:shadow-fmm-blue/20">Salvar Alterações</button>
@@ -256,16 +347,16 @@
     </div>
 
     <!-- MODAL: CALENDÁRIO -->
-    <div id="calendarModal" class="hidden fixed inset-0 z-[300] flex items-center justify-center p-4 bg-fmm-dark/60 backdrop-blur-sm text-left">
-        <div class="bg-white w-full max-w-6xl h-[85vh] rounded-[40px] shadow-2xl overflow-hidden flex flex-col animate-fade">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+    <div id="calendarModal" class="hidden fixed inset-0 z-[300] flex items-center justify-center p-4 bg-fmm-dark/60 backdrop-blur-sm text-left print:hidden text-left">
+        <div class="bg-white w-full max-w-6xl h-[85vh] rounded-[40px] shadow-2xl overflow-hidden flex flex-col animate-fade text-left">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 text-left">
                 <h2 class="text-xl font-black text-fmm-dark uppercase tracking-tight">Calendário de Provas Realizadas</h2>
                 <button onclick="closeCalendarModal()" class="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full text-slate-400"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
             <div class="flex flex-1 overflow-hidden">
                 <div class="w-80 bg-slate-50 p-6 border-r border-slate-100 overflow-y-auto custom-scrollbar text-left">
                     <h3 class="text-[10px] font-black text-fmm-blue uppercase tracking-[0.2em] mb-6">Novo Registro</h3>
-                    <div class="space-y-5">
+                    <div class="space-y-5 text-left">
                         <div>
                             <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">Segmento</label>
                             <select id="calMatriz" onchange="updateCalEtapa()" class="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600">
@@ -274,9 +365,9 @@
                                 <option value="Técnica">Médio (Técnico)</option>
                             </select>
                         </div>
-                        <div class="p-4 bg-white border border-slate-200 rounded-2xl space-y-3">
-                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Aplicar às Séries:</label>
-                            <div id="seriesContainer" class="grid grid-cols-1 gap-2"></div>
+                        <div class="p-4 bg-white border border-slate-200 rounded-2xl space-y-3 text-left">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 text-left">Aplicar às Séries:</label>
+                            <div id="seriesContainer" class="grid grid-cols-1 gap-2 text-left"></div>
                         </div>
                         <div>
                             <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">Período Referência</label>
@@ -291,7 +382,8 @@
                             <select id="calTipo" class="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600">
                                 <option value="P1">P1</option>
                                 <option value="P2">P2</option>
-                                <option value="REC">REC</option>
+                                <option value="RC">RC</option>
+                                <option value="2ª CHAMADA">2ª CHAMADA</option>
                             </select>
                         </div>
                         <div>
@@ -303,9 +395,9 @@
                 </div>
                 
                 <div class="flex-1 p-8 bg-white flex flex-col overflow-hidden text-left border-slate-100 border">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest">Datas de Provas 2026</h3>
-                        <div class="flex gap-3">
+                    <div class="flex justify-between items-center mb-6 text-left">
+                        <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest text-left">Datas de Provas 2026</h3>
+                        <div class="flex gap-3 text-left">
                             <select id="calFilterMatriz" onchange="renderCalendar()" class="p-2.5 px-4 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none focus:ring-2 focus:ring-fmm-blue uppercase text-center min-w-[140px] text-slate-600 text-center">
                                 <option value="all">Todas Matrizes</option>
                                 <option value="Fundamental">Fundamental</option>
@@ -318,14 +410,14 @@
                             </div>
                         </div>
                     </div>
-                    <div class="flex-1 overflow-y-auto custom-scrollbar border border-slate-100 rounded-3xl">
+                    <div class="flex-1 overflow-y-auto custom-scrollbar border border-slate-100 rounded-3xl text-left">
                         <table class="w-full text-left border-collapse">
                             <thead class="bg-slate-50 sticky top-0 z-10 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b">
                                 <tr>
                                     <th class="p-4 text-center">Data</th>
                                     <th class="p-4">Disciplina</th>
                                     <th class="p-4">Matriz / Período</th>
-                                    <th class="p-4">Séries</th>
+                                    <th class="p-4 text-left">Séries</th>
                                     <th class="p-4 text-center">Tipo</th>
                                     <th class="p-4 text-right">Ação</th>
                                 </tr>
@@ -339,7 +431,7 @@
     </div>
 
     <!-- MODAL: ZOOM DA FOTO -->
-    <div id="photoZoomModal" class="hidden fixed inset-0 z-[500] flex items-center justify-center p-4 bg-fmm-dark/95 backdrop-blur-xl" onclick="closePhotoZoom()">
+    <div id="photoZoomModal" class="hidden fixed inset-0 z-[500] flex items-center justify-center p-4 bg-fmm-dark/95 backdrop-blur-xl print:hidden" onclick="closePhotoZoom()">
         <div class="relative max-w-4xl w-full flex flex-col items-center gap-6 animate-fade" onclick="event.stopPropagation()">
             <button onclick="closePhotoZoom()" class="absolute -top-12 -right-4 text-white/50 hover:text-white transition-colors"><i data-lucide="x" class="w-8 h-8"></i></button>
             <img id="zoomedImage" src="" class="max-h-[80vh] max-w-full rounded-[40px] shadow-2xl border-4 border-white/5 object-contain">
@@ -354,6 +446,7 @@
         let calendarData = [];
         let currentView = 'student';
         let userLevels = [];
+        let currentExamOpen = null;
 
         async function init() {
             if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
@@ -362,7 +455,9 @@
 
             const { data: profile } = await window.supabaseClient.from('perfis').select('cargo, niveis_acesso').eq('id', user.id).single();
             if (profile) {
-                userLevels = profile.cargo === 'diretor' ? ['EF1', 'EF2', 'EMT'] : (profile.niveis_acesso || []);
+                userLevels = (profile.cargo === 'diretor' || profile.cargo === 'coordenador') 
+                    ? (profile.niveis_acesso && profile.niveis_acesso.length > 0 ? profile.niveis_acesso : ['EF1', 'EF2', 'EMT']) 
+                    : [];
             }
 
             lucide.createIcons();
@@ -384,7 +479,8 @@
 
         async function loadRequests() {
             const statusFilter = document.getElementById('filterStatus').value;
-            let query = window.supabaseClient.from('justificativas_ausencia').select(`*, alunos!inner(nome_completo, url_foto, turmas!inner(nome, nivel))`).order('criado_em', { ascending: false });
+            // TASK: Incluído o campo 'serie' na consulta para possibilitar o agrupamento analítico
+            let query = window.supabaseClient.from('justificativas_ausencia').select(`*, alunos!inner(nome_completo, url_foto, turmas!inner(nome, nivel, serie))`).order('criado_em', { ascending: false });
             if (statusFilter !== 'all') query = query.eq('status', statusFilter);
             if (userLevels.length > 0) query = query.in('nivel_aluno', userLevels);
 
@@ -396,7 +492,6 @@
                 provas_solicitadas: Array.isArray(req.provas_solicitadas) ? req.provas_solicitadas.map(p => ({ ...p, status: p.status || 'Pendente' })) : []
             }));
 
-            // Agrupamento para Visão Aluno
             const map = {};
             allRequests.forEach(req => {
                 if (!map[req.aluno_ra]) {
@@ -419,7 +514,6 @@
             if (currentView === 'exam') renderExamCards();
         }
 
-        // --- VISÃO ALUNO ---
         function renderList() {
             const list = document.getElementById('requestListAgrupada');
             const search = document.getElementById('searchBox').value.toLowerCase();
@@ -431,10 +525,10 @@
                         <span class="text-[8px] font-black uppercase bg-slate-50 px-2 py-0.5 rounded tracking-tighter border border-slate-100">
                             ${s.requests.length} PROCESSOS ${s.pending > 0 ? `| <span class="text-red-600">${s.pending} PENDENTE</span>` : ''}
                         </span>
-                        <span class="text-[9px] font-black text-slate-300 uppercase">${s.aluno.turmas?.nome || 'FMM'}</span>
+                        <span class="text-[9px] font-black text-slate-300 uppercase text-right">${s.aluno.turmas?.nome || 'FMM'}</span>
                     </div>
-                    <h4 class="text-xs font-black text-fmm-dark uppercase leading-tight truncate">${s.aluno.nome_completo}</h4>
-                    <p class="text-[10px] text-slate-400 font-bold mt-1 uppercase truncate">RA: ${s.ra}</p>
+                    <h4 class="text-xs font-black text-fmm-dark uppercase leading-tight truncate text-left">${s.aluno.nome_completo}</h4>
+                    <p class="text-[10px] text-slate-400 font-bold mt-1 uppercase truncate text-left">RA: ${s.ra}</p>
                 </div>`).join('');
         }
 
@@ -454,7 +548,7 @@
             document.getElementById('detTurma').innerText = data.aluno.turmas?.nome || 'FMM';
             document.getElementById('detProcessCount').innerText = data.requests.length;
             const avatarImg = getDriveDirect(data.aluno.url_foto);
-            document.getElementById('detAvatar').innerHTML = avatarImg ? `<img src="${avatarImg}" class="w-full h-full object-cover" onclick="openPhotoZoom(this.src)">` : '🎓';
+            document.getElementById('detAvatar').innerHTML = avatarImg ? `<img src="${avatarImg}" class="w-full h-full object-cover" onclick="openPhotoZoom(this.src, '${data.aluno.nome_completo.replace(/'/g, "")}')">` : '🎓';
 
             const abonos = data.requests.filter(r => r.provas_solicitadas.length === 0);
             const segundas = data.requests.filter(r => r.provas_solicitadas.length > 0);
@@ -462,35 +556,35 @@
             document.getElementById('listAbonos').innerHTML = abonos.length > 0 
                 ? abonos.map(r => `
                     <div onclick='openEditModal(${JSON.stringify(r)})' class="process-item p-4 bg-white rounded-2xl shadow-sm space-y-2 border-l-4 border-l-slate-200 animate-fade text-left">
-                        <div class="flex justify-between items-center">
-                            <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">${r.tipo_documento.replace('MEDICO', 'ATESTADO')}</span>
-                            <span class="text-[9px] font-black text-slate-300 uppercase">${new Date(r.criado_em).toLocaleDateString('pt-BR')}</span>
+                        <div class="flex justify-between items-center text-left">
+                            <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest text-left">${r.tipo_documento.replace('MEDICO', 'ATESTADO')}</span>
+                            <span class="text-[9px] font-black text-slate-300 uppercase text-right">${new Date(r.criado_em).toLocaleDateString('pt-BR')}</span>
                         </div>
-                        <p class="text-[11px] font-bold text-fmm-dark uppercase leading-tight">${new Date(r.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')} (${r.quantidade_dias} dias)</p>
+                        <p class="text-[11px] font-bold text-fmm-dark uppercase leading-tight text-left">${new Date(r.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')} (${r.quantidade_dias} dias)</p>
                     </div>`).join('')
-                : '<div class="p-6 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 text-[10px] font-bold text-slate-300 uppercase">Nenhum abono.</div>';
+                : '<div class="p-6 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 text-[10px] font-bold text-slate-300 uppercase text-center">Nenhum abono.</div>';
 
             document.getElementById('listSegundas').innerHTML = segundas.length > 0
                 ? segundas.map(r => {
                     const statusClasses = { 'Pendente': 'status-pending', 'Deferido': 'status-approved', 'Indeferido': 'status-rejected' };
                     return `
-                    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden animate-fade">
+                    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden animate-fade text-left">
                         <div onclick='openEditModal(${JSON.stringify(r)})' class="p-6 bg-slate-50/30 cursor-pointer hover:bg-slate-50 transition-all text-left">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <span class="status-badge ${statusClasses[r.status]}">${r.status}</span>
-                                    <h4 class="text-xs font-black text-fmm-dark uppercase mt-2">${r.tipo_documento.replace('MEDICO', 'ATESTADO')}</h4>
-                                    <p class="text-[10px] text-slate-400 font-bold uppercase">${new Date(r.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')} — ${r.quantidade_dias} dias</p>
+                            <div class="flex justify-between items-start text-left">
+                                <div class="text-left">
+                                    <span class="status-badge ${statusClasses[r.status]} text-left">${r.status}</span>
+                                    <h4 class="text-xs font-black text-fmm-dark uppercase mt-2 text-left">${r.tipo_documento.replace('MEDICO', 'ATESTADO')}</h4>
+                                    <p class="text-[10px] text-slate-400 font-bold uppercase text-left">${new Date(r.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')} — ${r.quantidade_dias} dias</p>
                                 </div>
-                                <span class="text-[9px] font-black text-slate-300 uppercase">${new Date(r.criado_em).toLocaleDateString('pt-BR')}</span>
+                                <span class="text-[9px] font-black text-slate-300 uppercase text-right">${new Date(r.criado_em).toLocaleDateString('pt-BR')}</span>
                             </div>
                         </div>
-                        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-3 border-t border-slate-100">
+                        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-3 border-t border-slate-100 text-left">
                             ${r.provas_solicitadas.map((p, idx) => `
-                                <div class="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                                <div class="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-xl text-left">
                                     <div class="flex flex-col text-left">
-                                        <span class="text-[10px] font-black text-fmm-blue uppercase leading-tight">${p.disciplina}</span>
-                                        <span class="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">${p.data}</span>
+                                        <span class="text-[10px] font-black text-fmm-blue uppercase leading-tight text-left">${p.disciplina}</span>
+                                        <span class="text-[8px] font-bold text-slate-400 uppercase tracking-tighter text-left">${p.data}</span>
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <span class="status-badge ${statusClasses[p.status]}">${p.status}</span>
@@ -503,7 +597,7 @@
                         </div>
                     </div>`;
                 }).join('')
-                : '<div class="p-10 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 text-[10px] font-bold text-slate-300 uppercase">Nenhuma solicitação de prova.</div>';
+                : '<div class="p-10 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 text-[10px] font-bold text-slate-300 uppercase text-center">Nenhuma solicitação de prova.</div>';
             lucide.createIcons();
         }
 
@@ -512,7 +606,6 @@
             const grid = document.getElementById('examCardsGrid');
             grid.innerHTML = '';
             
-            // TASK: Mapear o calendário e contar solicitações por ID de Calendário
             const examStats = calendarData.map(exam => {
                 const requestsForExam = [];
                 allRequests.forEach(req => {
@@ -540,26 +633,25 @@
             }
             document.getElementById('emptyStateExams').classList.add('hidden');
 
-            // Ordenar por pendência primeiro
             examStats.sort((a,b) => b.pending - a.pending);
 
             grid.innerHTML = examStats.map(exam => `
-                <div onclick='openExamDetailModal(${JSON.stringify(exam).replace(/'/g, "&apos;")})' class="exam-card bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm flex flex-col gap-5 text-left">
-                    <div class="flex justify-between items-start">
+                <div onclick='openExamDetailModal(${JSON.stringify(exam).replace(/'/g, "&apos;")})' class="exam-card bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex flex-col gap-5 text-left">
+                    <div class="flex justify-between items-start text-left">
                         <div class="p-3 bg-fmm-blue/10 rounded-2xl text-fmm-blue"><i data-lucide="clipboard-list" class="w-6 h-6"></i></div>
-                        <div class="text-right"><span class="text-[9px] font-black text-slate-300 uppercase">${new Date(exam.data_prova + 'T12:00:00').toLocaleDateString('pt-BR')}</span></div>
+                        <div class="text-right"><span class="text-[9px] font-black text-slate-300 uppercase text-right">${new Date(exam.data_prova + 'T12:00:00').toLocaleDateString('pt-BR')}</span></div>
                     </div>
                     <div>
-                        <h4 class="text-base font-black text-fmm-dark uppercase tracking-tight leading-tight">${exam.disciplinas?.nome || exam.sigla_disciplina}</h4>
-                        <div class="flex flex-wrap gap-1 mt-2">
+                        <h4 class="text-base font-black text-fmm-dark uppercase tracking-tight leading-tight text-left">${exam.disciplinas?.nome || exam.sigla_disciplina}</h4>
+                        <div class="flex flex-wrap gap-1 mt-2 text-left">
                             <span class="serie-tag bg-fmm-dark text-white border-none">${exam.tipo_prova}</span>
-                            ${(exam.series || []).map(s => `<span class="serie-tag">${s}</span>`).join('')}
+                            ${(exam.series || []).map(s => `<span class="serie-tag text-left">${s}</span>`).join('')}
                         </div>
                     </div>
-                    <div class="pt-4 border-t border-slate-50 flex justify-between items-center">
-                        <div class="flex gap-4">
-                            <div class="flex flex-col"><span class="text-[18px] font-black text-red-500 leading-none">${exam.pending}</span><span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">Pendentes</span></div>
-                            <div class="flex flex-col"><span class="text-[18px] font-black text-green-500 leading-none">${exam.approved}</span><span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">Aprovadas</span></div>
+                    <div class="pt-4 border-t border-slate-50 flex justify-between items-center text-left">
+                        <div class="flex gap-4 text-left">
+                            <div class="flex flex-col text-left"><span class="text-[18px] font-black text-red-500 leading-none text-left">${exam.pending}</span><span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1 text-left">Pendentes</span></div>
+                            <div class="flex flex-col text-left"><span class="text-[18px] font-black text-green-500 leading-none text-left">${exam.approved}</span><span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1 text-left">Aprovadas</span></div>
                         </div>
                         <i data-lucide="chevron-right" class="w-5 h-5 text-slate-300"></i>
                     </div>
@@ -568,6 +660,7 @@
         }
 
         function openExamDetailModal(exam) {
+            currentExamOpen = exam;
             const modal = document.getElementById('examDetailModal');
             document.getElementById('examModalTitle').innerText = `${exam.disciplinas?.nome || exam.sigla_disciplina} - ${exam.tipo_prova}`;
             document.getElementById('examModalSubtitle').innerText = `Data: ${new Date(exam.data_prova + 'T12:00:00').toLocaleDateString('pt-BR')} • Matriz: ${exam.matriz} • Período: ${exam.periodo_ref.replace('_', ' ')}`;
@@ -577,17 +670,17 @@
 
             tbody.innerHTML = exam.requests.map(r => `
                 <tr class="hover:bg-slate-50 transition-colors border-b border-slate-50 text-left">
-                    <td class="p-5">
-                        <p class="font-black text-fmm-dark uppercase leading-none">${r.aluno.nome_completo}</p>
-                        <p class="text-[9px] text-slate-400 font-bold uppercase mt-1">RA: ${r.ra}</p>
+                    <td class="p-5 text-left">
+                        <p class="font-black text-fmm-dark uppercase leading-none text-left">${r.aluno.nome_completo}</p>
+                        <p class="text-[9px] text-slate-400 font-bold uppercase mt-1 text-left">RA: ${r.ra}</p>
                     </td>
-                    <td class="p-5 text-[11px] uppercase font-bold text-slate-500">${r.aluno.turmas?.nome || '---'}</td>
-                    <td class="p-5">
-                        ${r.anexo ? `<button onclick="window.open('${r.anexo}', '_blank')" class="bg-slate-100 hover:bg-fmm-blue hover:text-white text-fmm-dark px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all flex items-center gap-2"><i data-lucide="external-link" class="w-3 h-3"></i> Visualizar</button>` : '<span class="text-[9px] text-slate-300 italic uppercase">Sem Anexo</span>'}
+                    <td class="p-5 text-[11px] uppercase font-bold text-slate-500 text-left">${r.aluno.turmas?.nome || '---'}</td>
+                    <td class="p-5 text-center">
+                        ${r.anexo ? `<button onclick="window.open('${r.anexo}', '_blank')" class="bg-slate-100 hover:bg-fmm-blue hover:text-white text-fmm-dark px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all flex items-center gap-2 mx-auto"><i data-lucide="external-link" class="w-3 h-3"></i> Visualizar</button>` : '<span class="text-[9px] text-slate-300 italic uppercase">Sem Anexo</span>'}
                     </td>
-                    <td class="p-5 text-center"><span class="status-badge ${statusClasses[r.status]}">${r.status}</span></td>
+                    <td class="p-5 text-center"><span class="status-badge ${statusClasses[r.status]} text-center">${r.status}</span></td>
                     <td class="p-5 text-right">
-                        <div class="flex justify-end gap-2">
+                        <div class="flex justify-end gap-2 text-right">
                             <button onclick="updateExamStatus('${r.reqId}', ${r.examIndex}, 'Indeferido'); closeExamDetailModal();" class="w-9 h-9 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all flex items-center justify-center shadow-sm"><i data-lucide="x" class="w-4 h-4"></i></button>
                             <button onclick="updateExamStatus('${r.reqId}', ${r.examIndex}, 'Deferido'); closeExamDetailModal();" class="w-9 h-9 bg-green-50 hover:bg-fmm-green text-fmm-green hover:text-white rounded-xl transition-all flex items-center justify-center shadow-sm"><i data-lucide="check" class="w-4 h-4"></i></button>
                         </div>
@@ -598,9 +691,155 @@
             lucide.createIcons();
         }
 
-        function closeExamDetailModal() { document.getElementById('examDetailModal').classList.add('hidden'); }
+        /**
+         * TASK: Lógica de Resumo Analítico (Quantitativo por Disciplina/Série)
+         * Agrupa dados de requerimentos deferidos para planejamento logístico.
+         */
+        function openSummaryModal() {
+            const body = document.getElementById('summaryTableBody');
+            body.innerHTML = '';
+            
+            // Agregação em memória
+            const summary = {}; // { Disciplina: { Serie: Qtd } }
 
-        // --- CRUD / LOGICA ---
+            allRequests.forEach(req => {
+                const studentSerie = req.alunos?.turmas?.serie || 'Sem Série';
+                
+                req.provas_solicitadas.forEach(prova => {
+                    if (prova.status === 'Deferido') {
+                        const disc = prova.disciplina;
+                        if (!summary[disc]) summary[disc] = {};
+                        if (!summary[disc][studentSerie]) summary[disc][studentSerie] = 0;
+                        summary[disc][studentSerie]++;
+                    }
+                });
+            });
+
+            // Transformação em linhas de tabela
+            const sortedDiscs = Object.keys(summary).sort();
+            let rowsHtml = '';
+
+            sortedDiscs.forEach(disc => {
+                const series = summary[disc];
+                const sortedSeries = Object.keys(series).sort();
+                
+                sortedSeries.forEach((serie, index) => {
+                    rowsHtml += `
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="p-6 font-black text-fmm-dark">${index === 0 ? disc : ''}</td>
+                            <td class="p-6 text-slate-500">${serie}</td>
+                            <td class="p-6 text-center">
+                                <span class="px-4 py-1.5 bg-fmm-blue/10 text-fmm-blue rounded-lg font-black text-sm">
+                                    ${series[serie]}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                });
+            });
+
+            if (rowsHtml === '') {
+                body.innerHTML = '<tr><td colspan="3" class="p-12 text-center text-slate-300 italic">Nenhuma inscrição deferida até o momento.</td></tr>';
+            } else {
+                body.innerHTML = rowsHtml;
+            }
+
+            document.getElementById('summaryModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeSummaryModal() {
+            document.getElementById('summaryModal').classList.add('hidden');
+        }
+
+        /**
+         * TASK: Lógica de Impressão de Lista de Assinatura (Estilo Oficial - Ultra Compacto)
+         * Linhas de 20px de altura e fonte 6.5pt.
+         */
+        function printExamAttendanceList() {
+            if (!currentExamOpen || !currentExamOpen.requests) return;
+
+            const deferidos = currentExamOpen.requests
+                .filter(r => r.status === 'Deferido')
+                .sort((a, b) => a.aluno.nome_completo.localeCompare(b.aluno.nome_completo));
+
+            if (deferidos.length === 0) {
+                return alert("Nenhum aluno com requerimento DEFERIDO para esta prova.");
+            }
+
+            const printArea = document.getElementById('printArea');
+            const nomeProva = currentExamOpen.disciplinas?.nome || currentExamOpen.sigla_disciplina;
+            
+            let html = `
+                <div class="print-container" style="padding: 15px;">
+                    <div class="print-header">
+                        <img src="../../assets/logo-fmm-color.png" alt="FMM Logo">
+                        <div class="doc-title text-right">
+                            <h1>Lista de Assinatura</h1>
+                            <p>Segunda Chamada de Avaliação</p>
+                        </div>
+                    </div>
+
+                    <div class="print-info-grid">
+                        <div class="info-box text-left">
+                            <label>Prova / Componente Curricular</label>
+                            <span>${nomeProva} - ${currentExamOpen.tipo_prova}</span>
+                        </div>
+                        <div class="info-box text-left">
+                            <label>Data da Aplicação</label>
+                            <span>____ / ____ / 2026</span>
+                        </div>
+                    </div>
+
+                    <table class="print-table">
+                        <thead>
+                            <tr>
+                                <th class="col-num">Nº</th>
+                                <th class="col-ra">RA</th>
+                                <th class="col-aluno">Estudante</th>
+                                <th class="col-turma">Turma</th>
+                                <th class="col-signature">Assinatura Inicial</th>
+                                <th class="col-signature">Assinatura Final</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            const rowCount = Math.max(30, deferidos.length);
+            for (let i = 0; i < rowCount; i++) {
+                const r = deferidos[i];
+                html += `
+                    <tr>
+                        <td class="col-num text-center">${r ? (i + 1) : ''}</td>
+                        <td class="col-ra text-center">${r ? r.ra : ''}</td>
+                        <td class="col-aluno" title="${r ? r.aluno.nome_completo : ''}">${r ? r.aluno.nome_completo : ''}</td>
+                        <td class="col-turma text-center">${r ? r.aluno.turmas.nome : ''}</td>
+                        <td class="col-signature"></td>
+                        <td class="col-signature"></td>
+                    </tr>
+                `;
+            }
+
+            html += `
+                        </tbody>
+                    </table>
+
+                    <div class="print-footer">
+                        <div class="signature-line text-center">Assinatura do Aplicador</div>
+                        <div class="signature-line text-center">Coordenação Pedagógica</div>
+                    </div>
+                </div>
+            `;
+
+            printArea.innerHTML = html;
+
+            setTimeout(() => {
+                window.print();
+            }, 500);
+        }
+
+        function closeExamDetailModal() { document.getElementById('examDetailModal').classList.add('hidden'); currentExamOpen = null; }
+
         async function updateExamStatus(reqId, examIndex, newStatus) {
             const req = allRequests.find(r => r.id === reqId);
             const provas = [...req.provas_solicitadas];
@@ -626,7 +865,6 @@
             const { data } = await query; calendarData = data || []; 
         }
 
-        // --- MODALS BASE ---
         function openEditModal(request) {
             selectedRequest = request;
             document.getElementById('editRA').value = request.aluno_ra;
@@ -650,14 +888,14 @@
         }
 
         async function deleteRequest() {
-            if(!confirm("Excluir permanentemente?")) return;
+            if(!confirm("Excluir requerimento permanentemente?")) return;
             await window.supabaseClient.from('justificativas_ausencia').delete().eq('id', selectedRequest.id);
             closeEditModal(); await loadRequests();
         }
 
         function openCalendarModal() { document.getElementById('calendarModal').classList.remove('hidden'); renderCalendar(); }
         function closeCalendarModal() { document.getElementById('calendarModal').classList.add('hidden'); }
-        function openPhotoZoom(src) { document.getElementById('zoomedImage').src = src; document.getElementById('zoomedName').innerText = document.getElementById('detName').innerText; document.getElementById('photoZoomModal').classList.remove('hidden'); }
+        function openPhotoZoom(src, name) { document.getElementById('zoomedImage').src = src; document.getElementById('zoomedName').innerText = name || "Aluno"; document.getElementById('photoZoomModal').classList.remove('hidden'); }
         function closePhotoZoom() { document.getElementById('photoZoomModal').classList.add('hidden'); }
 
         function updateCalEtapa() {
@@ -667,7 +905,7 @@
             if(matriz === 'Fundamental') etapa.innerHTML = `<option value="1_BIMESTRE">1º Bimestre</option><option value="2_BIMESTRE">2º Bimestre</option><option value="3_BIMESTRE">3º Bimestre</option><option value="4_BIMESTRE">4º Bimestre</option>`;
             else etapa.innerHTML = `<option value="1_TRIMESTRE">1º Trimestre</option><option value="2_TRIMESTRE">2º Trimestre</option><option value="3_TRIMESTRE">3º Trimestre</option>`;
             let options = matriz === 'Fundamental' ? ['5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano'] : ['1ª Série', '2ª Série', '3ª Série'];
-            seriesContainer.innerHTML = options.map(s => `<label class="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl cursor-pointer hover:bg-slate-50 transition-all group text-left"><input type="checkbox" name="serie_checkbox" value="${s}" class="w-4 h-4 rounded border-slate-300 text-fmm-blue focus:ring-fmm-blue"><span class="text-[11px] font-bold text-slate-500 uppercase group-hover:text-fmm-dark">${s}</span></label>`).join('');
+            seriesContainer.innerHTML = options.map(s => `<label class="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl cursor-pointer hover:bg-slate-50 transition-all group text-left"><input type="checkbox" name="serie_checkbox" value="${s}" class="w-4 h-4 rounded border-slate-300 text-fmm-blue focus:ring-fmm-blue"><span class="text-[11px] font-bold text-slate-500 uppercase group-hover:text-fmm-dark text-left">${s}</span></label>`).join('');
         }
 
         async function addExamRef() {
@@ -678,7 +916,7 @@
             await loadRequests(); renderCalendar();
         }
 
-        async function deleteCal(id) { if(confirm("Remover?")) { await window.supabaseClient.from('calendario_referencia_provas').delete().eq('id', id); await loadRequests(); renderCalendar(); } }
+        async function deleteCal(id) { if(confirm("Remover do calendário?")) { await window.supabaseClient.from('calendario_referencia_provas').delete().eq('id', id); await loadRequests(); renderCalendar(); } }
 
         function renderCalendar() {
             const body = document.getElementById('calTableBody');
@@ -687,11 +925,11 @@
             body.innerHTML = filtered.map(c => `
                 <tr class="hover:bg-slate-50 transition-colors text-left text-xs font-bold text-slate-600">
                     <td class="p-4 text-center">${new Date(c.data_prova + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
-                    <td class="p-4 uppercase text-fmm-blue">${c.disciplinas?.nome || c.sigla_disciplina}</td>
-                    <td class="p-4 uppercase"><span class="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 tracking-widest">${c.matriz}</span><p class="mt-1 text-slate-400 uppercase text-[9px] tracking-tight">${c.periodo_ref.replace('_', ' ')}</p></td>
-                    <td class="p-4 text-left"><div class="flex flex-wrap gap-1">${(c.series || []).map(s => `<span class="serie-tag">${s}</span>`).join('')}</div></td>
+                    <td class="p-4 uppercase text-fmm-blue text-left">${c.disciplinas?.nome || c.sigla_disciplina}</td>
+                    <td class="p-4 uppercase text-left"><span class="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 tracking-widest">${c.matriz}</span><p class="mt-1 text-slate-400 uppercase text-[9px] tracking-tight text-left">${c.periodo_ref.replace('_', ' ')}</p></td>
+                    <td class="p-4 text-left"><div class="flex flex-wrap gap-1 text-left">${(c.series || []).map(s => `<span class="serie-tag">${s}</span>`).join('')}</div></td>
                     <td class="p-4 text-center"><span class="bg-fmm-blue text-white px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest shadow-sm">${c.tipo_prova}</span></td>
-                    <td class="p-4 text-right"><button onclick="deleteCal('${c.id}')" class="text-slate-200 hover:text-red-500 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td>
+                    <td class="p-4 text-right"><button onclick="deleteCal('${c.id}')" class="text-slate-200 hover:text-red-500 p-2 text-right"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td>
                 </tr>`).join('');
             lucide.createIcons();
         }
