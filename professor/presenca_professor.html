@@ -39,19 +39,19 @@
         
         .sticky-intersect { 
             position: sticky; top: 0; left: 0; z-index: 50; 
-            background: #f8fafc; border-bottom: 2px solid #e2e8f0; border-right: 2px solid #cbd5e1;
+            background: #f8fafc; border-bottom: 2px solid #cbd5e1; border-right: 2px solid #cbd5e1;
         }
 
         .sticky-header-row th { position: sticky; top: 0; z-index: 40; background: #f8fafc; }
         
         .header-day { 
             min-width: 45px; width: 45px; text-align: center; font-size: 10px; 
-            font-weight: 800; color: #64748b; border-bottom: 2px solid #e2e8f0;
+            font-weight: 800; color: #64748b; border-bottom: 2px solid #cbd5e1;
             padding: 10px 0; background: #f8fafc; border-right: 1px solid #e2e8f0;
         }
 
         .sticky-col { 
-            position: sticky; left: 0; z-index: 30; background: white; 
+            position: sticky; left: 0; z-index: 30; 
             border-right: 2px solid #cbd5e1; box-shadow: 4px 0 8px -4px rgba(0,0,0,0.05);
             transition: background 0.2s;
         }
@@ -65,13 +65,23 @@
             margin: 4px auto;
         }
         
-        .status-p { background: #f1f5f9; color: #94a3b8; } /* Presente (.) */
+        .status-p { background: #e2e8f0; color: #64748b; } /* Presente (.) */
         .status-f { background: #fee2e2; color: #ef4444; border-color: #fecaca; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.1); } /* Falta (F) */
         .status-missing { background: #fff1f2; color: #fb7185; border: 1px dashed #fecaca; } /* Sem registro (!) */
         .status-transf { background: #f8fafc; color: #cbd5e1; font-size: 8px; border: 1px solid #f1f5f9; cursor: default; } /* Transferido (TR) */
         
         .att-cell:not(.status-transf):hover { transform: scale(1.1); z-index: 10; border-color: #00638f; }
         .att-cell:not(.status-transf):active { transform: scale(0.95); }
+
+        /* TASK: Zebra Striping e Nítidez de Linhas */
+        .row-even td { background-color: #ffffff; }
+        .row-odd td { background-color: #f8fafc; }
+        .row-even .sticky-col { background-color: #ffffff; }
+        .row-odd .sticky-col { background-color: #f8fafc; }
+        
+        /* Destaque ao passar o mouse na linha inteira */
+        .attendance-table tr:hover td { background-color: #f0f9ff !important; }
+        .attendance-table tr:hover .sticky-col { background-color: #f0f9ff !important; }
 
         .top-bar-select { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; color: #003c5b; outline: none; transition: all 0.2s; }
 
@@ -176,8 +186,8 @@
     <script>
         let currentUser = null;
         let globalMatriculas = [];
-        let expectedGrid = []; // Array de { data, slot, rank }
-        let presenceData = {}; // Chave: ra|data|T-slot OU ra|data|R-rank
+        let expectedGrid = []; 
+        let presenceData = {}; 
         let currentYear = 2026;
         let globalGrade = [];
 
@@ -194,7 +204,6 @@
 
         async function populateSelectors() {
             const selectT = document.getElementById('selectTurma');
-            // TASK: Join com a tabela disciplinas para obter o nome completo
             const { data: grade } = await window.supabaseClient.from('grade_horaria')
                 .select('id_turma, sigla_disciplina, turmas(*), disciplinas(nome)')
                 .eq('id_professor', currentUser.id);
@@ -210,7 +219,6 @@
             const turmaId = document.getElementById('selectTurma').value;
             const selectD = document.getElementById('selectDisc');
             
-            // TASK: Mapeamento de disciplinas únicas usando o nome completo obtido no join
             const filteredGrade = globalGrade.filter(g => g.id_turma === turmaId);
             const discMap = new Map();
             
@@ -218,12 +226,10 @@
                 if (g.disciplinas) {
                     discMap.set(g.sigla_disciplina, g.disciplinas.nome);
                 } else {
-                    // Fallback para a sigla caso o nome não esteja disponível
                     discMap.set(g.sigla_disciplina, g.sigla_disciplina);
                 }
             });
 
-            // Ordena alfabeticamente pelo nome completo
             const options = Array.from(discMap.entries()).sort((a, b) => a[1].localeCompare(b[1])).map(([sigla, nome]) => 
                 `<option value="${sigla}">${nome.toUpperCase()}</option>`
             ).join('');
@@ -232,7 +238,6 @@
             handleContextChange();
         }
 
-        // TASK: Busca exaustiva paginada para superar limite de 1000 registros
         async function fetchFrequenciesPaginated(turmaId, disc, startDate, endDate) {
             let allFreq = [];
             let from = 0;
@@ -274,7 +279,7 @@
 
             document.getElementById('empty-view').classList.add('hidden');
             document.getElementById('loading-overlay').classList.remove('hidden');
-            document.getElementById('loading-text').innerText = "Sincronizando grade mensal...";
+            document.getElementById('table-wrapper').classList.add('hidden');
 
             try {
                 const startDate = new Date(currentYear, month, 1).toISOString().split('T')[0];
@@ -285,7 +290,6 @@
                     window.supabaseClient.from('calendario_letivo').select('data').eq('tipo', 'letivo').gte('data', startDate).lte('data', endDate)
                 ]);
 
-                // Normalização de nomes de dias (SEG, Segunda, Segunda-feira)
                 const daysMap = { 'SEG': 1, 'TER': 2, 'QUA': 3, 'QUI': 4, 'SEX': 5, 'SEGUNDA': 1, 'TERÇA': 2, 'QUARTA': 3, 'QUINTA': 4, 'SEXTA': 5 };
                 
                 expectedGrid = [];
@@ -301,7 +305,6 @@
                     });
                 });
 
-                // Carrega todos os alunos para integridade histórica
                 const { data: matriculas } = await window.supabaseClient.from('matriculas')
                     .select('ra_aluno, status, alunos!inner(nome_completo, status, data_transferencia)')
                     .eq('id_turma', turmaId)
@@ -313,7 +316,6 @@
 
                 presenceData = {};
                 freq.forEach(f => {
-                    // Mapeamento Híbrido (Garante que dados antigos [rank] e novos [slot] apareçam)
                     if (f.slot_oficial) {
                         presenceData[`${f.ra_aluno}|${f.data_presenca}|S-${f.slot_oficial}`] = f.presente;
                     } else {
@@ -343,11 +345,15 @@
             });
             header.innerHTML = hHTML + '</tr>';
 
-            body.innerHTML = globalMatriculas.map(m => {
+            body.innerHTML = globalMatriculas.map((m, index) => {
                 const isTransf = (m.alunos?.status || m.status) === 'Transferido';
                 const dataSaida = m.alunos?.data_transferencia ? new Date(m.alunos.data_transferencia + 'T00:00:00') : null;
+                const rowClass = index % 2 === 0 ? 'row-even' : 'row-odd';
 
-                let row = `<tr class="border-b border-slate-50 text-left"><td class="sticky-col px-6 py-3 bg-white font-bold text-fmm-dark text-[11px] uppercase truncate text-left">${m.alunos.nome_completo} ${isTransf ? '<span class="text-red-500 text-[8px]">(TR)</span>' : ''}</td>`;
+                let row = `<tr class="${rowClass} border-b border-slate-200 text-left">
+                    <td class="sticky-col px-6 py-3 font-bold text-fmm-dark text-[11px] uppercase truncate text-left border-r border-slate-200">
+                        ${m.alunos.nome_completo} ${isTransf ? '<span class="text-red-500 text-[8px]">(TR)</span>' : ''}
+                    </td>`;
                 
                 expectedGrid.forEach(aula => {
                     const dataAula = new Date(aula.data + 'T00:00:00');
@@ -362,11 +368,11 @@
                     if (dataSaida && dataAula > dataSaida) {
                         cellClass = 'status-transf';
                         content = 'TR';
-                        row += `<td class="border-r border-slate-50"><div class="att-cell ${cellClass}">${content}</div></td>`;
+                        row += `<td class="border-r border-slate-200"><div class="att-cell ${cellClass}">${content}</div></td>`;
                     } else {
                         if (status === true) { cellClass = 'status-p'; content = '.'; }
                         else if (status === false) { cellClass = 'status-f'; content = 'F'; }
-                        row += `<td class="border-r border-slate-50"><div onclick="toggleCell('${m.ra_aluno}', '${aula.data}', ${aula.slot}, ${aula.rank})" class="att-cell ${cellClass}">${content}</div></td>`;
+                        row += `<td class="border-r border-slate-200"><div onclick="toggleCell('${m.ra_aluno}', '${aula.data}', ${aula.slot}, ${aula.rank})" class="att-cell ${cellClass}">${content}</div></td>`;
                     }
                 });
                 return row + '</tr>';

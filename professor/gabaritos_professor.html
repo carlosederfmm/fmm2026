@@ -168,12 +168,14 @@
         const RULES = {
             'Básica': {
                 'P1': { Regular: { q: 20, p: 0.4 }, Adaptada: { q: 15, p: 0.5 } },
-                'REC': { Regular: { q: 20, p: 0.4 }, Adaptada: { q: 15, p: 0.5 } },
-                'P2': { Regular: { q: 25, p: 0.4 }, Adaptada: { q: 20, p: 0.5 } }
+                'RC': { Regular: { q: 20, p: 0.4 }, Adaptada: { q: 15, p: 0.5 } },
+                'P2': { Regular: { q: 25, p: 0.4 }, Adaptada: { q: 20, p: 0.5 } },
+                '2ª CHAMADA': { Regular: { q: 20, p: 0.4 }, Adaptada: { q: 15, p: 0.5 } }
             },
             'Técnica': {
                 'P1': { Regular: { q: 20, p: 0.5 }, Adaptada: { q: 15, p: 0.6667 } },
-                'REC': { Regular: { q: 10, p: 1.0 }, Adaptada: { q: 5, p: 2.0 } }
+                'RC': { Regular: { q: 10, p: 1.0 }, Adaptada: { q: 5, p: 2.0 } },
+                '2ª CHAMADA': { Regular: { q: 20, p: 0.5 }, Adaptada: { q: 15, p: 0.6667 } }
             },
             'Fundamental': {
                 'Lower': { // 5º, 6º, 7º
@@ -257,9 +259,19 @@
             } catch (err) { console.error(err); } finally { loading.classList.add('hidden'); }
         }
 
+        // TASK: Correção de BUG e Defensividade
         function getExamRules(matriz, serie, tipo, modalidade) {
-            if (matriz === 'Básica') return RULES['Básica'][tipo][modalidade];
-            if (matriz === 'Técnica') return RULES['Técnica'][tipo] ? RULES['Técnica'][tipo][modalidade] : null;
+            // Normalização de tipo para evitar erros com REC/RC
+            const normalizedTipo = tipo === 'REC' ? 'RC' : tipo;
+            
+            if (matriz === 'Básica') {
+                const ruleSet = RULES['Básica'][normalizedTipo] || RULES['Básica']['P1'];
+                return ruleSet ? ruleSet[modalidade] : null;
+            }
+            if (matriz === 'Técnica') {
+                const ruleSet = RULES['Técnica'][normalizedTipo] || RULES['Técnica']['P1'];
+                return ruleSet ? ruleSet[modalidade] : null;
+            }
             if (matriz === 'Fundamental') {
                 const group = ['5º Ano', '6º Ano', '7º Ano'].includes(serie) ? 'Lower' : 'Upper';
                 return RULES['Fundamental'][group].all[modalidade];
@@ -271,8 +283,9 @@
             const v = myAssignments.find(a => a.id === assignmentId);
             const cal = v.calendario_referencia_provas;
             
+            // TASK: Implementação de proteção contra undefined
             const rule = getExamRules(cal.matriz, v.serie, cal.tipo_prova, modalidade);
-            if (!rule) return alert("Regra de prova não configurada para este segmento.");
+            if (!rule) return alert("Regra de prova não configurada para este segmento ou tipo de prova.");
 
             currentFormConfig = { assignment: v, modalidade, rule };
             selectedAnswers = {};
@@ -310,10 +323,12 @@
         function selectAnswer(qNum, letter) {
             // Desmarcar anteriores da mesma questão
             ['A', 'B', 'C', 'D', 'E'].forEach(l => {
-                document.getElementById(`q${qNum}-${l}`).classList.remove('selected');
+                const el = document.getElementById(`q${qNum}-${l}`);
+                if (el) el.classList.remove('selected');
             });
             // Marcar nova
-            document.getElementById(`q${qNum}-${letter}`).classList.add('selected');
+            const target = document.getElementById(`q${qNum}-${letter}`);
+            if (target) target.classList.add('selected');
             selectedAnswers[qNum] = letter;
             updateCompletion();
         }
