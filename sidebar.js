@@ -1,3 +1,6 @@
+/**
+ * Componente de Sidebar Reutilizável SME FMM 2026 - Versão 4.9 (Interface Limpa Secretaria)
+ */
 const SidebarComponent = {
     styles: `
         .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -26,7 +29,7 @@ const SidebarComponent = {
         .nav-item.active { color: #00638f; }
         .nav-item i, .nav-item svg { width: 20px; height: 20px; }
 
-        .category-content { overflow: hidden; transition: max-height 0.3s ease-out; background: rgba(0,0,0,0.05); }
+        .category-content { overflow: hidden; transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.05); }
         .category-content.open { max-height: 1000px; }
         .sidebar-item-active { background-color: rgba(255, 255, 255, 0.08); border-right: 4px solid #c8d400; color: #ffffff !important; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
@@ -46,6 +49,12 @@ const SidebarComponent = {
             { label: 'Sanções', icon: 'shield-alert', link: 'coordenador/disciplina/sancoes_coordenador.html' },
             { label: 'Geral', icon: 'grid', link: 'coordenador/resultados/mapa_coordenador.html' }
         ],
+        'secretaria': [
+            { label: 'Início', icon: 'home', link: 'secretaria/dashboard_secretaria.html' },
+            { label: 'E-mails', icon: 'mail', link: 'secretaria/emails_secretaria.html' },
+            { label: 'Atrasos', icon: 'clock', link: 'coordenador/disciplina/atrasos_coordenador.html' },
+            { label: 'Saídas', icon: 'log-out', link: 'coordenador/disciplina/saidas_coordenador.html' }
+        ],
         'professor': [
             { label: 'Início', icon: 'home', link: 'professor/dashboard_professor.html' },
             { label: 'Chamada', icon: 'calendar-check', link: 'professor/presenca_professor.html' },
@@ -55,6 +64,14 @@ const SidebarComponent = {
     },
 
     menuItems: {
+        // TASK: Lista Limpa e Profissional para Secretaria
+        secretaria_exclusivo: [
+            { label: 'Dashboard', icon: 'pie-chart', link: 'secretaria/dashboard_secretaria.html', roles: ['secretaria'] },
+            { label: 'E-mails', icon: 'mail', link: 'secretaria/emails_secretaria.html', roles: ['secretaria'] },
+            { label: 'Atrasos', icon: 'clock', link: 'coordenador/disciplina/atrasos_coordenador.html', roles: ['secretaria'] },
+            { label: 'Saídas', icon: 'log-out', link: 'coordenador/disciplina/saidas_coordenador.html', roles: ['secretaria'] },
+            { label: 'Meu Perfil', icon: 'user-circle', link: 'coordenador/operacional/perfil_coordenador.html', roles: ['secretaria'] }
+        ],
         operacional: [
             { label: 'Dashboard', icon: 'pie-chart', link: 'coordenador/operacional/dashboard_coordenador.html', roles: ['coordenador', 'diretor'] },
             { label: 'Tarefas (Scrum)', icon: 'check-square', link: 'coordenador/operacional/tarefas_coordenador.html', roles: ['coordenador', 'diretor'] },
@@ -75,8 +92,8 @@ const SidebarComponent = {
         disciplina: [
             { label: 'Sanções', icon: 'shield-alert', link: 'coordenador/disciplina/sancoes_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Fila de Chamados', icon: 'bell-plus', link: 'coordenador/disciplina/chamados_coordenador.html', roles: ['diretor', 'coordenador'] },
-            { label: 'Atrasos', icon: 'clock', link: 'coordenador/disciplina/atrasos_coordenador.html', roles: ['diretor', 'coordenador', 'secretaria'] },
-            { label: 'Saídas Antecipadas', icon: 'log-out', link: 'coordenador/disciplina/saidas_coordenador.html', roles: ['diretor', 'coordenador', 'secretaria'] },
+            { label: 'Atrasos', icon: 'clock', link: 'coordenador/disciplina/atrasos_coordenador.html', roles: ['diretor', 'coordenador'] },
+            { label: 'Saídas Antecipadas', icon: 'log-out', link: 'coordenador/disciplina/saidas_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Atendimentos', icon: 'message-square', link: 'coordenador/disciplina/atendimentos_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Orientação', icon: 'heart-handshake', link: 'coordenador/disciplina/orientacao_coordenador.html', roles: ['diretor', 'coordenador'] }
         ],
@@ -103,13 +120,9 @@ const SidebarComponent = {
 
     getRelativePrefix: function() {
         const path = window.location.pathname;
-        // Se estiver em uma subpasta do coordenador (2 níveis abaixo da raiz)
-        if (path.includes('/operacional/') || path.includes('/provas/') || path.includes('/secretaria/') || 
-            path.includes('/disciplina/') || path.includes('/resultados/') || path.includes('/sistema/')) {
-            return '../../';
-        }
-        // Se estiver em uma pasta de papel (1 nível abaixo da raiz)
-        if (path.includes('/professor/') || path.includes('/orientador/') || path.includes('/inspetor/') || path.includes('/secretaria/')) {
+        if (path.includes('/coordenador/')) return '../../';
+        if (path.includes('/professor/') || path.includes('/orientador/') || 
+            path.includes('/inspetor/') || (path.includes('/secretaria/') && !path.includes('/coordenador/'))) {
             return '../';
         }
         return './';
@@ -156,6 +169,8 @@ const SidebarComponent = {
 
         if (userRole === 'professor') {
             navHTML += this.buildSimpleCategory('Portal do Docente', this.filterItemsByRole(this.menuItems.docente, userRole), activePage, prefix);
+        } else if (userRole === 'secretaria') {
+            navHTML += this.buildSimpleCategory('Acessos Secretaria', this.filterItemsByRole(this.menuItems.secretaria_exclusivo, userRole), activePage, prefix);
         } else if (['coordenador', 'diretor'].includes(userRole)) {
             navHTML += this.buildAccordion('Operacional', 'cat-oper', 'layout', this.filterItemsByRole(this.menuItems.operacional, userRole), activePage, prefix);
             navHTML += this.buildAccordion('Provas', 'cat-exam', 'clipboard-list', this.filterItemsByRole(this.menuItems.provas, userRole), activePage, prefix);
@@ -205,7 +220,10 @@ const SidebarComponent = {
     buildLink: function(item, activePage, prefix) {
         const isActive = activePage && item.link && item.link.includes(activePage);
         const activeClass = isActive ? 'sidebar-item-active text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-white/5';
-        return `<a href="${prefix}${item.link || '#'}" class="sidebar-item flex items-center px-8 py-3 text-[13px] ${activeClass} transition-all relative"><i data-lucide="${item.icon}" class="w-4 h-4 flex-shrink-0 ${isActive ? 'text-[#c8d400]' : ''}"></i><span class="sidebar-text ml-3">${item.label}</span></a>`;
+        return `<a href="${prefix}${item.link || '#'}" class="sidebar-item flex items-center px-8 py-3 text-[13px] ${activeClass} transition-all relative text-left">
+            <i data-lucide="${item.icon}" class="w-4 h-4 flex-shrink-0 ${isActive ? 'text-[#c8d400]' : ''}"></i>
+            <span class="sidebar-text ml-3 text-left">${item.label}</span>
+        </a>`;
     },
 
     buildAccordion: function(title, id, iconName, items, activePage, prefix) {
