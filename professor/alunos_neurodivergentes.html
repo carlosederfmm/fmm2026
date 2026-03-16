@@ -102,6 +102,14 @@
                     <input type="text" id="searchInput" onkeyup="filterResults()" placeholder="Nome ou RA..." 
                            class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
                 </div>
+                
+                <!-- Novo Filtro por Etapa -->
+                <select id="filterEtapa" onchange="filterResults()" class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-fmm-blue cursor-pointer">
+                    <option value="all">Todas as Etapas</option>
+                    <option value="Médio">Médio</option>
+                    <option value="Fundamental">Fundamental</option>
+                </select>
+
                 <select id="filterTurma" onchange="filterResults()" class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-fmm-blue cursor-pointer">
                     <option value="all">Todas as Turmas</option>
                 </select>
@@ -165,7 +173,6 @@
         let allNeuroStudents = [];
         let todasTurmas = [];
 
-        // TASK: Estabilidade de Imagem - Utilizando endpoint de thumbnail para evitar erro 500
         function formatDriveUrl(url) {
             if (!url || typeof url !== 'string') return null;
             if (url.includes('drive.google.com')) {
@@ -187,19 +194,17 @@
             loading.classList.remove('hidden');
 
             try {
-                // TASK: Filtro Crítico de Status 'Cursando' para foco pedagógico imediato
                 const { data: alunos, error: errorAlunos } = await window.supabaseClient
                     .from('alunos')
-                    .select('ra, nome_completo, url_foto, laudo, status, turmas(id, nome, serie)')
+                    .select('ra, nome_completo, url_foto, laudo, status, turmas(id, nome, serie, nivel)')
                     .not('laudo', 'is', null)
                     .neq('laudo', '')
-                    .ilike('status', 'Cursando') // Sincronizado com padrão de banco
+                    .ilike('status', 'Cursando') 
                     .order('nome_completo');
 
                 if (errorAlunos) throw errorAlunos;
                 allNeuroStudents = alunos || [];
 
-                // Carrega turmas para o filtro
                 const { data: turmas, error: errorTurmas } = await window.supabaseClient
                     .from('turmas')
                     .select('id, nome')
@@ -246,7 +251,6 @@
                 const tr = document.createElement('tr');
                 tr.className = 'tr-hover border-b border-slate-50 last:border-0';
                 
-                const initials = s.nome_completo.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
                 const urlFoto = formatDriveUrl(s.url_foto);
                 const avatarImg = urlFoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=003c5b&color=fff`;
 
@@ -287,11 +291,21 @@
         function filterResults() {
             const search = document.getElementById('searchInput').value.toLowerCase();
             const turma = document.getElementById('filterTurma').value;
+            const etapa = document.getElementById('filterEtapa').value;
 
             const filtered = allNeuroStudents.filter(s => {
                 const matchText = s.nome_completo.toLowerCase().includes(search) || s.ra.toString().includes(search);
                 const matchTurma = turma === 'all' || s.turmas?.nome === turma;
-                return matchText && matchTurma;
+                
+                // TASK: Implementação do Filtro por Etapa
+                let matchEtapa = true;
+                if (etapa === 'Médio') {
+                    matchEtapa = s.turmas?.nivel?.startsWith('EMT');
+                } else if (etapa === 'Fundamental') {
+                    matchEtapa = s.turmas?.nivel?.startsWith('EF');
+                }
+
+                return matchText && matchTurma && matchEtapa;
             });
 
             renderTable(filtered);

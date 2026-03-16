@@ -1,7 +1,8 @@
 /**
- * Componente de Sidebar Reutilizável SME FMM 2026 - Versão 5.1 (Correção Hub Mobile)
+ * Componente de Sidebar Reutilizável SME FMM 2026 - Versão 5.5 (Gestão de Neurodivergentes)
  */
 const SidebarComponent = {
+    // ... (estilos permanecem iguais)
     styles: `
         .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         @media (max-width: 767px) {
@@ -35,7 +36,6 @@ const SidebarComponent = {
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 
-        /* Estilos do Hub Mobile */
         #mobile-menu-hub {
             position: fixed; inset: 0; background: rgba(0, 60, 91, 0.95);
             backdrop-filter: blur(10px); z-index: 200; display: none;
@@ -69,6 +69,12 @@ const SidebarComponent = {
             { label: 'Sanções', icon: 'shield-alert', link: 'inspetor/sancoes_inspetor.html' },
             { label: 'Meu Perfil', icon: 'user-circle', link: 'inspetor/perfil_inspetor.html' }
         ],
+        'orientador': [
+            { label: 'Início', icon: 'home', link: 'orientador/dashboard_orientador.html' },
+            { label: 'Neuro', icon: 'brain', link: 'orientador/neurodivergentes.html' },
+            { label: 'Sanções', icon: 'shield-alert', link: 'orientador/sancoes_orientador.html' },
+            { label: 'Prontuário', icon: 'clipboard-list', link: 'orientador/atendimento_orientador.html' }
+        ],
         'professor': [
             { label: 'Início', icon: 'home', link: 'professor/dashboard_professor.html' },
             { label: 'Chamada', icon: 'calendar-check', link: 'professor/presenca_professor.html' },
@@ -78,6 +84,17 @@ const SidebarComponent = {
     },
 
     menuItems: {
+        orientador_principal: [
+            { label: 'Dashboard', icon: 'pie-chart', link: 'orientador/dashboard_orientador.html', roles: ['orientador'] },
+            { label: 'Meu Perfil', icon: 'user-circle', link: 'coordenador/operacional/perfil_coordenador.html', roles: ['orientador'] }
+        ],
+        orientador_pedagogico: [
+            { label: 'Laudos Neuro', icon: 'brain', link: 'orientador/neurodivergentes.html', roles: ['orientador'] },
+            { label: 'Sanções', icon: 'shield-alert', link: 'orientador/sancoes_orientador.html', roles: ['orientador'] },
+            { label: 'Prontuários', icon: 'clipboard-list', link: 'orientador/atendimento_orientador.html', roles: ['orientador'] },
+            { label: 'Fila de Chamados', icon: 'bell', link: 'orientador/chamados_orientador.html', roles: ['orientador'] }
+        ],
+        // ... (resto do menuItems permanece igual)
         inspetor_exclusivo: [
             { label: 'Dashboard', icon: 'pie-chart', link: 'inspetor/dashboard_inspetor.html', roles: ['inspetor'] },
             { label: 'Sanções', icon: 'shield-alert', link: 'inspetor/sancoes_inspetor.html', roles: ['inspetor'] },
@@ -102,7 +119,7 @@ const SidebarComponent = {
             { label: 'Listas de Assinatura', icon: 'printer', link: 'coordenador/provas/listas_coordenador.html', roles: ['coordenador', 'diretor'] }
         ],
         secretaria: [
-            { label: 'Ficha de Alunos', icon: 'users-2', link: 'coordenador/secretaria/alunos_coordenador.html', roles: ['diretor', 'coordenador'] },
+            { label: 'Ficha de Alunos', icon: 'users-2', link: 'coordenador/secretaria/alunos_coordenador.html', roles: ['diretor', 'coordenador', 'orientador'] },
             { label: 'Enturmação', icon: 'user-plus', link: 'coordenador/secretaria/enturmacao_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Turmas', icon: 'library', link: 'coordenador/secretaria/turmas_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Professores', icon: 'graduation-cap', link: 'coordenador/secretaria/professor_coordenador.html', roles: ['diretor', 'coordenador'] }
@@ -110,14 +127,14 @@ const SidebarComponent = {
         disciplina: [
             { label: 'Sanções', icon: 'shield-alert', link: 'coordenador/disciplina/sancoes_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Fila de Chamados', icon: 'bell-plus', link: 'coordenador/disciplina/chamados_coordenador.html', roles: ['diretor', 'coordenador'] },
-            { label: 'Atrasos', icon: 'clock', link: 'coordenador/disciplina/atrasos_coordenador.html', roles: ['diretor', 'coordenador'] },
-            { label: 'Saídas Antecipadas', icon: 'log-out', link: 'coordenador/disciplina/saidas_coordenador.html', roles: ['diretor', 'coordenador'] },
+            { label: 'Atrasos', icon: 'clock', link: 'coordenador/disciplina/atrasos_coordenador.html', roles: ['diretor', 'coordenador', 'secretaria'] },
+            { label: 'Saídas Antecipadas', icon: 'log-out', link: 'coordenador/disciplina/saidas_coordenador.html', roles: ['diretor', 'coordenador', 'secretaria'] },
             { label: 'Atendimentos', icon: 'message-square', link: 'coordenador/disciplina/atendimentos_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Orientação', icon: 'heart-handshake', link: 'coordenador/disciplina/orientacao_coordenador.html', roles: ['diretor', 'coordenador'] }
         ],
         resultados: [
             { label: 'Mapa de Notas', icon: 'grid', link: 'coordenador/resultados/mapa_coordenador.html', roles: ['diretor', 'coordenador'] },
-            { label: 'Boletim Individual', icon: 'user', link: 'coordenador/resultados/boletim_coordenador.html', roles: ['diretor', 'coordenador'] }
+            { label: 'Boletim Individual', icon: 'user', link: 'coordenador/resultados/boletim_coordenador.html', roles: ['diretor', 'coordenador', 'orientador'] }
         ],
         sistema: [
             { label: 'Grade Horária', icon: 'calendar-range', link: 'coordenador/sistema/grade_coordenador.html', roles: ['diretor', 'coordenador'] },
@@ -196,6 +213,10 @@ const SidebarComponent = {
             navHTML += this.buildSimpleCategory('Acessos Secretaria', this.filterItemsByRole(this.menuItems.secretaria_exclusivo, userRole), activePage, prefix);
         } else if (userRole === 'inspetor') {
             navHTML += this.buildSimpleCategory('Acessos Inspetoria', this.filterItemsByRole(this.menuItems.inspetor_exclusivo, userRole), activePage, prefix);
+        } else if (userRole === 'orientador') {
+            navHTML += this.buildSimpleCategory('Principal', this.filterItemsByRole(this.menuItems.orientador_principal, userRole), activePage, prefix);
+            navHTML += this.buildSimpleCategory('Pedagógico', this.filterItemsByRole(this.menuItems.orientador_pedagogico, userRole), activePage, prefix);
+            navHTML += this.buildAccordion('Consulta Acadêmica', 'cat-consult', 'search', this.filterItemsByRole(this.menuItems.secretaria, userRole).concat(this.filterItemsByRole(this.menuItems.resultados, userRole)), activePage, prefix);
         } else if (['coordenador', 'diretor'].includes(userRole)) {
             navHTML += this.buildAccordion('Operacional', 'cat-oper', 'layout', this.filterItemsByRole(this.menuItems.operacional, userRole), activePage, prefix);
             navHTML += this.buildAccordion('Provas', 'cat-exam', 'clipboard-list', this.filterItemsByRole(this.menuItems.provas, userRole), activePage, prefix);
@@ -215,7 +236,7 @@ const SidebarComponent = {
                 </div>
                 <nav class="flex-1 overflow-y-auto py-4 custom-scrollbar">${navHTML}</nav>
                 <div class="p-4 border-t border-white/5">
-                    <button onclick="SidebarComponent.logout()" class="sidebar-item w-full flex items-center px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 rounded-xl transition-all">
+                    <button onclick="SidebarComponent.logout()" class="sidebar-item w-full flex items-center px-4 py-3 text-sm text-red-400 hover:bg-red-50/10 rounded-xl transition-all">
                         <i data-lucide="log-out" class="w-5 h-5 flex-shrink-0"></i>
                         <span class="sidebar-text ml-3 font-bold">Encerrar Sessão</span>
                     </button>
@@ -235,7 +256,6 @@ const SidebarComponent = {
         if (existingNav) existingNav.remove();
         document.body.appendChild(bottomNav);
 
-        // Renderização do Hub Mobile
         let hub = document.getElementById('mobile-menu-hub');
         if (!hub) {
             hub = document.createElement('div');
@@ -247,7 +267,7 @@ const SidebarComponent = {
                 <img src="${prefix}assets/logo-fmm-white.png" class="h-8">
                 <button onclick="SidebarComponent.toggleMobileHub()" class="p-2 bg-white/10 rounded-full text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
-            <div class="flex-1 overflow-y-auto space-y-2">
+            <div class="flex-1 overflow-y-auto space-y-2 text-left">
                 ${navHTML}
             </div>
             <div class="pt-6 border-t border-white/10 mt-6">
