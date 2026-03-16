@@ -1,5 +1,5 @@
 /**
- * Componente de Sidebar Reutilizável SME FMM 2026 - Versão 4.9 (Interface Limpa Secretaria)
+ * Componente de Sidebar Reutilizável SME FMM 2026 - Versão 5.1 (Correção Hub Mobile)
  */
 const SidebarComponent = {
     styles: `
@@ -29,11 +29,20 @@ const SidebarComponent = {
         .nav-item.active { color: #00638f; }
         .nav-item i, .nav-item svg { width: 20px; height: 20px; }
 
-        .category-content { overflow: hidden; transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.05); }
+        .category-content { overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.05); }
         .category-content.open { max-height: 1000px; }
         .sidebar-item-active { background-color: rgba(255, 255, 255, 0.08); border-right: 4px solid #c8d400; color: #ffffff !important; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+        /* Estilos do Hub Mobile */
+        #mobile-menu-hub {
+            position: fixed; inset: 0; background: rgba(0, 60, 91, 0.95);
+            backdrop-filter: blur(10px); z-index: 200; display: none;
+            flex-direction: column; padding: 2rem;
+        }
+        #mobile-menu-hub.active { display: flex; animation: fadeInHub 0.3s ease-out; }
+        @keyframes fadeInHub { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     `,
 
     bottomNavConfig: {
@@ -55,6 +64,11 @@ const SidebarComponent = {
             { label: 'Atrasos', icon: 'clock', link: 'coordenador/disciplina/atrasos_coordenador.html' },
             { label: 'Saídas', icon: 'log-out', link: 'coordenador/disciplina/saidas_coordenador.html' }
         ],
+        'inspetor': [
+            { label: 'Início', icon: 'home', link: 'inspetor/dashboard_inspetor.html' },
+            { label: 'Sanções', icon: 'shield-alert', link: 'inspetor/sancoes_inspetor.html' },
+            { label: 'Meu Perfil', icon: 'user-circle', link: 'inspetor/perfil_inspetor.html' }
+        ],
         'professor': [
             { label: 'Início', icon: 'home', link: 'professor/dashboard_professor.html' },
             { label: 'Chamada', icon: 'calendar-check', link: 'professor/presenca_professor.html' },
@@ -64,7 +78,11 @@ const SidebarComponent = {
     },
 
     menuItems: {
-        // TASK: Lista Limpa e Profissional para Secretaria
+        inspetor_exclusivo: [
+            { label: 'Dashboard', icon: 'pie-chart', link: 'inspetor/dashboard_inspetor.html', roles: ['inspetor'] },
+            { label: 'Sanções', icon: 'shield-alert', link: 'inspetor/sancoes_inspetor.html', roles: ['inspetor'] },
+            { label: 'Meu Perfil', icon: 'user-circle', link: 'inspetor/perfil_inspetor.html', roles: ['inspetor'] }
+        ],
         secretaria_exclusivo: [
             { label: 'Dashboard', icon: 'pie-chart', link: 'secretaria/dashboard_secretaria.html', roles: ['secretaria'] },
             { label: 'E-mails', icon: 'mail', link: 'secretaria/emails_secretaria.html', roles: ['secretaria'] },
@@ -121,8 +139,8 @@ const SidebarComponent = {
     getRelativePrefix: function() {
         const path = window.location.pathname;
         if (path.includes('/coordenador/')) return '../../';
-        if (path.includes('/professor/') || path.includes('/orientador/') || 
-            path.includes('/inspetor/') || (path.includes('/secretaria/') && !path.includes('/coordenador/'))) {
+        const paperFolders = ['/professor/', '/orientador/', '/inspetor/', '/secretaria/'];
+        if (paperFolders.some(folder => path.includes(folder))) {
             return '../';
         }
         return './';
@@ -136,6 +154,11 @@ const SidebarComponent = {
             let initials = names.length >= 2 ? (names[0][0] + names[names.length - 1][0]).toUpperCase() : (names[0] ? names[0][0].toUpperCase() : "?");
             initialsEl.innerText = initials;
         }
+    },
+
+    toggleMobileHub: function() {
+        const hub = document.getElementById('mobile-menu-hub');
+        if (hub) hub.classList.toggle('active');
     },
 
     render: async function(containerId) {
@@ -171,6 +194,8 @@ const SidebarComponent = {
             navHTML += this.buildSimpleCategory('Portal do Docente', this.filterItemsByRole(this.menuItems.docente, userRole), activePage, prefix);
         } else if (userRole === 'secretaria') {
             navHTML += this.buildSimpleCategory('Acessos Secretaria', this.filterItemsByRole(this.menuItems.secretaria_exclusivo, userRole), activePage, prefix);
+        } else if (userRole === 'inspetor') {
+            navHTML += this.buildSimpleCategory('Acessos Inspetoria', this.filterItemsByRole(this.menuItems.inspetor_exclusivo, userRole), activePage, prefix);
         } else if (['coordenador', 'diretor'].includes(userRole)) {
             navHTML += this.buildAccordion('Operacional', 'cat-oper', 'layout', this.filterItemsByRole(this.menuItems.operacional, userRole), activePage, prefix);
             navHTML += this.buildAccordion('Provas', 'cat-exam', 'clipboard-list', this.filterItemsByRole(this.menuItems.provas, userRole), activePage, prefix);
@@ -210,11 +235,33 @@ const SidebarComponent = {
         if (existingNav) existingNav.remove();
         document.body.appendChild(bottomNav);
 
+        // Renderização do Hub Mobile
+        let hub = document.getElementById('mobile-menu-hub');
+        if (!hub) {
+            hub = document.createElement('div');
+            hub.id = 'mobile-menu-hub';
+            document.body.appendChild(hub);
+        }
+        hub.innerHTML = `
+            <div class="flex justify-between items-center mb-10">
+                <img src="${prefix}assets/logo-fmm-white.png" class="h-8">
+                <button onclick="SidebarComponent.toggleMobileHub()" class="p-2 bg-white/10 rounded-full text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto space-y-2">
+                ${navHTML}
+            </div>
+            <div class="pt-6 border-t border-white/10 mt-6">
+                <button onclick="SidebarComponent.logout()" class="w-full flex items-center p-4 bg-red-500/20 text-red-400 rounded-2xl font-bold uppercase text-xs tracking-widest gap-3">
+                    <i data-lucide="log-out" class="w-5 h-5"></i> Encerrar Sessão
+                </button>
+            </div>
+        `;
+
         if (window.lucide) lucide.createIcons();
     },
 
     buildSimpleCategory: function(title, items, activePage, prefix) {
-        return `<div class="py-2"><h4 class="px-8 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">${title}</h4>${items.map(item => this.buildLink(item, activePage, prefix)).join('')}</div>`;
+        return `<div class="py-2"><h4 class="px-8 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-4">${title}</h4>${items.map(item => this.buildLink(item, activePage, prefix)).join('')}</div>`;
     },
 
     buildLink: function(item, activePage, prefix) {
