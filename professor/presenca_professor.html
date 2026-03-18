@@ -73,13 +73,11 @@
         .att-cell:not(.status-transf):hover { transform: scale(1.1); z-index: 10; border-color: #00638f; }
         .att-cell:not(.status-transf):active { transform: scale(0.95); }
 
-        /* TASK: Zebra Striping e Nítidez de Linhas */
         .row-even td { background-color: #ffffff; }
         .row-odd td { background-color: #f8fafc; }
         .row-even .sticky-col { background-color: #ffffff; }
         .row-odd .sticky-col { background-color: #f8fafc; }
         
-        /* Destaque ao passar o mouse na linha inteira */
         .attendance-table tr:hover td { background-color: #f0f9ff !important; }
         .attendance-table tr:hover .sticky-col { background-color: #f0f9ff !important; }
 
@@ -157,10 +155,9 @@
             </div>
 
             <div id="table-wrapper" class="hidden w-full h-full flex flex-col">
-                <!-- Banner de Instrução -->
                 <div id="instruction-banner" class="bg-blue-50 border-b border-blue-100 px-8 py-3 flex items-center gap-3 animate-fade shrink-0">
                     <i data-lucide="info" class="w-4 h-4 text-fmm-blue"></i>
-                    <p class="text-[10px] font-bold text-fmm-blue uppercase tracking-wider text-left">
+                    <p class="text-[10px] font-bold text-fmm-blue uppercase tracking-wider text-left" id="txt-instruction">
                         Professor, clique em qualquer aluno para iniciar a chamada do dia. Todos começarão presentes (.), marque apenas os ausentes (F) e salve.
                     </p>
                 </div>
@@ -175,7 +172,6 @@
         </div>
     </main>
 
-    <!-- TOAST -->
     <div id="toast" class="fixed bottom-8 right-8 z-[100] translate-y-20 opacity-0 transition-all duration-500 text-left">
         <div class="bg-slate-900 text-white px-8 py-5 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/5 text-left">
             <i data-lucide="check-circle" class="w-5 h-5 text-fmm-lime"></i>
@@ -267,7 +263,9 @@
 
         async function handleContextChange() {
             const turmaId = document.getElementById('selectTurma').value;
-            const disc = document.getElementById('selectDisc').value;
+            const discSelect = document.getElementById('selectDisc');
+            const disc = discSelect.value;
+            const discName = discSelect.options[discSelect.selectedIndex]?.text || "";
             const month = parseInt(document.getElementById('selectMonth').value);
 
             if (!turmaId || !disc) {
@@ -285,9 +283,11 @@
                 const startDate = new Date(currentYear, month, 1).toISOString().split('T')[0];
                 const endDate = new Date(currentYear, month + 1, 0).toISOString().split('T')[0];
                 
-                const [gradeRes, calRes] = await Promise.all([
+                // TASK: Busca as informações da turma para validar a série
+                const [gradeRes, calRes, turmaRes] = await Promise.all([
                     window.supabaseClient.from('grade_horaria').select('dia_semana, numero_tempo').eq('id_turma', turmaId).eq('sigla_disciplina', disc).eq('id_professor', currentUser.id),
-                    window.supabaseClient.from('calendario_letivo').select('data').eq('tipo', 'letivo').gte('data', startDate).lte('data', endDate)
+                    window.supabaseClient.from('calendario_letivo').select('data').eq('tipo', 'letivo').gte('data', startDate).lte('data', endDate),
+                    window.supabaseClient.from('turmas').select('serie').eq('id', turmaId).single()
                 ]);
 
                 const daysMap = { 'SEG': 1, 'TER': 2, 'QUA': 3, 'QUI': 4, 'SEX': 5, 'SEGUNDA': 1, 'TERÇA': 2, 'QUARTA': 3, 'QUINTA': 4, 'SEXTA': 5 };
@@ -305,11 +305,39 @@
                     });
                 });
 
-                const { data: matriculas } = await window.supabaseClient.from('matriculas')
-                    .select('ra_aluno, status, alunos!inner(nome_completo, status, data_transferencia)')
+                // TASK: Lógica de Filtragem de Subturma (Inglês 3ª Série)
+                const isIngles = disc === 'L.ING' || discName.toUpperCase().includes('INGLÊS');
+                const isTerceiraSerie = turmaRes.data?.serie === '3ª Série';
+                
+                let matriculasQuery = window.supabaseClient.from('matriculas')
+                    .select('ra_aluno, status, alunos!inner(nome_completo, status, data_transferencia, id_subturma_ingles)')
                     .eq('id_turma', turmaId)
                     .eq('ano_letivo', 2026);
-                
+
+                if (isIngles && isTerceiraSerie) {
+                    // Busca em qual grupo o professor leciona
+                    const { data: subData } = await window.supabaseClient.from('subturmas')
+                        .select('id, nome')
+                        .eq('id_turma_origem', turmaId)
+                        .eq('id_professor', currentUser.id)
+                        .maybeSingle();
+                    
+                    if (subData) {
+                        matriculasQuery = matriculasQuery.eq('alunos.id_subturma_ingles', subData.id);
+                        document.getElementById('txt-instruction').innerText = `EXIBIÇÃO FILTRADA: Você está vendo apenas os alunos do grupo ${subData.nome.toUpperCase()}.`;
+                    } else {
+                        // Se não encontrar vínculo de subturma, não mostra ninguém para evitar confusão
+                        globalMatriculas = [];
+                        renderMatrix();
+                        document.getElementById('table-wrapper').classList.remove('hidden');
+                        document.getElementById('loading-overlay').classList.add('hidden');
+                        return;
+                    }
+                } else {
+                    document.getElementById('txt-instruction').innerText = "Professor, clique em qualquer aluno para iniciar a chamada do dia. Marque apenas os ausentes (F) e salve.";
+                }
+
+                const { data: matriculas } = await matriculasQuery;
                 globalMatriculas = (matriculas || []).sort((a,b) => a.alunos.nome_completo.localeCompare(b.alunos.nome_completo));
 
                 const freq = await fetchFrequenciesPaginated(turmaId, disc, startDate, endDate);
