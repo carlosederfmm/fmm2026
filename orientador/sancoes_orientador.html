@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Sanções | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- TASK 3.2.1: Cliente Supabase Global e Localização (Manaus) -->
+    <script src="../assets/js/supabase_client.js"></script>
+    <!-- TASK 2.3.1: Componente de Sidebar -->
+    <script src="../sidebar.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc',
+                            level1: '#3b82f6', 
+                            level2: '#eab308', 
+                            level3: '#f97316', 
+                            level4: '#ef4444'  
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-collapsed .sidebar-text, .sidebar-collapsed .sidebar-category-header, .sidebar-collapsed .chevron-icon, .sidebar-collapsed .sidebar-category-title { display: none; }
+        .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
+        .sidebar-collapsed .logo-full { display: none; }
+        .sidebar-collapsed .logo-short { display: block; }
+        .logo-short { display: none; }
+        
+        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.05); }
+        .category-content.open { max-height: 1000px; }
+        .rotate-180 { transform: rotate(180deg); }
+        .sidebar-item-active { background-color: rgba(200, 212, 0, 0.15); border-left: 4px solid #c8d400; color: #ffffff !important; }
+
+        .drawer {
+            position: fixed; top: 0; right: 0; bottom: 0; width: 500px;
+            background: white; z-index: 50;
+            transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: -4px 0 24px rgba(0,0,0,0.1); display: flex; flex-direction: column;
+        }
+        .drawer.open { transform: translateX(0); }
+
+        .level-dot { width: 6px; height: 6px; border-radius: 50%; background-color: #e2e8f0; transition: all 0.3s; }
+        .level-dot.active-1 { background-color: #3b82f6; box-shadow: 0 0 6px rgba(59, 130, 246, 0.4); }
+        .level-dot.active-2 { background-color: #eab308; box-shadow: 0 0 6px rgba(234, 179, 8, 0.4); }
+        .level-dot.active-3 { background-color: #f97316; box-shadow: 0 0 6px rgba(249, 115, 22, 0.4); }
+        .level-dot.active-4 { background-color: #ef4444; box-shadow: 0 0 6px rgba(239, 68, 68, 0.4); }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden">
+
+    <!-- SIDEBAR CONTAINER -->
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden relative">
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0">
+            <div class="flex flex-col">
+                <h1 class="text-xl font-bold text-fmm-dark flex items-center gap-2">
+                    <i data-lucide="shield-alert" class="w-5 h-5 text-fmm-lime"></i>
+                    Consulta Disciplinar
+                </h1>
+                <p class="text-xs text-slate-400 font-medium">Visualização de sanções e histórico</p>
+            </div>
+            <div class="relative w-96">
+                <i data-lucide="search" class="absolute left-4 top-3 w-4 h-4 text-slate-400"></i>
+                <input type="text" id="studentSearch" oninput="handleSearch(this.value)" placeholder="Buscar por Nome ou RA..." class="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all font-medium text-sm">
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            <div id="studentsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+            <div id="emptyState" class="hidden col-span-full py-20 flex flex-col items-center justify-center text-slate-400">
+                <i data-lucide="search-x" class="w-12 h-12 mb-4 opacity-20"></i>
+                <p class="text-sm italic">Nenhum aluno encontrado.</p>
+            </div>
+            <div id="loadingState" class="hidden col-span-full py-20 flex flex-col items-center justify-center text-slate-300">
+                <i data-lucide="loader-2" class="w-8 h-8 mb-4 animate-spin text-fmm-blue opacity-50"></i>
+                <p class="text-[10px] font-black uppercase tracking-[0.2em]">Sincronizando Alunos...</p>
+            </div>
+        </div>
+
+        <!-- DRAWER E HISTÓRICO (APENAS LEITURA) -->
+        <div id="studentDrawer" class="drawer border-l border-slate-100 flex flex-col">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-start bg-slate-50 flex-shrink-0">
+                <div class="flex gap-4 items-start">
+                    <div class="relative group cursor-pointer flex-shrink-0" onclick="openPhotoZoom()">
+                        <img id="drawerAvatar" src="" class="w-16 h-16 rounded-xl object-cover border-2 border-white shadow-sm bg-white hover:scale-105 transition-transform">
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <h2 id="drawerName" class="text-lg font-black text-fmm-dark leading-tight line-clamp-2">Nome do Aluno</h2>
+                        <span id="drawerRA" class="text-xs font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200 mt-1 inline-block">RA: 0000</span>
+                    </div>
+                </div>
+                <button onclick="closeDrawer()" class="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 custom-scrollbar space-y-6">
+                <!-- ALERTA DE LIMITE (APENAS LEITURA) -->
+                <div id="parentAlertContainer" class="hidden flex flex-col gap-3"></div>
+                
+                <div class="flex items-center justify-between pt-2">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Histórico Disciplinar</h3>
+                </div>
+                <div id="historyList" class="space-y-6"></div>
+            </div>
+        </div>
+
+        <!-- ZOOM FOTO -->
+        <div id="photoModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onclick="closePhotoZoom()">
+            <div class="relative animate-fade-in-up" onclick="event.stopPropagation()">
+                <button onclick="closePhotoZoom()" class="absolute -top-12 -right-4 text-white hover:text-fmm-lime transition-colors"><i data-lucide="x" class="w-8 h-8"></i></button>
+                <img id="enlargedPhoto" src="" class="max-w-[90vw] max-h-[80vh] rounded-[40px] shadow-2xl border-4 border-white/10 object-contain">
+                <div id="enlargedName" class="mt-4 text-center text-white font-bold text-lg tracking-tight"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentUser = null;
+        let currentStudent = null;
+        let searchTimeout = null;
+        let latestRequestTimestamp = 0;
+        let userLevels = []; 
+
+        function formatDriveUrl(url) {
+            if (!url) return null;
+            if (url.includes('drive.google.com') && url.includes('/file/d/')) {
+                const idMatch = url.match(/\/d\/(.*?)\//);
+                if (idMatch && idMatch[1]) return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
+            }
+            return url;
+        }
+
+        async function init() {
+            if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if(user) {
+                 const { data: profile } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).single();
+                 currentUser = profile;
+                 if (profile.cargo === 'diretor' || profile.cargo === 'orientador') {
+                    userLevels = ['EF1', 'EF2', 'EMT'];
+                 } else {
+                    userLevels = profile.niveis_acesso || [];
+                 }
+            }
+
+            renderGrid();
+            lucide.createIcons();
+        }
+
+        function handleSearch(val) { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => { renderGrid(val); }, 300); }
+
+        async function renderGrid(filterVal = '') {
+            const thisRequestTime = Date.now();
+            latestRequestTimestamp = thisRequestTime;
+
+            const grid = document.getElementById('studentsGrid');
+            const loading = document.getElementById('loadingState');
+            const empty = document.getElementById('emptyState');
+
+            if (filterVal && filterVal.length === 1) return;
+
+            loading.classList.remove('hidden');
+            grid.innerHTML = '';
+            if(empty) empty.classList.add('hidden');
+
+            let query = window.supabaseClient.from('alunos').select('ra, nome_completo, url_foto, turmas!inner(nivel)').limit(60);
+            
+            if (userLevels.length > 0) {
+                query = query.in('turmas.nivel', userLevels);
+            }
+
+            if(filterVal && filterVal.length >= 2) query = query.or(`nome_completo.ilike.%${filterVal}%,ra.ilike.%${filterVal}%`);
+
+            const { data: students, error } = await query.order('nome_completo');
+            if (thisRequestTime < latestRequestTimestamp) return;
+
+            loading.classList.add('hidden');
+
+            if(error || !students || students.length === 0) {
+                 if(empty) empty.classList.remove('hidden');
+                 return;
+            }
+
+            const { data: allSancoes } = await window.supabaseClient.from('sancoes_disciplinares').select('ra_aluno, nivel');
+
+            for(const s of students) {
+                const sancoesAlu = allSancoes?.filter(sc => sc.ra_aluno === s.ra) || [];
+                const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+                sancoesAlu.forEach(sc => counts[sc.nivel]++);
+
+                const avatar = formatDriveUrl(s.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=random`;
+
+                const card = document.createElement('div');
+                card.className = "bg-white p-5 rounded-[24px] border border-slate-100 shadow-sm card-hover cursor-pointer transition-all animate-fade-in-up";
+                card.onclick = () => openDrawer(s.ra);
+
+                let dotsHTML = '';
+                [1, 2, 3, 4].forEach(lvl => {
+                    const filled = Math.min(counts[lvl], 3);
+                    let dots = '';
+                    for(let i=0; i<3; i++) dots += `<div class="level-dot ${i < filled ? 'active-'+lvl : ''}"></div>`;
+                    const label = lvl === 1 ? 'Notif' : lvl === 2 ? 'Adv V' : lvl === 3 ? 'Adv E' : 'Susp';
+                    dotsHTML += `<div class="flex flex-col gap-1.5 items-center"><span class="text-[9px] font-bold text-slate-400 uppercase">${label}</span><div class="flex gap-1">${dots}</div></div>`;
+                });
+
+                card.innerHTML = `
+                    <div class="flex items-center gap-4 mb-6">
+                        <img src="${avatar}" class="w-14 h-14 rounded-2xl object-cover bg-slate-100">
+                        <div class="overflow-hidden">
+                            <h3 class="font-bold text-fmm-dark text-sm leading-tight truncate" title="${s.nome_completo}">${s.nome_completo}</h3>
+                            <span class="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 mt-1 inline-block">RA: ${s.ra}</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between border-t border-slate-50 pt-4">${dotsHTML}</div>
+                `;
+                grid.appendChild(card);
+            }
+            lucide.createIcons();
+        }
+
+        async function openDrawer(ra) {
+            const { data: student } = await window.supabaseClient.from('alunos').select('*').eq('ra', ra).single();
+            if(!student) return;
+            currentStudent = student;
+
+            document.getElementById('drawerName').innerText = student.nome_completo;
+            document.getElementById('drawerRA').innerText = `RA: ${student.ra}`;
+            document.getElementById('drawerAvatar').src = formatDriveUrl(student.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.nome_completo)}`;
+            await renderHistory();
+            await checkAlerts(); 
+            document.getElementById('studentDrawer').classList.add('open');
+        }
+
+        function closeDrawer() { document.getElementById('studentDrawer').classList.remove('open'); currentStudent = null; }
+
+        async function renderHistory() {
+            const container = document.getElementById('historyList');
+            container.innerHTML = '<div class="text-center py-4"><i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto text-slate-300"></i></div>';
+            lucide.createIcons();
+
+            const { data: history } = await window.supabaseClient.from('sancoes_disciplinares').select('*, perfis(nome_completo)').eq('ra_aluno', currentStudent.ra).order('data_sancao', { ascending: false });
+            container.innerHTML = '';
+            if (!history || history.length === 0) {
+                container.innerHTML = `<p class="text-center text-slate-400 text-xs italic py-4">Nenhuma sanção registrada.</p>`; return;
+            }
+
+            const groupedHistory = { 1: [], 2: [], 3: [], 4: [] };
+            history.forEach(h => { groupedHistory[h.nivel].push(h); });
+            const colors = { 1: 'bg-blue-100 text-blue-700', 2: 'bg-yellow-100 text-yellow-700', 3: 'bg-orange-100 text-orange-700', 4: 'bg-red-100 text-red-700' };
+            const levelLabels = { 1: 'Notificações', 2: 'Advertências Verbais', 3: 'Advertências Escritas', 4: 'Suspensões' };
+
+            [4, 3, 2, 1].forEach(level => {
+                if (groupedHistory[level].length > 0) {
+                    const levelSection = document.createElement('div');
+                    levelSection.className = "mb-6";
+                    levelSection.innerHTML = `<h4 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 border-b border-slate-100 pb-1">${levelLabels[level]}</h4>`;
+                    groupedHistory[level].forEach(h => {
+                        const displayDate = ManausTime.format(h.data_sancao); 
+                        const authorName = h.perfis?.nome_completo || 'Sistema';
+                        const obsHTML = h.observacao ? `<p class="text-[10px] text-slate-500 mt-2 bg-white/50 p-2 rounded border border-slate-100 italic">Obs: "${h.observacao}"</p>` : '';
+                        levelSection.innerHTML += `
+                            <div class="relative pl-4 pb-4">
+                                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm">
+                                    <div class="flex justify-between items-start mb-1">
+                                        <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded ${colors[h.nivel]}">Nível ${h.nivel}</span>
+                                        <span class="text-[10px] font-bold text-slate-400">${displayDate}</span>
+                                    </div>
+                                    <p class="text-xs font-bold text-slate-700 mb-1 leading-snug">${h.infracao}</p>
+                                    ${obsHTML}
+                                    <div class="flex justify-between items-center mt-2 pt-2 border-t border-slate-100/50">
+                                        <div class="flex gap-2">
+                                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Cód: ${h.codigo}</span>
+                                            <span class="text-[9px] font-bold text-slate-400">Por: ${authorName.split(' ')[0]}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>`;
+                    });
+                    container.appendChild(levelSection);
+                }
+            });
+            lucide.createIcons();
+        }
+
+        async function checkAlerts() {
+            const container = document.getElementById('parentAlertContainer');
+            container.innerHTML = '';
+            const { data: alerts } = await window.supabaseClient.from('sancoes_alertas').select('*').eq('ra_aluno', currentStudent.ra);
+            
+            const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+            const { data: historyCount } = await window.supabaseClient.from('sancoes_disciplinares').select('nivel').eq('ra_aluno', currentStudent.ra);
+            if(historyCount) historyCount.forEach(h => counts[h.nivel]++);
+
+            let hasAlert = false;
+            for(let level=1; level<=4; level++) {
+                if (counts[level] >= 3) {
+                    hasAlert = true;
+                    const labels = { 1: 'Notificações', 2: 'Adv. Verbais', 3: 'Adv. Escritas', 4: 'Suspensões' };
+                    const alertData = alerts?.find(a => a.nivel === level);
+                    const isSent = alertData?.status_email === 'enviado';
+                    
+                    const html = `
+                    <div class="p-4 bg-red-50 border border-red-100 rounded-2xl flex flex-col gap-3">
+                        <div class="flex items-start gap-3">
+                            <div class="p-2 bg-red-100 rounded-full text-red-600"><i data-lucide="siren" class="w-5 h-5"></i></div>
+                            <div><h4 class="text-sm font-bold text-red-700">Limite de ${labels[level]} Atingido</h4><p class="text-xs text-red-600 mt-1 leading-relaxed">O aluno acumulou 3 ocorrências deste nível.</p></div>
+                        </div>
+                        <div class="flex items-center justify-between bg-white p-2 rounded-xl border border-red-100">
+                            <div class="flex items-center gap-2 pl-2">
+                                <div class="w-2 h-2 rounded-full ${isSent ? 'bg-green-500' : 'bg-orange-400'}"></div>
+                                <span class="text-[10px] font-bold text-slate-500 uppercase">Notificação: ${isSent ? 'Enviada' : 'Pendente'}</span>
+                            </div>
+                        </div>
+                    </div>`;
+                    container.innerHTML += html;
+                }
+            }
+            if(hasAlert) { container.classList.remove('hidden'); lucide.createIcons(); } else container.classList.add('hidden');
+        }
+
+        function openPhotoZoom() {
+            if(!currentStudent) return;
+            const modal = document.getElementById('photoModal');
+            document.getElementById('enlargedPhoto').src = document.getElementById('drawerAvatar').src;
+            document.getElementById('enlargedName').innerText = currentStudent.nome_completo;
+            modal.classList.remove('hidden');
+        }
+        function closePhotoZoom() { document.getElementById('photoModal').classList.add('hidden'); }
+        function toggleSidebar() { if(window.SidebarComponent) SidebarComponent.toggleSidebar(); }
+        async function logout() { if(window.SidebarComponent) SidebarComponent.logout(); }
+        window.onload = init;
+    </script>
+</body>
+</html>

@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório Gerencial de Orientação | SME FMM</title>
+    
+    <!-- Bibliotecas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Infraestrutura SME FMM -->
+    <script src="../assets/js/supabase_client.js"></script>
+    <script src="../sidebar.js"></script>
+    <script src="../assets/js/constants.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; overflow-x: hidden; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .kpi-card {
+            background: white; border: 1px solid #f1f5f9; border-radius: 24px;
+            padding: 24px; transition: all 0.3s ease;
+        }
+
+        .chart-container {
+            background: white; border-radius: 32px; border: 1px solid #f1f5f9; padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+        }
+
+        /* --- LÓGICA DE IMPRESSÃO PROFISSIONAL (DOCUMENTO OFICIAL) --- */
+        @media print {
+            @page { size: A4; margin: 15mm; }
+            
+            #sidebar-container, .no-print, header { display: none !important; }
+            
+            body { background: white !important; overflow: visible !important; color: #000 !important; }
+            main { margin: 0 !important; padding: 0 !important; width: 100% !important; height: auto !important; overflow: visible !important; }
+            
+            .printable-area { display: block !important; padding: 0 !important; margin: 0 !important; background: white !important; }
+            
+            /* Header Oficial da Escola */
+            .official-header { display: flex !important; border-bottom: 2px solid #003c5b; padding-bottom: 10px; margin-bottom: 30px; align-items: center; justify-content: space-between; }
+            
+            /* Grid layout fix for print */
+            .grid { display: grid !important; gap: 15px !important; }
+            .grid-cols-3 { grid-template-columns: repeat(3, 1fr) !important; }
+            .lg\:grid-cols-2 { grid-template-columns: repeat(2, 1fr) !important; }
+            
+            .chart-container, .kpi-card { 
+                break-inside: avoid; 
+                border: 1px solid #eee !important; 
+                border-radius: 12px !important;
+                margin-bottom: 15px !important;
+                box-shadow: none !important;
+                padding: 15px !important;
+            }
+
+            .kpi-card p { font-size: 24px !important; }
+            
+            canvas { max-width: 100% !important; height: auto !important; }
+
+            /* Footer de Assinaturas */
+            .official-footer { display: flex !important; margin-top: 50px; justify-content: space-around; text-align: center; }
+            .signature-box { width: 200px; border-top: 1px solid #000; padding-top: 5px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+        }
+
+        /* Classes auxiliares para controle de visibilidade */
+        .official-header, .official-footer { display: none; }
+
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-ui { animation: fadeInUp 0.4s ease-out forwards; }
+
+        .filter-select {
+            background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;
+            padding: 8px 12px; font-size: 11px; font-weight: 700; color: #475569;
+            outline: none; transition: all 0.2s; cursor: pointer;
+        }
+        .filter-select:focus { border-color: #00638f; background-color: white; }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden text-left">
+
+    <!-- SIDEBAR CONTAINER -->
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-40 no-print"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
+        
+        <!-- HEADER DO SISTEMA -->
+        <header class="bg-white h-24 border-b flex items-center justify-between px-10 z-10 shadow-sm flex-shrink-0 no-print text-left">
+            <div class="flex flex-col text-left">
+                <h1 class="text-xl font-black text-fmm-dark tracking-tight uppercase flex items-center gap-2 text-left">
+                    <i data-lucide="bar-chart-3" class="w-6 h-6 text-fmm-lime"></i>
+                    Inteligência de Orientação
+                </h1>
+                <p class="text-[10px] text-fmm-blue font-bold uppercase tracking-widest text-left">Painel Administrativo em Tempo Real</p>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div class="flex flex-col gap-1 text-left">
+                    <label class="text-[8px] font-black text-slate-400 uppercase ml-1">Período</label>
+                    <select id="filterMonth" onchange="processAndRender()" class="filter-select">
+                        <option value="all">Ano Letivo 2026</option>
+                        <option value="01">Janeiro</option>
+                        <option value="02">Fevereiro</option>
+                        <option value="03">Março</option>
+                        <option value="04">Abril</option>
+                        <option value="05">Maio</option>
+                        <option value="06">Junho</option>
+                        <option value="07">Julho</option>
+                        <option value="08">Agosto</option>
+                        <option value="09">Setembro</option>
+                        <option value="10">Outubro</option>
+                        <option value="11">Novembro</option>
+                        <option value="12">Dezembro</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col gap-1 text-left">
+                    <label class="text-[8px] font-black text-slate-400 uppercase ml-1">Orientador(a)</label>
+                    <select id="filterCounselor" onchange="processAndRender()" class="filter-select w-48">
+                        <option value="all">Equipe Completa</option>
+                    </select>
+                </div>
+
+                <div class="h-10 w-[1px] bg-slate-100 mx-2"></div>
+
+                <button onclick="window.print()" class="flex items-center gap-2 bg-fmm-dark hover:bg-fmm-blue text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-xl hover:scale-105 active:scale-95">
+                    <i data-lucide="printer" class="w-4 h-4"></i>
+                    Gerar Relatório Oficial
+                </button>
+            </div>
+        </header>
+
+        <!-- ÁREA IMPRIMÍVEL -->
+        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-8 bg-slate-50 printable-area text-left">
+            
+            <!-- CABEÇALHO OFICIAL (APARECE SÓ NO PDF/IMPRESSÃO) -->
+            <div class="official-header text-left">
+                <div class="flex items-center gap-4 text-left">
+                    <img src="../assets/logo-fmm-dark.png" alt="FMM" class="h-12" onerror="this.src='https://ui-avatars.com/api/?name=FMM&background=003c5b&color=fff&size=128'">
+                    <div class="flex flex-col text-left">
+                        <h2 class="text-base font-black text-fmm-dark uppercase text-left">Fundação Matias Machline</h2>
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest text-left">Serviço de Orientação Psicopedagógica</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-[9px] font-black text-fmm-dark uppercase text-right">Documento Interno - SME</p>
+                    <p id="print-date" class="text-[10px] font-bold text-slate-500 text-right">Emitido em: --/--/----</p>
+                    <p id="print-filters" class="text-[8px] font-bold text-slate-400 uppercase mt-1 text-right"></p>
+                </div>
+            </div>
+
+            <!-- TÍTULO DO RELATÓRIO (IMPRESSÃO) -->
+            <div class="hidden print:block text-center mb-8">
+                <h3 class="text-xl font-black text-fmm-dark uppercase tracking-tight decoration-fmm-lime decoration-4 underline-offset-8 underline">Relatório Analítico de Atendimentos</h3>
+            </div>
+
+            <!-- KPIs -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                <div class="kpi-card animate-ui text-left">
+                    <div class="flex justify-between items-start mb-4 text-left">
+                        <div class="w-12 h-12 bg-fmm-blue/10 rounded-2xl flex items-center justify-center text-fmm-blue no-print">
+                            <i data-lucide="clipboard-list" class="w-6 h-6"></i>
+                        </div>
+                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Sessões Totais</span>
+                    </div>
+                    <p class="text-4xl font-black text-fmm-dark text-left" id="kpi-total-atendimentos">0</p>
+                    <h3 class="text-[9px] font-bold text-fmm-blue uppercase tracking-widest mt-1 text-left">Intervenções Realizadas</h3>
+                </div>
+
+                <div class="kpi-card animate-ui text-left" style="animation-delay: 0.1s">
+                    <div class="flex justify-between items-start mb-4 text-left">
+                        <div class="w-12 h-12 bg-fmm-green/10 rounded-2xl flex items-center justify-center text-fmm-green no-print">
+                            <i data-lucide="users" class="w-6 h-6"></i>
+                        </div>
+                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Público Alvo</span>
+                    </div>
+                    <p class="text-4xl font-black text-fmm-dark text-left" id="kpi-alunos-atendidos">0</p>
+                    <h3 class="text-[9px] font-bold text-fmm-blue uppercase tracking-widest mt-1 text-left">Alunos Distintos</h3>
+                </div>
+
+                <div class="kpi-card animate-ui text-left" style="animation-delay: 0.2s">
+                    <div class="flex justify-between items-start mb-4 text-left">
+                        <div class="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 no-print">
+                            <i data-lucide="bell" class="w-6 h-6"></i>
+                        </div>
+                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Demandas Externas</span>
+                    </div>
+                    <p class="text-4xl font-black text-fmm-dark text-left" id="kpi-chamados-recebidos">0</p>
+                    <h3 class="text-[9px] font-bold text-fmm-blue uppercase tracking-widest mt-1 text-left">Chamados da Coordenação</h3>
+                </div>
+            </div>
+
+            <!-- GRÁFICOS LADO A LADO -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left">
+                <div class="chart-container animate-ui text-left">
+                    <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2 text-left">
+                        <i data-lucide="pie-chart" class="w-4 h-4 text-fmm-blue no-print"></i> Classificação das Demandas
+                    </h3>
+                    <div class="h-64 flex items-center justify-center">
+                        <canvas id="chartClassification"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container animate-ui text-left">
+                    <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2 text-left">
+                        <i data-lucide="activity" class="w-4 h-4 text-fmm-blue no-print"></i> Status da Fila de Espera
+                    </h3>
+                    <div class="h-64 flex items-center justify-center">
+                        <canvas id="chartStatus"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ANÁLISE POR TURMA (QUEBRA DE PÁGINA) -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left">
+                <div class="chart-container animate-ui text-left">
+                    <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2 text-left">
+                        <i data-lucide="bar-chart" class="w-4 h-4 text-fmm-blue no-print"></i> Atendimentos por Turma (Top 10)
+                    </h3>
+                    <canvas id="chartAtendimentosTurma"></canvas>
+                </div>
+
+                <div class="chart-container animate-ui text-left">
+                    <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2 text-left">
+                        <i data-lucide="alert-circle" class="w-4 h-4 text-fmm-blue no-print"></i> Demandas por Turma (Top 10)
+                    </h3>
+                    <canvas id="chartChamadosTurma"></canvas>
+                </div>
+            </div>
+            
+            <!-- SEÇÃO DE ANÁLISE QUALITATIVA (SÓ NO PRINT) -->
+            <div class="hidden print:block border-2 border-slate-100 p-8 rounded-3xl mt-10 text-left">
+                <h4 class="text-xs font-black text-fmm-dark uppercase mb-4 tracking-widest text-left">Observações Analíticas e Recomendações:</h4>
+                <div class="space-y-4">
+                    <div class="h-px bg-slate-200 w-full mt-8"></div>
+                    <div class="h-px bg-slate-200 w-full mt-8"></div>
+                    <div class="h-px bg-slate-200 w-full mt-8"></div>
+                </div>
+            </div>
+
+            <!-- RODAPÉ DE ASSINATURAS (SÓ NO PRINT) -->
+            <div class="official-footer text-center">
+                <div class="flex flex-col items-center">
+                    <div class="signature-box" id="sign-orientador">Responsável Orientação</div>
+                    <p class="text-[8px] text-slate-400 mt-1 uppercase">SME Matias Machline</p>
+                </div>
+                <div class="flex flex-col items-center">
+                    <div class="signature-box">Diretoria Acadêmica</div>
+                    <p class="text-[8px] text-slate-400 mt-1 uppercase">Homologação</p>
+                </div>
+                <div class="flex flex-col items-center">
+                    <div class="signature-box">Presidência / Dono</div>
+                    <p class="text-[8px] text-slate-400 mt-1 uppercase">Ciência de Gestão</p>
+                </div>
+            </div>
+
+            <div class="hidden print:block text-center pt-10">
+                <p class="text-[8px] text-slate-400 font-bold uppercase tracking-widest">Documento gerado pelo Sistema de Gestão Escolar FMM 2026 • Confidencial</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let rawAtendimentos = [];
+        let rawChamados = [];
+        let mapAlunosTurma = {}; 
+        let charts = {}; 
+
+        async function init() {
+            if (window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if (!user) return window.location.href = '../index.html';
+
+            // 1. Carregar Orientadores
+            const { data: staff } = await window.supabaseClient.from('perfis').select('id, nome_completo').eq('cargo', 'orientador');
+            const selectCounselor = document.getElementById('filterCounselor');
+            if(staff) {
+                staff.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.innerText = s.nome_completo;
+                    selectCounselor.appendChild(opt);
+                });
+            }
+
+            // TASK: Mapeamento Alunos - IMPLEMENTADA PAGINAÇÃO EXAUSTIVA (Fix para mais de 1000 alunos)
+            let allAlunos = [];
+            let from = 0;
+            const pageSize = 1000;
+            while(true) {
+                const { data, error } = await window.supabaseClient.from('alunos').select('ra, turmas(nome)').range(from, from + pageSize - 1);
+                if (error || !data || data.length === 0) break;
+                allAlunos = allAlunos.concat(data);
+                if (data.length < pageSize) break;
+                from += pageSize;
+            }
+            allAlunos.forEach(a => { mapAlunosTurma[a.ra] = a.turmas?.nome || 'Sem Turma'; });
+
+            await fetchRawData();
+            processAndRender();
+            
+            lucide.createIcons();
+            
+            // Configurar data no relatório impresso
+            document.getElementById('print-date').innerText = `Emitido em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`;
+        }
+
+        async function fetchRawData() {
+            const [resA, resC] = await Promise.all([
+                window.supabaseClient.from('orientacao_atendimentos').select('*'),
+                window.supabaseClient.from('orientacao_chamados').select('*')
+            ]);
+            rawAtendimentos = resA.data || [];
+            rawChamados = resC.data || [];
+        }
+
+        function processAndRender() {
+            const month = document.getElementById('filterMonth').value;
+            const counselor = document.getElementById('filterCounselor').value;
+            const counselorName = document.getElementById('filterCounselor').options[document.getElementById('filterCounselor').selectedIndex].text;
+
+            // Atualizar subtítulo de impressão com filtros aplicados
+            const periodLabel = month === 'all' ? 'Ano Letivo 2026' : `Mês de Referência: ${month}/2026`;
+            document.getElementById('print-filters').innerText = `${periodLabel} • Orientador: ${counselorName}`;
+            document.getElementById('sign-orientador').innerText = counselor === 'all' ? 'Responsável Técnico' : counselorName;
+
+            // FILTRAGEM
+            let filteredAtendimentos = rawAtendimentos.filter(a => {
+                const dateMatch = month === 'all' || a.data_atendimento.includes(`-0${month}-`) || a.data_atendimento.includes(`-${month}-`);
+                const profMatch = counselor === 'all' || a.id_orientador === counselor;
+                return dateMatch && profMatch;
+            });
+
+            let filteredChamados = rawChamados.filter(c => {
+                const dateMatch = month === 'all' || c.data_abertura.includes(`-0${month}-`) || c.data_abertura.includes(`-${month}-`);
+                const profMatch = counselor === 'all' || c.id_orientador_designado === counselor;
+                return dateMatch && profMatch;
+            });
+
+            // KPIs
+            document.getElementById('kpi-total-atendimentos').innerText = filteredAtendimentos.length;
+            document.getElementById('kpi-alunos-atendidos').innerText = new Set(filteredAtendimentos.map(a => a.ra_aluno)).size;
+            document.getElementById('kpi-chamados-recebidos').innerText = filteredChamados.length;
+
+            // GRÁFICOS
+            renderClassificationChart(filteredAtendimentos);
+            renderStatusChart(filteredChamados);
+            renderTurmaBarChart('chartAtendimentosTurma', filteredAtendimentos, 'ra_aluno', '#00638f');
+            renderTurmaBarChart('chartChamadosTurma', filteredChamados, 'ra_aluno', '#80a51b');
+        }
+
+        function renderClassificationChart(data) {
+            const counts = {};
+            data.forEach(a => {
+                if(a.classificacao && Array.isArray(a.classificacao)) {
+                    a.classificacao.forEach(c => counts[c] = (counts[c] || 0) + 1);
+                }
+            });
+
+            const ctx = document.getElementById('chartClassification').getContext('2d');
+            updateChart('classification', ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(counts),
+                    datasets: [{
+                        data: Object.values(counts),
+                        backgroundColor: ['#003c5b', '#00638f', '#80a51b', '#c8d400', '#f59e0b', '#ef4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { cutout: '75%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { size: 9, weight: 'bold' } } } } }
+            });
+        }
+
+        function renderStatusChart(data) {
+            const labelsMap = { 'pending': 'Pendente', 'ongoing': 'Em Curso', 'finished': 'Concluído', 'ignored': 'Arquivado' };
+            const counts = { 'pending': 0, 'ongoing': 0, 'finished': 0, 'ignored': 0 };
+            data.forEach(c => counts[c.status]++);
+
+            const ctx = document.getElementById('chartStatus').getContext('2d');
+            updateChart('status', ctx, {
+                type: 'pie',
+                data: {
+                    labels: Object.values(labelsMap),
+                    datasets: [{
+                        data: Object.values(counts),
+                        backgroundColor: ['#f59e0b', '#3b82f6', '#10b981', '#94a3b8'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { size: 9, weight: 'bold' } } } } }
+            });
+        }
+
+        function renderTurmaBarChart(canvasId, data, raField, color) {
+            const counts = {};
+            data.forEach(item => {
+                const turma = mapAlunosTurma[item[raField]] || 'Sem Turma';
+                counts[turma] = (counts[turma] || 0) + 1;
+            });
+            const sortedTurmas = Object.keys(counts).sort((a,b) => counts[b] - counts[a]).slice(0, 10);
+            const values = sortedTurmas.map(t => counts[t]);
+
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            updateChart(canvasId, ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedTurmas,
+                    datasets: [{ label: 'Qtd', data: values, backgroundColor: color, borderRadius: 8 }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 8 } } },
+                        y: { grid: { display: false }, ticks: { font: { size: 8, weight: 'bold' } } }
+                    }
+                }
+            });
+        }
+
+        function updateChart(key, ctx, config) {
+            if (charts[key]) charts[key].destroy();
+            charts[key] = new Chart(ctx, config);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grade de Presença | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script src="../assets/js/supabase_client.js"></script>
+    <script src="../sidebar.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f1f5f9'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; overflow: hidden; }
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        /* Matriz de Chamada (Excel Style) */
+        .attendance-table { border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed; }
+        
+        .sticky-intersect { 
+            position: sticky; top: 0; left: 0; z-index: 50; 
+            background: #f8fafc; border-bottom: 2px solid #cbd5e1; border-right: 2px solid #cbd5e1;
+        }
+
+        .sticky-header-row th { position: sticky; top: 0; z-index: 40; background: #f8fafc; }
+        
+        .header-day { 
+            min-width: 45px; width: 45px; text-align: center; font-size: 10px; 
+            font-weight: 800; color: #64748b; border-bottom: 2px solid #cbd5e1;
+            padding: 10px 0; background: #f8fafc; border-right: 1px solid #e2e8f0;
+        }
+
+        .sticky-col { 
+            position: sticky; left: 0; z-index: 30; 
+            border-right: 2px solid #cbd5e1; box-shadow: 4px 0 8px -4px rgba(0,0,0,0.05);
+            transition: background 0.2s;
+        }
+
+        /* Estilo das Células Interativas */
+        .att-cell { 
+            width: 32px; height: 32px; border-radius: 6px; 
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 900; cursor: pointer;
+            transition: all 0.1s; border: 1px solid transparent;
+            margin: 4px auto;
+        }
+        
+        .status-p { background: #e2e8f0; color: #64748b; } /* Presente (.) */
+        .status-f { background: #fee2e2; color: #ef4444; border-color: #fecaca; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.1); } /* Falta (F) */
+        .status-missing { background: #fff1f2; color: #fb7185; border: 1px dashed #fecaca; } /* Sem registro (!) */
+        .status-transf { background: #f8fafc; color: #cbd5e1; font-size: 8px; border: 1px solid #f1f5f9; cursor: default; } /* Transferido (TR) */
+        
+        .att-cell:not(.status-transf):hover { transform: scale(1.1); z-index: 10; border-color: #00638f; }
+        .att-cell:not(.status-transf):active { transform: scale(0.95); }
+
+        .row-even td { background-color: #ffffff; }
+        .row-odd td { background-color: #f8fafc; }
+        .row-even .sticky-col { background-color: #ffffff; }
+        .row-odd .sticky-col { background-color: #f8fafc; }
+        
+        .attendance-table tr:hover td { background-color: #f0f9ff !important; }
+        .attendance-table tr:hover .sticky-col { background-color: #f0f9ff !important; }
+
+        .top-bar-select { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; color: #003c5b; outline: none; transition: all 0.2s; }
+
+        .custom-scrollbar::-webkit-scrollbar { height: 10px; width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; border: 3px solid #f1f5f9; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden text-left">
+
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        
+        <!-- HEADER OTIMIZADO -->
+        <header class="bg-white h-24 border-b flex items-center justify-between px-8 z-30 shadow-sm flex-shrink-0">
+            <div class="flex items-center gap-6">
+                <div class="flex flex-col text-left">
+                    <h1 class="text-base font-black text-fmm-dark uppercase tracking-tight flex items-center gap-2 leading-none text-left">
+                        <span class="w-1.5 h-4 bg-fmm-lime rounded-full"></span>
+                        Painel de Presença
+                    </h1>
+                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1 text-left">Mapa de Frequência Mensal</p>
+                </div>
+                
+                <div class="h-10 w-px bg-slate-100 hidden md:block"></div>
+
+                <div class="flex items-center gap-3 text-left">
+                    <select id="selectMonth" onchange="handleContextChange()" class="top-bar-select font-bold cursor-pointer">
+                        <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2" selected>Março</option>
+                        <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
+                        <option value="6">Julho</option><option value="7">Agosto</option><option value="8">Setembro</option>
+                        <option value="9">Outubro</option><option value="10">Novembro</option><option value="11">Dezembro</option>
+                    </select>
+                    <select id="selectTurma" onchange="handleTurmaChange()" class="top-bar-select font-bold cursor-pointer">
+                        <option value="">Turma...</option>
+                    </select>
+                    <select id="selectDisc" onchange="handleContextChange()" class="top-bar-select w-64 font-bold cursor-pointer">
+                        <option value="">Disciplina...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-6">
+                <div id="sync-status" class="hidden items-center gap-2 px-3 py-1.5 bg-fmm-blue/5 rounded-full border border-fmm-blue/10 animate-pulse">
+                    <i data-lucide="refresh-ccw" class="w-3.5 h-3.5 text-fmm-blue"></i>
+                    <span class="text-[9px] font-black text-fmm-blue uppercase tracking-widest" id="sync-text">Sincronizando...</span>
+                </div>
+
+                <button onclick="saveAttendance()" id="btnSave" class="hidden px-6 py-2.5 bg-fmm-dark text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-fmm-dark/20 active:scale-95">
+                    <i data-lucide="save" class="w-4 h-4"></i> Salvar Chamada
+                </button>
+            </div>
+        </header>
+
+        <!-- ÁREA DA MATRIZ -->
+        <div class="flex-1 overflow-auto custom-scrollbar bg-white" id="matrix-container">
+            
+            <div id="loading-overlay" class="hidden py-32 flex flex-col items-center justify-center text-slate-300 gap-4">
+                <i data-lucide="loader-2" class="w-12 h-12 animate-spin text-fmm-blue"></i>
+                <p class="text-sm font-bold uppercase tracking-widest text-center" id="loading-text">Sincronizando grade mensal...</p>
+            </div>
+
+            <div id="empty-view" class="h-full flex flex-col items-center justify-center p-20 text-center">
+                <div class="w-20 h-20 bg-white rounded-[32px] shadow-xl flex items-center justify-center mb-6 border border-slate-100">
+                    <i data-lucide="layout-grid" class="w-10 h-10 text-slate-200"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-400 uppercase tracking-tight">Mapa de Chamada</h3>
+                <p class="text-sm text-slate-300 italic max-w-xs mt-2 text-center">Selecione a turma e disciplina para visualizar a grade completa do mês.</p>
+            </div>
+
+            <div id="table-wrapper" class="hidden w-full h-full flex flex-col">
+                <div id="instruction-banner" class="bg-blue-50 border-b border-blue-100 px-8 py-3 flex items-center gap-3 animate-fade shrink-0">
+                    <i data-lucide="info" class="w-4 h-4 text-fmm-blue"></i>
+                    <p class="text-[10px] font-bold text-fmm-blue uppercase tracking-wider text-left" id="txt-instruction">
+                        Professor, clique em qualquer aluno para iniciar a chamada do dia. Todos começarão presentes (.), marque apenas os ausentes (F) e salve.
+                    </p>
+                </div>
+
+                <div class="flex-1 overflow-auto custom-scrollbar">
+                    <table class="attendance-table">
+                        <thead id="tableHeader"></thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast" class="fixed bottom-8 right-8 z-[100] translate-y-20 opacity-0 transition-all duration-500 text-left">
+        <div class="bg-slate-900 text-white px-8 py-5 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/5 text-left">
+            <i data-lucide="check-circle" class="w-5 h-5 text-fmm-lime"></i>
+            <span class="text-xs font-bold tracking-tight text-left" id="toast-msg">Sucesso</span>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let globalMatriculas = [];
+        let expectedGrid = []; 
+        let presenceData = {}; 
+        let currentYear = 2026;
+        let globalGrade = [];
+
+        async function init() {
+            if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if (!user) return window.location.href = '../index.html';
+            const { data: profile } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).single();
+            currentUser = profile;
+
+            await populateSelectors();
+            lucide.createIcons();
+        }
+
+        async function populateSelectors() {
+            const selectT = document.getElementById('selectTurma');
+            const { data: grade } = await window.supabaseClient.from('grade_horaria')
+                .select('id_turma, sigla_disciplina, turmas(*), disciplinas(nome)')
+                .eq('id_professor', currentUser.id);
+            
+            globalGrade = grade || [];
+            
+            const turmas = Array.from(new Map(globalGrade.map(g => [g.id_turma, g.turmas])).values()).filter(t => t);
+            turmas.sort((a, b) => a.nome.localeCompare(b.nome));
+            selectT.innerHTML = '<option value="">Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome}</option>`).join('');
+        }
+
+        function handleTurmaChange() {
+            const turmaId = document.getElementById('selectTurma').value;
+            const selectD = document.getElementById('selectDisc');
+            
+            const filteredGrade = globalGrade.filter(g => g.id_turma === turmaId);
+            const discMap = new Map();
+            
+            filteredGrade.forEach(g => {
+                if (g.disciplinas) {
+                    discMap.set(g.sigla_disciplina, g.disciplinas.nome);
+                } else {
+                    discMap.set(g.sigla_disciplina, g.sigla_disciplina);
+                }
+            });
+
+            const options = Array.from(discMap.entries()).sort((a, b) => a[1].localeCompare(b[1])).map(([sigla, nome]) => 
+                `<option value="${sigla}">${nome.toUpperCase()}</option>`
+            ).join('');
+
+            selectD.innerHTML = '<option value="">Disciplina...</option>' + options;
+            handleContextChange();
+        }
+
+        async function fetchFrequenciesPaginated(turmaId, disc, startDate, endDate) {
+            let allFreq = [];
+            let from = 0;
+            const step = 1000;
+            const loadingText = document.getElementById('loading-text');
+
+            while (true) {
+                if (loadingText) loadingText.innerText = `Lendo frequências: ${allFreq.length}...`;
+                
+                const { data, error } = await window.supabaseClient.from('frequencias')
+                    .select('ra_aluno, data_presenca, slot_oficial, numero_tempo, presente')
+                    .eq('id_turma', turmaId)
+                    .eq('sigla_disciplina', disc)
+                    .gte('data_presenca', startDate)
+                    .lte('data_presenca', endDate)
+                    .range(from, from + step - 1);
+
+                if (error) throw error;
+                if (!data || data.length === 0) break;
+                
+                allFreq = allFreq.concat(data);
+                if (data.length < step) break;
+                from += step;
+            }
+            return allFreq;
+        }
+
+        async function handleContextChange() {
+            const turmaId = document.getElementById('selectTurma').value;
+            const discSelect = document.getElementById('selectDisc');
+            const disc = discSelect.value;
+            const discName = discSelect.options[discSelect.selectedIndex]?.text || "";
+            const month = parseInt(document.getElementById('selectMonth').value);
+
+            if (!turmaId || !disc) {
+                document.getElementById('table-wrapper').classList.add('hidden');
+                document.getElementById('empty-view').classList.remove('hidden');
+                document.getElementById('btnSave').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('empty-view').classList.add('hidden');
+            document.getElementById('loading-overlay').classList.remove('hidden');
+            document.getElementById('table-wrapper').classList.add('hidden');
+
+            try {
+                const startDate = new Date(currentYear, month, 1).toISOString().split('T')[0];
+                const endDate = new Date(currentYear, month + 1, 0).toISOString().split('T')[0];
+                
+                // TASK: Busca as informações da turma para validar a série
+                const [gradeRes, calRes, turmaRes] = await Promise.all([
+                    window.supabaseClient.from('grade_horaria').select('dia_semana, numero_tempo').eq('id_turma', turmaId).eq('sigla_disciplina', disc).eq('id_professor', currentUser.id),
+                    window.supabaseClient.from('calendario_letivo').select('data').eq('tipo', 'letivo').gte('data', startDate).lte('data', endDate),
+                    window.supabaseClient.from('turmas').select('serie').eq('id', turmaId).single()
+                ]);
+
+                const daysMap = { 'SEG': 1, 'TER': 2, 'QUA': 3, 'QUI': 4, 'SEX': 5, 'SEGUNDA': 1, 'TERÇA': 2, 'QUARTA': 3, 'QUINTA': 4, 'SEXTA': 5 };
+                
+                expectedGrid = [];
+                calRes.data.forEach(dia => {
+                    const dow = new Date(dia.data + 'T12:00:00').getDay();
+                    const aulasNoDia = gradeRes.data.filter(g => {
+                        const dbDay = g.dia_semana.split('-')[0].toUpperCase();
+                        return daysMap[dbDay] === dow;
+                    }).sort((a,b) => a.numero_tempo - b.numero_tempo);
+                    
+                    aulasNoDia.forEach((aula, idx) => {
+                        expectedGrid.push({ data: dia.data, slot: aula.numero_tempo, rank: idx + 1 });
+                    });
+                });
+
+                // TASK: Lógica de Filtragem de Subturma (Inglês 3ª Série)
+                const isIngles = disc === 'L.ING' || discName.toUpperCase().includes('INGLÊS');
+                const isTerceiraSerie = turmaRes.data?.serie === '3ª Série';
+                
+                let matriculasQuery = window.supabaseClient.from('matriculas')
+                    .select('ra_aluno, status, alunos!inner(nome_completo, status, data_transferencia, id_subturma_ingles)')
+                    .eq('id_turma', turmaId)
+                    .eq('ano_letivo', 2026);
+
+                if (isIngles && isTerceiraSerie) {
+                    // Busca em qual grupo o professor leciona
+                    const { data: subData } = await window.supabaseClient.from('subturmas')
+                        .select('id, nome')
+                        .eq('id_turma_origem', turmaId)
+                        .eq('id_professor', currentUser.id)
+                        .maybeSingle();
+                    
+                    if (subData) {
+                        matriculasQuery = matriculasQuery.eq('alunos.id_subturma_ingles', subData.id);
+                        document.getElementById('txt-instruction').innerText = `EXIBIÇÃO FILTRADA: Você está vendo apenas os alunos do grupo ${subData.nome.toUpperCase()}.`;
+                    } else {
+                        // Se não encontrar vínculo de subturma, não mostra ninguém para evitar confusão
+                        globalMatriculas = [];
+                        renderMatrix();
+                        document.getElementById('table-wrapper').classList.remove('hidden');
+                        document.getElementById('loading-overlay').classList.add('hidden');
+                        return;
+                    }
+                } else {
+                    document.getElementById('txt-instruction').innerText = "Professor, clique em qualquer aluno para iniciar a chamada do dia. Marque apenas os ausentes (F) e salve.";
+                }
+
+                const { data: matriculas } = await matriculasQuery;
+                globalMatriculas = (matriculas || []).sort((a,b) => a.alunos.nome_completo.localeCompare(b.alunos.nome_completo));
+
+                const freq = await fetchFrequenciesPaginated(turmaId, disc, startDate, endDate);
+
+                presenceData = {};
+                freq.forEach(f => {
+                    if (f.slot_oficial) {
+                        presenceData[`${f.ra_aluno}|${f.data_presenca}|S-${f.slot_oficial}`] = f.presente;
+                    } else {
+                        presenceData[`${f.ra_aluno}|${f.data_presenca}|R-${f.numero_tempo}`] = f.presente;
+                    }
+                });
+
+                renderMatrix();
+                document.getElementById('table-wrapper').classList.remove('hidden');
+                document.getElementById('btnSave').classList.remove('hidden');
+            } catch (err) { 
+                console.error(err); 
+            } finally { 
+                document.getElementById('loading-overlay').classList.add('hidden'); 
+                lucide.createIcons(); 
+            }
+        }
+
+        function renderMatrix() {
+            const header = document.getElementById('tableHeader');
+            const body = document.getElementById('tableBody');
+
+            let hHTML = `<tr class="sticky-header-row"><th class="sticky-intersect p-4 text-left text-[9px] font-black uppercase text-slate-400 min-w-[280px]">Estudante</th>`;
+            expectedGrid.forEach(aula => {
+                const day = aula.data.split('-')[2];
+                hHTML += `<th class="header-day">${day}<br><span class="text-[7px] opacity-40">T${aula.slot}</span></th>`;
+            });
+            header.innerHTML = hHTML + '</tr>';
+
+            body.innerHTML = globalMatriculas.map((m, index) => {
+                const isTransf = (m.alunos?.status || m.status) === 'Transferido';
+                const dataSaida = m.alunos?.data_transferencia ? new Date(m.alunos.data_transferencia + 'T00:00:00') : null;
+                const rowClass = index % 2 === 0 ? 'row-even' : 'row-odd';
+
+                let row = `<tr class="${rowClass} border-b border-slate-200 text-left">
+                    <td class="sticky-col px-6 py-3 font-bold text-fmm-dark text-[11px] uppercase truncate text-left border-r border-slate-200">
+                        ${m.alunos.nome_completo} ${isTransf ? '<span class="text-red-500 text-[8px]">(TR)</span>' : ''}
+                    </td>`;
+                
+                expectedGrid.forEach(aula => {
+                    const dataAula = new Date(aula.data + 'T00:00:00');
+                    const keySlot = `${m.ra_aluno}|${aula.data}|S-${aula.slot}`;
+                    const keyRank = `${m.ra_aluno}|${aula.data}|R-${aula.rank}`;
+                    
+                    const status = presenceData[keySlot] !== undefined ? presenceData[keySlot] : presenceData[keyRank];
+                    
+                    let cellClass = 'status-missing';
+                    let content = '!';
+
+                    if (dataSaida && dataAula > dataSaida) {
+                        cellClass = 'status-transf';
+                        content = 'TR';
+                        row += `<td class="border-r border-slate-200"><div class="att-cell ${cellClass}">${content}</div></td>`;
+                    } else {
+                        if (status === true) { cellClass = 'status-p'; content = '.'; }
+                        else if (status === false) { cellClass = 'status-f'; content = 'F'; }
+                        row += `<td class="border-r border-slate-200"><div onclick="toggleCell('${m.ra_aluno}', '${aula.data}', ${aula.slot}, ${aula.rank})" class="att-cell ${cellClass}">${content}</div></td>`;
+                    }
+                });
+                return row + '</tr>';
+            }).join('');
+        }
+
+        function toggleCell(ra, data, slot, rank) {
+            const keySlot = `${ra}|${data}|S-${slot}`;
+            const currentStatus = presenceData[keySlot];
+
+            if (currentStatus === undefined) {
+                globalMatriculas.forEach(m => {
+                    const isTransf = (m.alunos?.status || m.status) === 'Transferido';
+                    const dataSaida = m.alunos?.data_transferencia ? new Date(m.alunos.data_transferencia + 'T00:00:00') : null;
+                    const dataAula = new Date(data + 'T00:00:00');
+
+                    if (!(dataSaida && dataAula > dataSaida)) {
+                        presenceData[`${m.ra_aluno}|${data}|S-${slot}`] = true;
+                    }
+                });
+            } else {
+                presenceData[keySlot] = !currentStatus;
+            }
+
+            renderMatrix();
+        }
+
+        async function saveAttendance() {
+            if (!globalMatriculas.length || !expectedGrid.length) return;
+            const btn = document.getElementById('btnSave');
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Salvando...';
+            lucide.createIcons();
+
+            const records = [];
+            const disc = document.getElementById('selectDisc').value;
+            const turmaId = document.getElementById('selectTurma').value;
+
+            globalMatriculas.forEach(m => {
+                expectedGrid.forEach(aula => {
+                    const keySlot = `${m.ra_aluno}|${aula.data}|S-${aula.slot}`;
+                    const status = presenceData[keySlot];
+                    if (status !== undefined) {
+                        records.push({
+                            ra_aluno: m.ra_aluno,
+                            sigla_disciplina: disc,
+                            id_turma: turmaId,
+                            data_presenca: aula.data,
+                            presente: status,
+                            slot_oficial: aula.slot,
+                            numero_tempo: aula.rank
+                        });
+                    }
+                });
+            });
+
+            try {
+                if (records.length === 0) { showToast("Nenhuma alteração para salvar."); return; }
+                
+                const batchSize = 1000;
+                for (let i = 0; i < records.length; i += batchSize) {
+                    const batch = records.slice(i, i + batchSize);
+                    document.getElementById('sync-text').innerText = `Gravando: ${i + batch.length}/${records.length}...`;
+                    
+                    const { error } = await window.supabaseClient.from('frequencias').upsert(batch, { 
+                        onConflict: 'ra_aluno,sigla_disciplina,data_presenca,numero_tempo' 
+                    });
+                    if (error) throw error;
+                }
+
+                showToast("Presença salva com sucesso!");
+                await handleContextChange();
+            } catch (err) { alert("Erro ao salvar: " + err.message); } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Salvar Chamada';
+                lucide.createIcons();
+            }
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            t.classList.replace('opacity-0', 'opacity-100');
+            t.classList.replace('translate-y-20', 'translate-y-0');
+            setTimeout(() => {
+                t.classList.replace('opacity-100', 'opacity-0');
+                t.classList.replace('translate-y-0', 'translate-y-20');
+            }, 3000);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Boletim de Notas | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="../../assets/js/supabase_client.js"></script>
+    <script src="../../sidebar.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc',
+                            level1: '#3b82f6',
+                            level2: '#eab308',
+                            level3: '#f97316',
+                            level4: '#ef4444'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        /* KPI Cards */
+        .kpi-card { background: white; border: 1px solid #f1f5f9; border-radius: 24px; transition: all 0.3s ease; }
+        .kpi-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px -8px rgba(0, 60, 91, 0.1); }
+
+        /* Abas Estilo Segmented Control */
+        .tab-btn { padding: 8px 16px; font-size: 11px; font-weight: 800; border-radius: 12px; transition: all 0.2s; color: #64748b; white-space: nowrap; }
+        .tab-btn.active { background-color: white; color: #003c5b; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+
+        /* Resultados de Busca Spotlight */
+        .search-item { transition: all 0.2s; border-radius: 16px; }
+        .search-item:hover { background-color: #f1f9ff; transform: translateX(4px); }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: fadeIn 0.4s ease-out forwards; }
+    </style>
+</head>
+
+<body class="flex h-screen w-screen overflow-hidden text-left bg-fmm-bg">
+
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-50"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden relative">
+        
+        <!-- VISUALIZAÇÃO: LISTA PRINCIPAL (Estrutura de Cabeçalho Fixada) -->
+        <div id="listView" class="flex-1 flex flex-col min-h-0 view-transition">
+            <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-30 shadow-sm flex-shrink-0 gap-4">
+                <div class="flex flex-col min-w-fit text-left">
+                    <h1 class="text-xl font-bold text-fmm-dark flex items-center gap-2 text-left">
+                        <i data-lucide="gavel" class="w-5 h-5 text-fmm-lime"></i>
+                        Boletim de Notas
+                    </h1>
+                    <p class="text-xs text-slate-400 font-medium text-left">Consulta e Visualização de Notas</p>
+                </div>
+
+                <div class="flex items-center gap-3 flex-1 justify-end">
+                    <select id="turmaFilter" onchange="loadAnalytics()" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-xs font-bold text-fmm-dark uppercase cursor-pointer">
+                        <option value="">Todas as Turmas</option>
+                    </select>
+                    
+                    <div class="relative w-72 group">
+                        <i data-lucide="search" class="absolute left-4 top-3 w-4 h-4 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
+                        <input type="text" id="studentSearch" oninput="handleSearch(this.value)" placeholder="Buscar Aluno..." class="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm transition-all">
+                        
+                        <!-- DROPDOWN DE RESULTADOS DA BUSCA (SPOTLIGHT) -->
+                        <div id="searchDropdown" class="hidden absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-3xl shadow-2xl z-50 overflow-hidden animate-fade">
+                            <div id="searchResults" class="max-h-80 overflow-y-auto custom-scrollbar p-2"></div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <h1 class="text-xl font-bold text-fmm-dark flex items-center gap-2 alined-center justify-center mt-12 text-left">                            
+                            Tela em construção...
+                        </h1>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentRegime = 'TRIMESTRE'; 
+        let currentPeriodo = '1_TRIMESTRE';
+        let allTurmas = [];
+        let charts = {};
+
+        async function init() {
+            if (window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if (!user) return window.location.href = "../../index.html";
+
+            await loadMetadata();
+            updatePeriodOptions();
+            await loadAnalytics();
+            lucide.createIcons();
+        }
+
+        async function loadMetadata() {
+            const { data: turmas } = await window.supabaseClient.from('turmas').select('*').order('nome');
+            allTurmas = turmas || [];
+            const select = document.getElementById('turmaFilter');
+            select.innerHTML = '<option value="">Todas as Turmas</option>' + 
+                allTurmas.map(t => `<option value="${t.id}">${t.nome}</option>`).join('');
+        }
+
+        function switchRegime(reg) {
+            currentRegime = reg;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-reg-${reg.toLowerCase()}`).classList.add('active');
+            updatePeriodOptions();
+            loadAnalytics();
+        }
+
+        function updatePeriodOptions() {
+            const select = document.getElementById('periodoSelector');
+            let options = [];
+            if(currentRegime === 'TRIMESTRE') {
+                options = [['1_TRIMESTRE', '1º Trimestre'], ['2_TRIMESTRE', '2º Trimestre'], ['3_TRIMESTRE', '3º Trimestre']];
+            } else if(currentRegime === 'BIMESTRE') {
+                options = [['1_BIMESTRE', '1º Bimestre'], ['2_BIMESTRE', '2º Bimestre'], ['3_BIMESTRE', '3º Bimestre'], ['4_BIMESTRE', '4º Bimestre']];
+            } else {
+                options = [['1_SEMESTRE', '1º Semestre'], ['2_SEMESTRE', '2º Semestre']];
+            }
+            select.innerHTML = options.map(o => `<option value="${o[0]}">${o[1]}</option>`).join('');
+            currentPeriodo = select.value;
+        }
+
+        /**
+         * FUNÇÃO DE PAGINAÇÃO EXAUSTIVA: Crucial para bases > 1000 registros
+         */
+        async function fetchTablePaginated(tableName, selectQuery, filterFn = null) {
+            let allData = [];
+            let from = 0;
+            const pageSize = 1000;
+
+            while (true) {
+                let query = window.supabaseClient.from(tableName).select(selectQuery).range(from, from + pageSize - 1);
+                if (filterFn) query = filterFn(query);
+
+                const { data, error } = await query;
+                if (error) {
+                    console.error(`Erro ao baixar ${tableName}:`, error);
+                    break;
+                }
+
+                if (data) allData = allData.concat(data);
+                if (!data || data.length < pageSize) break;
+                from += pageSize;
+            }
+            return allData;
+        }
+
+        async function loadAnalytics() {
+            currentPeriodo = document.getElementById('periodoSelector').value;
+            const filterTurmaId = document.getElementById('turmaFilter').value;
+            document.getElementById('syncIndicator').classList.remove('hidden');
+
+            try {
+                let table = 'notas_basica', field = 'nt';
+                if(currentRegime === 'BIMESTRE') { table = 'notas_fundamental'; field = 'nb'; }
+                else if(currentRegime === 'SEMESTRE') { table = 'notas_tecnica'; field = 'nota_final_periodo'; }
+
+                // 1. Buscar TODAS as notas do período (Com Paginação)
+                // TASK FIX: Ajustado join para passar por matriculas para evitar erro 400
+                const notas = await fetchTablePaginated(table, '*, matriculas!inner(id_turma, turmas(id, nome, nivel))', (q) => {
+                    let filtered = q.eq('periodo', currentPeriodo);
+                    if (filterTurmaId) filtered = filtered.eq('matriculas.id_turma', filterTurmaId);
+                    return filtered;
+                });
+
+                // 2. Buscar TODAS as matrículas para cálculo de cobertura (Com Paginação)
+                const matriculas = await fetchTablePaginated('matriculas', 'id, id_turma', (q) => {
+                    let filtered = q.eq('ano_letivo', 2026).eq('status', 'CURSANDO');
+                    if (filterTurmaId) filtered = filtered.eq('id_turma', filterTurmaId);
+                    return filtered;
+                });
+
+                // 3. Processar KPIs
+                const avg = notas.length > 0 ? (notas.reduce((acc, n) => acc + parseFloat(n[field] || 0), 0) / notas.length) : 0;
+                const riscoCount = notas.filter(n => parseFloat(n[field]) < 6 && parseFloat(n[field]) > 0).length;
+                const alunosComNota = new Set(notas.map(n => n.id_matricula)).size;
+                const cobertura = matriculas.length > 0 ? Math.round((alunosComNota / matriculas.length) * 100) : 0;
+
+                document.getElementById('kpi-media').innerText = avg.toFixed(1);
+                document.getElementById('bar-media').style.width = (avg * 10) + '%';
+                document.getElementById('kpi-alunos').innerText = matriculas.length;
+                document.getElementById('kpi-risco').innerText = riscoCount;
+                document.getElementById('kpi-lancamento').innerText = cobertura + '%';
+
+                // 4. Gráficos por Turma
+                const stats = {};
+                notas.forEach(n => {
+                    const tNome = n.matriculas?.turmas?.nome || 'S/T';
+                    if(!stats[tNome]) stats[tNome] = { sum: 0, count: 0, risco: 0 };
+                    stats[tNome].sum += parseFloat(n[field] || 0);
+                    stats[tNome].count++;
+                    if(parseFloat(n[field]) < 6 && parseFloat(n[field]) > 0) stats[tNome].risco++;
+                });
+
+                const labels = Object.keys(stats).sort();
+                const dataMedias = labels.map(l => (stats[l].sum / stats[l].count).toFixed(1));
+                const dataRisco = labels.map(l => stats[l].risco);
+
+                renderChart('chartTurmas', labels, dataMedias, '#00638f', 'Média');
+                renderChart('chartRisco', labels, dataRisco, '#ef4444', 'Risco');
+
+            } catch (err) { 
+                console.error("Erro crítico no processamento:", err); 
+            } finally { 
+                document.getElementById('syncIndicator').classList.add('hidden'); 
+            }
+        }
+
+        function renderChart(id, labels, data, color, label) {
+            if(charts[id]) charts[id].destroy();
+            const ctx = document.getElementById(id).getContext('2d');
+            charts[id] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{ label, data, backgroundColor: color, borderRadius: 8, barThickness: 16 }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { display: false }, ticks: { font: { size: 9, weight: 'bold' } } },
+                        x: { grid: { display: false }, ticks: { font: { size: 9, weight: 'bold' } } }
+                    }
+                }
+            });
+        }
+
+        // --- BUSCA SPOTLIGHT ---
+        let searchTimeout;
+        async function handleSearch(val) {
+            const dropdown = document.getElementById('searchDropdown');
+            const resultsDiv = document.getElementById('searchResults');
+            
+            clearTimeout(searchTimeout);
+            if(val.length < 3) { dropdown.classList.add('hidden'); return; }
+
+            searchTimeout = setTimeout(async () => {
+                const { data } = await window.supabaseClient.from('alunos').select('ra, nome_completo, url_foto, turmas(nome)')
+                    .or(`nome_completo.ilike.%${val}%,ra.ilike.%${val}%`).limit(5);
+                
+                if(data && data.length > 0) {
+                    resultsDiv.innerHTML = data.map(a => {
+                        const photo = (a.url_foto && a.url_foto.includes('drive.google.com')) 
+                            ? `https://lh3.googleusercontent.com/d/${a.url_foto.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1]}`
+                            : `https://ui-avatars.com/api/?name=${encodeURIComponent(a.nome_completo)}&background=003c5b&color=fff`;
+                        
+                        return `
+                        <div onclick="window.location.href='detalhesboletim_coordenador.html?ra=${a.ra}'" class="search-item p-3 flex items-center gap-4 cursor-pointer hover:bg-slate-50 border-b border-slate-50 last:border-0 text-left">
+                            <img src="${photo}" class="w-10 h-10 rounded-xl object-cover border border-slate-100 shadow-sm" onerror="this.src='https://ui-avatars.com/api/?name=AL&background=003c5b&color=fff'">
+                            <div class="flex flex-col overflow-hidden text-left">
+                                <span class="text-xs font-black text-fmm-dark uppercase truncate text-left">${a.nome_completo}</span>
+                                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-left">${a.turmas?.nome || 'S/T'} • RA: ${a.ra}</span>
+                            </div>
+                            <i data-lucide="chevron-right" class="w-4 h-4 ml-auto text-slate-300"></i>
+                        </div>`;
+                    }).join('');
+                    dropdown.classList.remove('hidden');
+                    lucide.createIcons();
+                } else {
+                    resultsDiv.innerHTML = '<p class="p-4 text-xs font-bold text-slate-400 text-center uppercase tracking-widest text-left">Nenhum aluno localizado</p>';
+                    dropdown.classList.remove('hidden');
+                }
+            }, 300);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+
+</html>

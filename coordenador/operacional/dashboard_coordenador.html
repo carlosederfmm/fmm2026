@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Coordenador | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Infraestrutura FMM 2026 -->
+    <script src="../../assets/js/supabase_client.js"></script>
+    <script src="../../sidebar.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; overflow: hidden; }
+        
+        /* Sidebar Integrada */
+        .sidebar-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        #sidebar-container { overflow: visible !important; position: relative; }
+        body.sidebar-collapsed #sidebar-container { width: 80px !important; }
+        
+        /* Animações e Scroll */
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fadeInUp 0.4s ease-out forwards; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        /* Agenda - Design Minimalista Premium */
+        .calendar-day { 
+            min-height: 100px; transition: all 0.2s; position: relative; 
+            border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;
+        }
+        .calendar-day:hover { background-color: rgba(0, 99, 143, 0.03); }
+        
+        .event-tag { 
+            font-size: 9px; font-weight: 800; padding: 4px 10px; border-radius: 8px; 
+            margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            max-width: 100%; display: block; cursor: pointer; transition: all 0.2s;
+            border-left: 3px solid #00638f; background: #eff6ff; color: #1e40af;
+            text-transform: uppercase; letter-spacing: 0.02em;
+        }
+        .event-tag:hover { transform: translateX(3px); filter: brightness(0.97); }
+
+        .view-tab { 
+            padding: 8px 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; 
+            letter-spacing: 0.1em; border-radius: 12px; transition: all 0.2s; color: #64748b;
+        }
+        .view-tab.active { background: #003c5b; color: white; box-shadow: 0 4px 12px rgba(0, 60, 91, 0.2); }
+
+        .event-card-full { 
+            background: white; border-radius: 28px; border: 1px solid #f1f5f9;
+            padding: 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); transition: all 0.2s;
+            cursor: pointer; position: relative; border-left: 6px solid #00638f;
+        }
+        .event-card-full:hover { transform: scale(1.005); box-shadow: 0 20px 40px rgba(0,0,0,0.06); }
+        
+        .participant-avatar {
+            width: 30px; height: 30px; border-radius: 10px; border: 2px solid white;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; font-weight: 900; color: white; text-transform: uppercase;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* KPI Cards Compactos */
+        .kpi-card {
+            background: white; padding: 16px 20px; border-radius: 24px;
+            border: 1px solid #f1f5f9; display: flex; align-items: center; gap: 14px;
+            transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.01);
+        }
+        .kpi-card:hover { border-color: #00638f30; transform: translateY(-2px); }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden">
+
+    <!-- SIDEBAR CONTAINER -->
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-40"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
+        
+        <!-- HEADER SUPERIOR -->
+        <header class="bg-white h-20 border-b flex items-center justify-between px-10 z-10 shadow-sm flex-shrink-0">
+            <div class="flex flex-col">
+                <h1 class="text-xl font-black text-fmm-dark tracking-tight uppercase">Dashboard Operacional</h1>
+                <p class="text-[10px] text-fmm-blue font-bold uppercase tracking-[0.2em]" id="current-date">Sincronizando...</p>
+            </div>
+            
+            <div class="flex items-center gap-6">
+                <div class="flex flex-col items-end">
+                    <span id="userName" class="text-xs font-black text-fmm-dark uppercase">...</span>
+                    <span id="userRoleLabel" class="text-[9px] text-fmm-blue font-black uppercase tracking-widest opacity-60">Coordenador Acadêmico</span>
+                </div>
+                <div id="userInitials" class="w-11 h-11 rounded-[14px] bg-gradient-to-br from-fmm-blue to-fmm-dark text-white flex items-center justify-center font-black shadow-lg uppercase text-sm border-2 border-white">?</div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+            
+            <!-- CARDS DE RESUMO (KPIs) - VERSÃO COMPACTA -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 flex-shrink-0">
+                <div class="kpi-card animate-fade-in-up">
+                    <div class="w-11 h-11 bg-fmm-blue/10 rounded-xl flex items-center justify-center text-fmm-blue"><i data-lucide="graduation-cap" class="w-5 h-5"></i></div>
+                    <div class="flex flex-col"><span class="text-xl font-black text-fmm-dark leading-tight" id="stat-profs">0</span><span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Professores</span></div>
+                </div>
+                <div class="kpi-card animate-fade-in-up" style="animation-delay: 0.1s;">
+                    <div class="w-11 h-11 bg-fmm-green/10 rounded-xl flex items-center justify-center text-fmm-green"><i data-lucide="user-check-2" class="w-5 h-5"></i></div>
+                    <div class="flex flex-col"><span class="text-xl font-black text-fmm-dark leading-tight" id="stat-alunos">0</span><span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Alunos Ativos</span></div>
+                </div>
+                <div class="kpi-card animate-fade-in-up" style="animation-delay: 0.2s;">
+                    <div class="w-11 h-11 bg-fmm-lime/10 rounded-xl flex items-center justify-center text-fmm-lime"><i data-lucide="layout-grid" class="w-5 h-5"></i></div>
+                    <div class="flex flex-col"><span class="text-xl font-black text-fmm-dark leading-tight" id="stat-turmas">0</span><span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Turmas 2026</span></div>
+                </div>
+                <div class="kpi-card animate-fade-in-up" style="animation-delay: 0.3s;">
+                    <div class="w-11 h-11 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600"><i data-lucide="book-open-check" class="w-5 h-5"></i></div>
+                    <div class="flex flex-col"><span class="text-xl font-black text-fmm-dark leading-tight" id="stat-discs">0</span><span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Disciplinas</span></div>
+                </div>
+            </div>
+
+            <!-- AGENDA INSTITUCIONAL - O CENTRO DAS ATENÇÕES -->
+            <div class="bg-white rounded-[40px] border border-slate-200 shadow-2xl overflow-hidden flex flex-col min-h-[750px] animate-fade-in-up" style="animation-delay: 0.4s;">
+                <!-- Toolbar da Agenda -->
+                <div class="p-6 border-b border-slate-100 flex flex-col xl:flex-row items-center justify-between gap-6 bg-white">
+                    <div class="flex items-center gap-5">
+                        <div class="bg-fmm-dark text-white p-3.5 rounded-2xl shadow-xl"><i data-lucide="calendar-days" class="w-6 h-6"></i></div>
+                        <div>
+                            <h3 class="text-lg font-black text-fmm-dark uppercase tracking-tight" id="calendar-header-title">Agenda Institucional</h3>
+                            <p class="text-[10px] text-fmm-blue font-black uppercase tracking-[0.2em] mt-1" id="calendar-subtitle">Mês de Janeiro</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-6">
+                        <div class="flex bg-slate-50 p-1 rounded-xl border border-slate-200">
+                            <button onclick="switchCalendarView('month')" id="btn-view-month" class="view-tab active">Mês</button>
+                            <button onclick="switchCalendarView('week')" id="btn-view-week" class="view-tab">Semana</button>
+                            <button onclick="switchCalendarView('day')" id="btn-view-day" class="view-tab">Dia</button>
+                        </div>
+                        
+                        <div class="h-6 w-px bg-slate-200"></div>
+
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="navigateCalendar(-1)" class="p-2 hover:bg-slate-100 rounded-lg transition-all text-slate-400"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+                            <button onclick="navigateToday()" class="px-4 py-2 text-[10px] font-black uppercase text-fmm-blue hover:bg-fmm-blue/5 rounded-lg transition-colors border border-transparent hover:border-fmm-blue/10">Hoje</button>
+                            <button onclick="navigateCalendar(1)" class="p-2 hover:bg-slate-100 rounded-lg transition-all text-slate-400"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ÁREA DINÂMICA DO CALENDÁRIO -->
+                <div id="calendar-container" class="flex-1 overflow-hidden flex flex-col">
+                    <!-- Header Dias (SEG-DOM) -->
+                    <div id="calendar-weekday-header" class="grid grid-cols-7 bg-slate-50/30 border-b border-slate-100">
+                        <div class="py-3 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Dom</div>
+                        <div class="py-3 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Seg</div>
+                        <div class="py-3 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Ter</div>
+                        <div class="py-3 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Qua</div>
+                        <div class="py-3 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Qui</div>
+                        <div class="py-3 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Sex</div>
+                        <div class="py-3 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Sáb</div>
+                    </div>
+
+                    <!-- Corpo Principal -->
+                    <div id="calendar-body" class="flex-1 overflow-y-auto custom-scrollbar bg-white">
+                        <!-- Injetado via JS -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="h-10"></div>
+        </div>
+    </main>
+
+    <!-- MODAL DE AGENDAMENTO (CRIAR / EDITAR) -->
+    <div id="eventModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-fmm-dark/70 backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-xl rounded-[40px] shadow-2xl flex flex-col animate-fade-in-up overflow-hidden border-[4px] border-white">
+            <div class="p-8 border-b border-slate-50 flex justify-between items-center bg-white">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 bg-fmm-blue/10 rounded-xl flex items-center justify-center text-fmm-blue" id="modalIcon">
+                        <i data-lucide="calendar-plus" class="w-5 h-5"></i>
+                    </div>
+                    <h2 class="text-xl font-black text-fmm-dark tracking-tight uppercase" id="modalTitle">Novo Compromisso</h2>
+                </div>
+                <button onclick="closeModal()" class="text-slate-300 hover:text-red-500 transition-all p-2 rounded-full hover:bg-slate-50"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+
+            <div class="p-8 space-y-6 bg-slate-50/50 overflow-y-auto custom-scrollbar max-h-[60vh]">
+                <input type="hidden" id="editingEventId">
+                
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Título do Evento</label>
+                    <input type="text" id="evTitle" placeholder="Ex: Reunião de Pais" class="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-fmm-blue/5 focus:border-fmm-blue font-bold text-slate-700 transition-all">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Início</label>
+                        <input type="datetime-local" id="evStart" class="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl outline-none text-xs font-bold text-slate-600">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Fim Estimado</label>
+                        <input type="datetime-local" id="evEnd" class="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl outline-none text-xs font-bold text-slate-600">
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Localização</label>
+                    <div class="relative">
+                        <i data-lucide="map-pin" class="absolute left-4 top-3.5 w-4 h-4 text-slate-300"></i>
+                        <input type="text" id="evLocation" placeholder="Auditório, Sala de Reuniões..." class="w-full pl-11 pr-5 py-3.5 bg-white border border-slate-200 rounded-2xl outline-none focus:border-fmm-blue text-xs font-bold text-slate-600">
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Convocação da Equipe</label>
+                    <div class="relative group">
+                        <i data-lucide="user-plus" class="absolute left-4 top-3.5 w-4 h-4 text-slate-300"></i>
+                        <input type="text" id="staffSearch" onkeyup="searchStaff(this.value)" placeholder="Buscar colaborador..." class="w-full pl-11 pr-5 py-3.5 bg-white border border-slate-200 rounded-2xl outline-none focus:border-fmm-blue text-xs transition-all">
+                        <div id="staffResults" class="absolute w-full mt-2 bg-white border border-slate-100 rounded-2xl shadow-2xl max-h-48 overflow-y-auto z-50 hidden custom-scrollbar"></div>
+                    </div>
+                    <div id="selectedParticipants" class="flex flex-wrap gap-2 pt-1"></div>
+                </div>
+            </div>
+
+            <div class="p-8 bg-white border-t border-slate-100 flex justify-between items-center">
+                <button id="btnDelete" onclick="deleteAgendamento()" class="hidden px-6 py-3.5 bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-red-100 transition-all flex items-center gap-2">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i> Excluir
+                </button>
+                <div class="flex gap-3 ml-auto">
+                    <button onclick="closeModal()" class="px-6 py-3.5 text-[10px] font-black uppercase text-slate-400 hover:text-slate-600">Cancelar</button>
+                    <button onclick="saveAgendamento()" id="btnSave" class="px-10 py-3.5 bg-fmm-dark text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-2xl hover:bg-black transition-all hover:scale-105">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="fixed bottom-8 right-8 z-[200] translate-y-20 opacity-0 transition-all duration-500">
+        <div class="bg-slate-900 text-white px-8 py-5 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/10">
+            <div class="w-8 h-8 bg-fmm-lime/20 rounded-full flex items-center justify-center">
+                <i data-lucide="check" class="w-4 h-4 text-fmm-lime"></i>
+            </div>
+            <span class="text-[11px] font-black tracking-tight uppercase" id="toast-msg">Agenda Sincronizada</span>
+        </div>
+    </div>
+
+    <script>
+        // ESTADO GLOBAL
+        let currentCalendarDate = new Date();
+        let currentCalendarView = 'month'; 
+        let currentUser = null;
+        let allStaff = [];
+        let selectedStaffIds = [];
+        let monthEvents = [];
+
+        const AVATAR_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899'];
+
+        async function init() {
+            if (window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if (!user) return window.location.href = '../../index.html';
+            currentUser = user;
+
+            updateDateUI();
+            
+            // Carregamento paralelo para performance
+            await Promise.all([
+                fetchStaff(),
+                fetchUserProfile(),
+                fetchStats(),
+                fetchAgendamentos()
+            ]);
+            
+            lucide.createIcons();
+        }
+
+        async function fetchUserProfile() {
+            const { data } = await window.supabaseClient.from('perfis').select('*').eq('id', currentUser.id).single();
+            if (data) {
+                document.getElementById('userName').innerText = data.nome_completo;
+                document.getElementById('userInitials').innerText = data.nome_completo.charAt(0);
+                document.getElementById('userRoleLabel').innerText = data.cargo.charAt(0).toUpperCase() + data.cargo.slice(1);
+            }
+        }
+
+        async function fetchStaff() {
+            const { data } = await window.supabaseClient.from('perfis').select('id, nome_completo, cargo').order('nome_completo');
+            allStaff = data || [];
+        }
+
+        /**
+         * BUG FIX: Sincronia de Case com o Banco de Dados
+         * O filtro .eq('status', 'CURSANDO') retornava zero porque o banco usa 'Cursando'.
+         */
+        async function fetchStats() {
+            try {
+                const [profsRes, alunosRes, turmasRes, discsRes] = await Promise.all([
+                    window.supabaseClient.from('perfis').select('*', { count: 'exact', head: true }).eq('cargo', 'professor'),
+                    window.supabaseClient.from('alunos').select('*', { count: 'exact', head: true }).eq('status', 'Cursando'), // CORRIGIDO: Case-sensitive
+                    window.supabaseClient.from('turmas').select('*', { count: 'exact', head: true }),
+                    window.supabaseClient.from('disciplinas').select('*', { count: 'exact', head: true })
+                ]);
+
+                document.getElementById('stat-profs').innerText = profsRes.count || 0;
+                document.getElementById('stat-alunos').innerText = alunosRes.count || 0;
+                document.getElementById('stat-turmas').innerText = turmasRes.count || 0;
+                document.getElementById('stat-discs').innerText = discsRes.count || 0;
+            } catch (err) {
+                console.error("Erro ao carregar estatísticas:", err);
+            }
+        }
+
+        async function fetchAgendamentos() {
+            let start, end;
+            if (currentCalendarView === 'month') {
+                start = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth(), 1).toISOString();
+                end = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + 1, 0, 23, 59, 59).toISOString();
+            } else if (currentCalendarView === 'week') {
+                const day = currentCalendarDate.getDay();
+                const temp = new Date(currentCalendarDate);
+                const diff = temp.getDate() - day;
+                const monday = new Date(temp.setDate(diff));
+                monday.setHours(0,0,0,0);
+                start = monday.toISOString();
+                const sunday = new Date(monday);
+                sunday.setDate(monday.getDate() + 6);
+                sunday.setHours(23,59,59,999);
+                end = sunday.toISOString();
+            } else {
+                const day = new Date(currentCalendarDate);
+                day.setHours(0,0,0,0);
+                start = day.toISOString();
+                day.setHours(23,59,59,999);
+                end = day.toISOString();
+            }
+
+            const { data, error } = await window.supabaseClient
+                .from('agendamentos')
+                .select('*, agendamento_participantes(id_perfil)')
+                .gte('horario_inicio', start)
+                .lte('horario_inicio', end);
+
+            if (error) console.error("Erro agenda:", error);
+            monthEvents = data || [];
+            renderCalendar();
+        }
+
+        function switchCalendarView(view) {
+            currentCalendarView = view;
+            document.querySelectorAll('.view-tab').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-view-${view}`).classList.add('active');
+            document.getElementById('calendar-weekday-header').className = (view === 'month' || view === 'week') ? 'grid grid-cols-7 bg-slate-50/30 border-b border-slate-100' : 'hidden';
+            fetchAgendamentos();
+        }
+
+        function renderCalendar() {
+            const body = document.getElementById('calendar-body');
+            const subtitle = document.getElementById('calendar-subtitle');
+            if(!body) return;
+            body.innerHTML = '';
+            
+            if (currentCalendarView === 'month') renderMonthView(body, subtitle);
+            else if (currentCalendarView === 'week') renderWeekView(body, subtitle);
+            else renderDayView(body, subtitle);
+            
+            lucide.createIcons();
+        }
+
+        function renderMonthView(body, subtitle) {
+            body.className = "grid grid-cols-7";
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+            const firstDay = new Date(year, month, 1).getDay();
+            const totalDays = new Date(year, month + 1, 0).getDate();
+            subtitle.innerText = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(currentCalendarDate);
+            
+            for (let i = 0; i < firstDay; i++) body.innerHTML += `<div class="p-4 border-r border-b border-slate-50 bg-slate-50/20"></div>`;
+
+            const todayStr = ManausTime.toISODate(new Date());
+            for (let d = 1; d <= totalDays; d++) {
+                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const isToday = dateStr === todayStr;
+                const events = monthEvents.filter(ev => ev.horario_inicio.startsWith(dateStr));
+
+                const eventsHTML = events.map(ev => `
+                    <div class="event-tag" onclick="event.stopPropagation(); editAgendamento('${ev.id}')">
+                        ${ev.titulo}
+                    </div>
+                `).join('');
+
+                body.innerHTML += `
+                    <div class="calendar-day p-3" onclick="openEventModal('${dateStr}')">
+                        <span class="text-[10px] font-black ${isToday ? 'text-white bg-fmm-blue px-2 py-0.5 rounded-lg shadow-md' : 'text-slate-300'}">${d}</span>
+                        <div class="mt-2 space-y-0.5">${eventsHTML}</div>
+                    </div>`;
+            }
+        }
+
+        function renderWeekView(body, subtitle) {
+            body.className = "flex divide-x divide-slate-100 min-h-[500px]";
+            const day = currentCalendarDate.getDay();
+            const temp = new Date(currentCalendarDate);
+            const diff = temp.getDate() - day;
+            const startOfWeek = new Date(temp.setDate(diff));
+            subtitle.innerText = `Semana de ${startOfWeek.getDate()} de ${ManausTime.formatFull(startOfWeek).split(' ')[3]}`;
+
+            for(let i=0; i<7; i++) {
+                const current = new Date(startOfWeek);
+                current.setDate(startOfWeek.getDate() + i);
+                const dateStr = ManausTime.toISODate(current);
+                const events = monthEvents.filter(ev => ev.horario_inicio.startsWith(dateStr));
+
+                const eventsHTML = events.map(ev => `
+                    <div class="p-3 bg-white border border-slate-100 rounded-xl shadow-sm mb-2 cursor-pointer hover:border-fmm-blue/40 transition-all group" onclick="editAgendamento('${ev.id}')">
+                        <p class="text-[10px] font-extrabold text-fmm-dark leading-tight group-hover:text-fmm-blue">${ev.titulo}</p>
+                        <p class="text-[8px] font-bold uppercase mt-1 opacity-40">${ev.horario_inicio.split('T')[1].substring(0,5)}</p>
+                    </div>
+                `).join('');
+
+                body.innerHTML += `
+                    <div class="flex-1 bg-slate-50/5 p-4">
+                        <div class="text-center mb-4"><span class="text-xs font-black text-slate-400">${current.getDate()}</span></div>
+                        <div class="flex flex-col">${eventsHTML}</div>
+                    </div>`;
+            }
+        }
+
+        function renderDayView(body, subtitle) {
+            body.className = "p-8 space-y-4 max-w-5xl mx-auto";
+            const dateStr = ManausTime.toISODate(currentCalendarDate);
+            subtitle.innerText = ManausTime.formatFull(currentCalendarDate);
+            const events = monthEvents.filter(ev => ev.horario_inicio.startsWith(dateStr)).sort((a,b) => a.horario_inicio.localeCompare(b.horario_inicio));
+
+            if(events.length === 0) {
+                body.innerHTML = `<div class="flex flex-col items-center justify-center py-20 text-slate-300 opacity-20"><i data-lucide="calendar" class="w-16 h-16 mb-4"></i><p class="text-xs font-black uppercase tracking-widest">Sem compromissos</p></div>`;
+            } else {
+                events.forEach(ev => {
+                    const parts = ev.agendamento_participantes || [];
+                    body.innerHTML += `
+                    <div class="event-card-full animate-fade-in-up" onclick="editAgendamento('${ev.id}')">
+                        <div class="flex justify-between items-center">
+                            <div class="space-y-3">
+                                <span class="px-3 py-1 bg-fmm-blue/5 text-fmm-blue text-[9px] font-black uppercase tracking-widest rounded-lg border border-fmm-blue/10">
+                                    ${ev.horario_inicio.split('T')[1].substring(0,5)} - ${ev.horario_fim.split('T')[1].substring(0,5)}
+                                </span>
+                                <h4 class="text-xl font-black text-fmm-dark leading-none">${ev.titulo}</h4>
+                                <div class="flex items-center gap-4">
+                                    <span class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase">
+                                        <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> ${ev.local || 'Não definido'}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="flex -space-x-2">
+                                ${parts.slice(0, 4).map((p, idx) => {
+                                    const s = allStaff.find(x => x.id === p.id_perfil);
+                                    return `<div class="participant-avatar" style="background:${AVATAR_COLORS[idx % 7]}" title="${s?.nome_completo}">${s?.nome_completo.charAt(0) || '?'}</div>`;
+                                }).join('')}
+                                ${parts.length > 4 ? `<div class="participant-avatar bg-slate-200 !text-slate-500">+${parts.length-4}</div>` : ''}
+                            </div>
+                        </div>
+                    </div>`;
+                });
+            }
+            body.innerHTML += `<button onclick="openEventModal('${dateStr}')" class="w-full p-6 border-4 border-dashed border-slate-100 rounded-[28px] text-slate-300 hover:border-fmm-blue/20 hover:text-fmm-blue transition-all font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 mt-4"><i data-lucide="plus" class="w-4 h-4"></i> Adicionar à Agenda</button>`;
+        }
+
+        // --- CRUD LOGIC ---
+        function openEventModal(dateStr, isEditing = false) {
+            const modal = document.getElementById('eventModal');
+            selectedStaffIds = [];
+            document.getElementById('editingEventId').value = '';
+            document.getElementById('evTitle').value = '';
+            document.getElementById('evLocation').value = '';
+            
+            if (!isEditing) {
+                document.getElementById('modalTitle').innerText = "Novo Compromisso";
+                document.getElementById('btnSave').innerText = "Salvar Agenda";
+                document.getElementById('evStart').value = `${dateStr}T08:00`;
+                document.getElementById('evEnd').value = `${dateStr}T09:00`;
+                document.getElementById('btnDelete').classList.add('hidden');
+                renderSelectedParticipants();
+            }
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        async function editAgendamento(id) {
+            const ev = monthEvents.find(x => x.id === id);
+            if (!ev) return;
+            openEventModal(null, true);
+            document.getElementById('editingEventId').value = ev.id;
+            document.getElementById('modalTitle').innerText = "Editar Compromisso";
+            document.getElementById('btnSave').innerText = "Atualizar";
+            document.getElementById('btnDelete').classList.remove('hidden');
+            document.getElementById('evTitle').value = ev.titulo;
+            document.getElementById('evLocation').value = ev.local || '';
+            document.getElementById('evStart').value = ev.horario_inicio.substring(0, 16);
+            document.getElementById('evEnd').value = ev.horario_fim.substring(0, 16);
+            selectedStaffIds = ev.agendamento_participantes.map(p => p.id_perfil);
+            renderSelectedParticipants();
+        }
+
+        async function saveAgendamento() {
+            const id = document.getElementById('editingEventId').value;
+            const payload = {
+                titulo: document.getElementById('evTitle').value,
+                local: document.getElementById('evLocation').value,
+                horario_inicio: document.getElementById('evStart').value,
+                horario_fim: document.getElementById('evEnd').value,
+                id_criador: currentUser.id, id_responsavel: currentUser.id
+            };
+            if(!payload.titulo || !payload.horario_inicio) return alert("Preencha os campos obrigatórios.");
+            const btn = document.getElementById('btnSave');
+            btn.disabled = true; btn.innerText = "Gravando...";
+            try {
+                let agendaId = id;
+                if (id) { await window.supabaseClient.from('agendamentos').update(payload).eq('id', id); }
+                else { const { data, error } = await window.supabaseClient.from('agendamentos').insert(payload).select().single(); agendaId = data.id; }
+                await window.supabaseClient.from('agendamento_participantes').delete().eq('id_agendamento', agendaId);
+                if (selectedStaffIds.length > 0) { await window.supabaseClient.from('agendamento_participantes').insert(selectedStaffIds.map(pId => ({ id_agendamento: agendaId, id_perfil: pId }))); }
+                showToast(id ? "Atualizado" : "Criado"); closeModal(); fetchAgendamentos();
+            } catch (err) { alert(err.message); } finally { btn.disabled = false; btn.innerText = "Salvar"; }
+        }
+
+        async function deleteAgendamento() {
+            const id = document.getElementById('editingEventId').value;
+            if(!confirm("Excluir evento?")) return;
+            await window.supabaseClient.from('agendamentos').delete().eq('id', id);
+            showToast("Removido"); closeModal(); fetchAgendamentos();
+        }
+
+        function searchStaff(val) {
+            const res = document.getElementById('staffResults');
+            if(!val) return res.classList.add('hidden');
+            const filtered = allStaff.filter(s => s.nome_completo.toLowerCase().includes(val.toLowerCase()));
+            res.innerHTML = filtered.map(s => `
+                <div onclick="addParticipant('${s.id}')" class="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 flex justify-between items-center group">
+                    <div><p class="text-xs font-black text-fmm-dark uppercase">${s.nome_completo}</p><p class="text-[9px] text-slate-400 font-bold uppercase">${s.cargo}</p></div>
+                    <i data-lucide="plus-circle" class="w-4 h-4 text-slate-200 group-hover:text-fmm-blue"></i>
+                </div>`).join('');
+            res.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function addParticipant(id) { if(!selectedStaffIds.includes(id)) { selectedStaffIds.push(id); renderSelectedParticipants(); } document.getElementById('staffSearch').value = ''; document.getElementById('staffResults').classList.add('hidden'); }
+        function removeParticipant(id) { selectedStaffIds = selectedStaffIds.filter(x => x !== id); renderSelectedParticipants(); }
+
+        function renderSelectedParticipants() {
+            const container = document.getElementById('selectedParticipants');
+            container.innerHTML = selectedStaffIds.map(id => {
+                const s = allStaff.find(x => x.id === id);
+                return `<div class="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-600 shadow-sm uppercase">
+                    ${s?.nome_completo.split(' ')[0]}
+                    <button onclick="removeParticipant('${id}')" class="text-slate-300 hover:text-red-500"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                </div>`;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function navigateCalendar(dir) {
+            if (currentCalendarView === 'month') currentCalendarDate.setMonth(currentCalendarDate.getMonth() + dir);
+            else if (currentCalendarView === 'week') currentCalendarDate.setDate(currentCalendarDate.getDate() + (dir * 7));
+            else currentCalendarDate.setDate(currentCalendarDate.getDate() + dir);
+            fetchAgendamentos();
+        }
+
+        function navigateToday() { currentCalendarDate = new Date(); fetchAgendamentos(); }
+        function closeModal() { document.getElementById('eventModal').classList.add('hidden'); }
+        function toggleSidebar() { if(window.SidebarComponent) SidebarComponent.toggleSidebar(); }
+        function updateDateUI() { if (window.ManausTime) document.getElementById('current-date').innerText = ManausTime.formatFull(new Date()); }
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            t.classList.replace('opacity-0', 'opacity-100'); t.classList.replace('translate-y-20', 'translate-y-0');
+            setTimeout(() => { t.classList.replace('opacity-100', 'opacity-0'); t.classList.replace('translate-y-0', 'translate-y-20'); }, 3000);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Neurodivergentes | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Assets SME -->
+    <script src="../assets/js/supabase_client.js"></script>
+    <script src="../sidebar.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        .table-container {
+            background: white;
+            border-radius: 20px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .tr-hover { transition: background-color 0.2s; }
+        .tr-hover:hover { background-color: #f8fafc; }
+
+        .avatar-mini {
+            width: 36px; height: 36px; border-radius: 8px; object-fit: cover;
+            border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
+        
+        .search-result-item:hover { background-color: #f0f9ff; }
+
+        .filter-select-head {
+            background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;
+            padding: 8px 12px; font-size: 11px; font-weight: 700; color: #475569;
+            outline: none; transition: all 0.2s; cursor: pointer;
+        }
+        .filter-select-head:focus { border-color: #00638f; background-color: white; }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden text-left">
+
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden relative">
+        
+        <header class="bg-white h-20 border-b flex items-center justify-between px-6 z-10 shadow-sm flex-shrink-0">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-fmm-blue/10 rounded-xl flex items-center justify-center text-fmm-blue">
+                    <i data-lucide="brain-circuit" class="w-5 h-5"></i>
+                </div>
+                <div class="text-left hidden lg:block">
+                    <h1 class="text-lg font-black text-fmm-dark uppercase tracking-tight leading-none text-left">Gestão de Laudos</h1>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 text-left">SME FMM</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <!-- Filtro de Etapa subiu para o cabeçalho -->
+                <select id="filterEtapa" onchange="filterResults()" class="filter-select-head">
+                    <option value="all">Todas Etapas</option>
+                    <option value="Médio">Médio</option>
+                    <option value="Fundamental">Fundamental</option>
+                </select>
+
+                <div class="relative w-64 group">
+                    <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
+                    <input type="text" id="searchInput" onkeyup="filterResults()" placeholder="RA, Nome ou Conteúdo..." 
+                           class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
+                </div>
+
+                <div class="h-8 w-px bg-slate-100"></div>
+
+                <button onclick="openSearchModal()" class="bg-fmm-blue hover:bg-fmm-dark text-white px-5 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-fmm-blue/10 whitespace-nowrap">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i> Novo Registro
+                </button>
+            </div>
+        </header>
+
+        <!-- Container com padding reduzido e largura total -->
+        <div class="flex-1 overflow-auto p-4 custom-scrollbar relative bg-slate-50">
+            
+            <div id="loadingState" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-50/50 z-20">
+                <i data-lucide="loader-2" class="w-10 h-10 animate-spin text-fmm-blue mb-2"></i>
+                <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Sincronizando laudos...</p>
+            </div>
+
+            <div id="mainContent" class="hidden animate-fade">
+                <div class="table-container">
+                    <table class="w-full text-left border-collapse table-auto">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                <th class="px-4 py-4 w-16 text-center">Foto</th>
+                                <th class="px-4 py-4 w-1/4">Estudante</th>
+                                <th class="px-4 py-4 w-24">Turma</th>
+                                <th class="px-4 py-4">Resumo da Orientação</th>
+                                <th class="px-4 py-4 w-24 text-right">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentsListBody" class="divide-y divide-slate-50 text-sm font-medium text-slate-600"></tbody>
+                    </table>
+
+                    <div id="emptyState" class="hidden flex flex-col items-center justify-center py-20 text-slate-300">
+                        <i data-lucide="clipboard-list" class="w-12 h-12 mb-4 opacity-20"></i>
+                        <p class="text-xs font-black uppercase tracking-[0.2em] opacity-40 text-center">Nenhum laudo encontrado</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="h-10 bg-white border-t border-slate-100 px-6 flex items-center justify-between shrink-0">
+            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Os dados aqui inseridos são exibidos em tempo real para os professores.</p>
+            <span id="counter" class="text-[9px] font-black text-fmm-blue uppercase">0 Registros</span>
+        </footer>
+    </main>
+
+    <!-- MODAL 1: PESQUISAR ALUNO -->
+    <div id="searchModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-lg rounded-[32px] shadow-2xl flex flex-col animate-fade overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 text-left">
+                <h2 class="text-lg font-black text-fmm-dark uppercase tracking-tight text-left">Adicionar Novo Laudo</h2>
+                <button onclick="closeSearchModal()" class="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-all text-slate-400"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+            <div class="p-6 space-y-4 text-left">
+                <p class="text-xs text-slate-500 font-medium text-left">Busque o aluno cursando para iniciar o registro:</p>
+                <div class="relative group">
+                    <i data-lucide="search" class="absolute left-4 top-3 w-4 h-4 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
+                    <input type="text" id="searchNewStudentInput" onkeyup="searchAlunosForNew(this.value)" placeholder="Nome ou RA..." class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-4 focus:ring-fmm-blue/5 focus:border-fmm-blue transition-all font-medium text-sm">
+                </div>
+                <div id="searchNewResults" class="max-h-60 overflow-y-auto custom-scrollbar border border-slate-100 rounded-xl divide-y divide-slate-50 hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: EDIÇÃO -->
+    <div id="editModal" class="hidden fixed inset-0 z-[110] flex items-center justify-center bg-fmm-dark/80 backdrop-blur-md p-4">
+        <div class="bg-white w-full max-w-2xl rounded-[40px] shadow-2xl flex flex-col animate-fade overflow-hidden max-h-[90vh]">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 text-left">
+                <div class="flex items-center gap-4 text-left">
+                    <img id="modalAvatar" src="" class="w-14 h-14 rounded-2xl object-cover shadow-md border-2 border-white">
+                    <div class="text-left">
+                        <h2 id="modalName" class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none text-left">Nome do Aluno</h2>
+                        <p id="modalRA" class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 text-left">RA: 000000</p>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="w-12 h-12 flex items-center justify-center hover:bg-slate-100 rounded-full transition-all text-slate-400"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+            <div class="p-8 space-y-6 flex-1 overflow-y-auto custom-scrollbar text-left">
+                <div class="space-y-2 text-left">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest block text-left">Orientações Pedagógicas e Laudo Técnico</label>
+                    <textarea id="laudoInput" rows="12" class="w-full p-6 bg-slate-50 border border-slate-200 rounded-3xl text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-fmm-blue/5 focus:bg-white transition-all resize-none text-left" placeholder="Descreva aqui as necessidades especiais e orientações para os professores..."></textarea>
+                </div>
+            </div>
+            <div class="p-8 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3 shrink-0">
+                <button onclick="closeModal()" class="px-8 py-3.5 text-xs font-black text-slate-400 uppercase rounded-xl hover:bg-white transition-all border border-slate-200">Cancelar</button>
+                <button id="btnSave" onclick="saveLaudo()" class="px-10 py-3.5 bg-fmm-blue text-white text-xs font-black uppercase rounded-xl shadow-xl shadow-fmm-blue/20 hover:scale-105 active:scale-95 transition-all">Salvar Registro</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let recordsWithLaudo = [];
+        let currentStudentRA = null;
+
+        function formatDriveUrl(url) {
+            if (!url || typeof url !== 'string') return null;
+            if (url.includes('drive.google.com')) {
+                const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+                const id = idMatch ? idMatch[1] : null;
+                if (id) return `https://drive.google.com/thumbnail?id=${id}&sz=w500`;
+            }
+            return url;
+        }
+
+        async function init() {
+            if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            lucide.createIcons();
+            await fetchExistingRecords();
+        }
+
+        async function fetchExistingRecords() {
+            const loading = document.getElementById('loadingState');
+            const main = document.getElementById('mainContent');
+            loading.classList.remove('hidden');
+            main.classList.add('hidden');
+
+            try {
+                const { data, error } = await window.supabaseClient
+                    .from('alunos')
+                    .select('ra, nome_completo, url_foto, laudo, status, turmas(id, nome, serie, nivel)')
+                    .not('laudo', 'is', null)
+                    .neq('laudo', '')
+                    .ilike('status', 'Cursando') 
+                    .order('nome_completo');
+
+                if (error) throw error;
+                recordsWithLaudo = data || [];
+                renderTable(recordsWithLaudo);
+
+            } catch (err) { console.error(err); } 
+            finally { loading.classList.add('hidden'); main.classList.remove('hidden'); }
+        }
+
+        function renderTable(students) {
+            const body = document.getElementById('studentsListBody');
+            const empty = document.getElementById('emptyState');
+            const counter = document.getElementById('counter');
+
+            body.innerHTML = '';
+            
+            if (students.length === 0) {
+                empty.classList.remove('hidden');
+                counter.innerText = '0 Registros';
+                return;
+            }
+
+            empty.classList.add('hidden');
+            counter.innerText = `${students.length} Registros Ativos`;
+
+            students.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.className = 'tr-hover border-b border-slate-50 last:border-0';
+                
+                const urlFoto = formatDriveUrl(s.url_foto);
+                const avatarImg = urlFoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=003c5b&color=fff`;
+
+                tr.innerHTML = `
+                    <td class="px-4 py-3 text-center">
+                        <img src="${avatarImg}" class="avatar-mini mx-auto shadow-sm" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=003c5b&color=fff'">
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex flex-col text-left">
+                            <span class="text-fmm-dark font-black uppercase text-xs tracking-tight">${s.nome_completo}</span>
+                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">RA: ${s.ra}</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-left">
+                        <span class="text-[10px] font-black text-fmm-blue uppercase bg-fmm-blue/5 px-2 py-1 rounded-lg">${s.turmas?.nome || '---'}</span>
+                    </td>
+                    <td class="px-4 py-3 text-left">
+                        <p class="text-xs text-slate-600 font-bold truncate max-w-lg lg:max-w-2xl">
+                            ${s.laudo}
+                        </p>
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <div class="flex justify-end gap-1.5">
+                            <button onclick="openEditModal('${s.ra}')" class="p-2 bg-slate-100 text-slate-500 hover:text-white hover:bg-fmm-blue rounded-xl transition-all inline-flex items-center justify-center shadow-sm" title="Editar">
+                                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button onclick="deleteRecord('${s.ra}')" class="p-2 bg-slate-100 text-slate-400 hover:text-white hover:bg-red-500 rounded-xl transition-all inline-flex items-center justify-center shadow-sm" title="Excluir">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                body.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
+        function filterResults() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const etapa = document.getElementById('filterEtapa').value;
+
+            const filtered = recordsWithLaudo.filter(s => {
+                const matchText = s.nome_completo.toLowerCase().includes(search) || s.ra.toString().includes(search) || s.laudo.toLowerCase().includes(search);
+                
+                let matchEtapa = true;
+                if (etapa === 'Médio') matchEtapa = s.turmas?.nivel?.startsWith('EMT');
+                else if (etapa === 'Fundamental') matchEtapa = s.turmas?.nivel?.startsWith('EF');
+
+                return matchText && matchEtapa;
+            });
+
+            renderTable(filtered);
+        }
+
+        function openSearchModal() {
+            document.getElementById('searchModal').classList.remove('hidden');
+            document.getElementById('searchNewStudentInput').value = '';
+            document.getElementById('searchNewResults').classList.add('hidden');
+            document.getElementById('searchNewStudentInput').focus();
+        }
+
+        function closeSearchModal() {
+            document.getElementById('searchModal').classList.add('hidden');
+        }
+
+        async function searchAlunosForNew(term) {
+            const results = document.getElementById('searchNewResults');
+            if (term.length < 3) {
+                results.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const { data, error } = await window.supabaseClient
+                    .from('alunos')
+                    .select('ra, nome_completo, url_foto, laudo, turmas(nome)')
+                    .or(`nome_completo.ilike.%${term}%,ra.ilike.%${term}%`)
+                    .is('laudo', null) 
+                    .ilike('status', 'Cursando')
+                    .limit(5);
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    results.innerHTML = data.map(s => `
+                        <div onclick='selectForCreation(${JSON.stringify(s).replace(/'/g, "&apos;")})' class="p-3 flex items-center justify-between cursor-pointer search-result-item transition-all text-left">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-400 uppercase">${s.nome_completo.charAt(0)}</div>
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-black text-fmm-dark uppercase">${s.nome_completo}</span>
+                                    <span class="text-[9px] font-bold text-slate-400 uppercase">${s.turmas?.nome || 'FMM'} • RA: ${s.ra}</span>
+                                </div>
+                            </div>
+                            <i data-lucide="plus" class="w-4 h-4 text-fmm-blue"></i>
+                        </div>
+                    `).join('');
+                    results.classList.remove('hidden');
+                    lucide.createIcons();
+                } else {
+                    results.innerHTML = '<div class="p-6 text-center text-xs font-bold text-slate-300 italic">Aluno não encontrado ou já possui laudo.</div>';
+                    results.classList.remove('hidden');
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        function selectForCreation(aluno) {
+            closeSearchModal();
+            openEditModal(aluno.ra, aluno);
+        }
+
+        function openEditModal(ra, preLoadedData = null) {
+            const s = preLoadedData || recordsWithLaudo.find(x => x.ra === ra);
+            if (!s) return;
+
+            currentStudentRA = ra;
+            document.getElementById('modalName').innerText = s.nome_completo;
+            document.getElementById('modalRA').innerText = `RA: ${s.ra} • ${s.turmas?.nome || 'FMM'}`;
+            document.getElementById('laudoInput').value = s.laudo || '';
+            document.getElementById('modalAvatar').src = formatDriveUrl(s.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=003c5b&color=fff`;
+
+            document.getElementById('editModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').classList.add('hidden');
+            currentStudentRA = null;
+        }
+
+        async function saveLaudo() {
+            const btn = document.getElementById('btnSave');
+            const texto = document.getElementById('laudoInput').value.trim();
+            if (!texto) return alert("Por favor, preencha as orientações.");
+            btn.disabled = true;
+            btn.innerText = "Gravando...";
+            try {
+                const { error } = await window.supabaseClient.from('alunos').update({ laudo: texto }).eq('ra', currentStudentRA);
+                if (error) throw error;
+                alert("Informações sincronizadas!");
+                closeModal();
+                await fetchExistingRecords();
+            } catch (err) {
+                alert("Erro ao salvar: " + err.message);
+                btn.disabled = false;
+                btn.innerText = "Salvar Registro";
+            }
+        }
+
+        async function deleteRecord(ra) {
+            if (!confirm("Isso removerá apenas o laudo pedagógico da visualização. Confirmar?")) return;
+            try {
+                const { error } = await window.supabaseClient.from('alunos').update({ laudo: null }).eq('ra', ra);
+                if (error) throw error;
+                await fetchExistingRecords();
+            } catch (err) { console.error(err); }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
