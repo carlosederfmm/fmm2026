@@ -1,8 +1,7 @@
 /**
- * Componente de Sidebar Reutilizável SME FMM 2026 - Versão 5.5 (Gestão de Neurodivergentes)
+ * Componente de Sidebar Reutilizável SME FMM 2026 - Versão 5.7 (Fix Button Clipping)
  */
 const SidebarComponent = {
-    // ... (estilos permanecem iguais)
     styles: `
         .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         @media (max-width: 767px) {
@@ -36,6 +35,8 @@ const SidebarComponent = {
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 
+        .logo-short { display: none; }
+
         #mobile-menu-hub {
             position: fixed; inset: 0; background: rgba(0, 60, 91, 0.95);
             backdrop-filter: blur(10px); z-index: 200; display: none;
@@ -43,6 +44,27 @@ const SidebarComponent = {
         }
         #mobile-menu-hub.active { display: flex; animation: fadeInHub 0.3s ease-out; }
         @keyframes fadeInHub { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Fix para o botão de toggle não ser cortado */
+        .sidebar-toggle-btn {
+            position: absolute;
+            right: -14px;
+            top: 80px;
+            background-color: #c8d400;
+            color: #003c5b;
+            border-radius: 9999px;
+            padding: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 100;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+        }
+        .sidebar-toggle-btn:hover { transform: scale(1.1); }
+        .sidebar-toggle-btn:active { transform: scale(0.9); }
     `,
 
     bottomNavConfig: {
@@ -94,7 +116,6 @@ const SidebarComponent = {
             { label: 'Prontuários', icon: 'clipboard-list', link: 'orientador/atendimento_orientador.html', roles: ['orientador'] },
             { label: 'Fila de Chamados', icon: 'bell', link: 'orientador/chamados_orientador.html', roles: ['orientador'] }
         ],
-        // ... (resto do menuItems permanece igual)
         inspetor_exclusivo: [
             { label: 'Dashboard', icon: 'pie-chart', link: 'inspetor/dashboard_inspetor.html', roles: ['inspetor'] },
             { label: 'Sanções', icon: 'shield-alert', link: 'inspetor/sancoes_inspetor.html', roles: ['inspetor'] },
@@ -227,12 +248,9 @@ const SidebarComponent = {
         }
 
         container.innerHTML = `
-            <div class="flex flex-col h-full overflow-hidden bg-[#003c5b]">
+            <div class="flex flex-col h-full bg-[#003c5b] relative">
                 <div class="p-6 h-24 border-b border-white/5 flex items-center justify-center relative flex-shrink-0">
                     <img src="${prefix}assets/logo-fmm-white.png" alt="FMM" class="logo-full h-10 object-contain">
-                    <button onclick="SidebarComponent.toggleSidebar()" class="absolute -right-3 top-20 bg-[#c8d400] text-[#003c5b] rounded-full p-1 shadow-lg z-[60]">
-                        <i id="sidebar-toggle-icon" data-lucide="chevron-left" class="w-4 h-4"></i>
-                    </button>
                 </div>
                 <nav class="flex-1 overflow-y-auto py-4 custom-scrollbar">${navHTML}</nav>
                 <div class="p-4 border-t border-white/5">
@@ -241,6 +259,11 @@ const SidebarComponent = {
                         <span class="sidebar-text ml-3 font-bold">Encerrar Sessão</span>
                     </button>
                 </div>
+                
+                <!-- Botão de Minimizar movido para fora do overflow-hidden -->
+                <button onclick="SidebarComponent.toggleSidebar()" class="sidebar-toggle-btn">
+                    <i id="sidebar-toggle-icon" data-lucide="chevron-left" class="w-4 h-4"></i>
+                </button>
             </div>
         `;
 
