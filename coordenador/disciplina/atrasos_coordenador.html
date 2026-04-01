@@ -80,10 +80,9 @@
                 </div>
 
                 <div class="flex items-center gap-3">
-                    <!-- Botão de Alertas GLOBAL -->
-                    <button onclick="checkGlobalAlerts(true)" id="btnAlerts" class="hidden bg-red-50 border border-red-100 px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-red-100 transition-colors group shadow-sm">
-                        <i data-lucide="alert-triangle" class="w-4 h-4 text-red-500"></i>
-                        <span class="text-[10px] font-black text-red-600 uppercase tracking-widest">Alertas (<span id="alertCount">0</span>)</span>
+                    <!-- Botão para Relatório Mensal de Excessos -->
+                    <button onclick="openExcessosModal()" class="bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all shadow-sm">
+                        <i data-lucide="siren" class="w-4 h-4"></i> Alertas de Atraso
                     </button>
                     <button onclick="openModal()" class="bg-fmm-dark hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-fmm-dark/20 transition-all active:scale-95">
                         <i data-lucide="plus-circle" class="w-4 h-4"></i> Registar Atraso
@@ -187,6 +186,17 @@
                     </div>
                 </div>
 
+                <!-- AVISO DE LIMITE DE ATRASOS -->
+                <div id="limitWarning" class="hidden p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-4 shadow-sm animate-fade">
+                    <div class="w-10 h-10 bg-red-100 text-red-500 rounded-xl flex items-center justify-center shrink-0">
+                        <i data-lucide="alert-octagon" class="w-5 h-5"></i>
+                    </div>
+                    <div class="flex flex-col text-left">
+                        <span class="text-xs font-black text-red-700 uppercase tracking-tight">Alerta de Pontualidade Mensal</span>
+                        <span class="text-[10px] text-red-600 font-bold uppercase mt-0.5">O aluno já acumula <span id="limitCount" class="font-black text-sm px-1">0</span> atrasos no mês vigente!</span>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-2 gap-6">
                     <div class="space-y-1.5 text-left">
                         <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Data</label>
@@ -212,24 +222,43 @@
         </div>
     </div>
 
-    <!-- MODAL: ALERTAS GLOBAIS -->
-    <div id="alertsModal" class="hidden fixed inset-0 z-[150] flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
-        <div class="bg-white w-full max-w-lg rounded-[32px] shadow-2xl flex flex-col animate-fade max-h-[80vh]">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-[32px]">
-                <div class="flex items-center gap-3">
-                    <div class="p-2 bg-red-100 rounded-xl text-red-600">
+    <!-- MODAL: RELATÓRIO DE EXCESSOS (MENSAL) -->
+    <div id="excessosModal" class="hidden fixed inset-0 z-[150] modal-overlay flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-2xl rounded-[40px] shadow-2xl flex flex-col animate-fade max-h-[85vh]">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-[40px]">
+                <div class="flex items-center gap-4 text-left">
+                    <div class="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center">
                         <i data-lucide="siren" class="w-6 h-6"></i>
                     </div>
                     <div>
-                        <h2 class="text-lg font-black text-fmm-dark uppercase tracking-wide text-left">Alertas de Pontualidade</h2>
-                        <p class="text-xs text-slate-500 font-medium text-left">Alunos com 3 ou mais atrasos no mês</p>
+                        <h2 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none">Relatório de Atrasos</h2>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Alunos com 3 ou mais atrasos no mês</p>
                     </div>
                 </div>
-                <button onclick="document.getElementById('alertsModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 transition-all"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <button onclick="closeExcessosModal()" class="w-10 h-10 flex items-center justify-center hover:bg-slate-200 rounded-full transition-all text-slate-400"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
-            <div id="alertsList" class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-3"></div>
-            <div class="p-4 border-t border-slate-100 bg-white rounded-b-[32px] text-center">
-                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Ação Necessária: Convocar Responsáveis</p>
+            
+            <div class="p-6 border-b border-slate-100 bg-white shrink-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <span class="text-[11px] font-black text-slate-500 uppercase tracking-widest">Mês de Referência:</span>
+                <input type="month" id="excessMonth" onchange="loadExcessos()" class="px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-fmm-dark outline-none focus:ring-2 focus:ring-fmm-blue transition-all cursor-pointer">
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 bg-slate-50/50 custom-scrollbar">
+                <div id="excessosLoading" class="hidden py-16 flex flex-col items-center justify-center text-slate-300 gap-4">
+                    <i data-lucide="loader-2" class="w-10 h-10 animate-spin text-fmm-blue"></i>
+                    <span class="text-xs font-black uppercase tracking-widest">Buscando registros...</span>
+                </div>
+                
+                <div id="excessosList" class="space-y-4">
+                    <!-- Injetado via JS -->
+                </div>
+                
+                <div id="excessosEmpty" class="hidden py-16 flex flex-col items-center justify-center text-slate-300 gap-4 text-center">
+                    <div class="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-2 border border-slate-100">
+                        <i data-lucide="check-circle" class="w-8 h-8 text-green-400"></i>
+                    </div>
+                    <span class="text-sm font-black uppercase tracking-widest text-slate-400">Nenhum aluno excedeu o<br>limite neste mês.</span>
+                </div>
             </div>
         </div>
     </div>
@@ -259,7 +288,6 @@
         let selectedStudent = null;
         let userLevels = [];
         let currentEditId = null;
-        let globalAlertsList = [];
 
         // Controle de Paginação
         let currentPage = 1;
@@ -276,7 +304,6 @@
 
             await loadTurmas();
             await fetchAllHistory(); 
-            checkGlobalAlerts(false);
             lucide.createIcons();
         }
 
@@ -486,6 +513,27 @@
             } else results.classList.add('hidden');
         }
 
+        // Função para consultar quantidade de atrasos no mês ao selecionar o aluno
+        async function checkStudentMonthlyDelays(ra) {
+            const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+            const { count } = await window.supabaseClient
+                .from('atrasos')
+                .select('*', { count: 'exact', head: true })
+                .eq('aluno_ra', ra)
+                .gte('data_atraso', startOfMonth);
+                
+            const warnEl = document.getElementById('limitWarning');
+            const countEl = document.getElementById('limitCount');
+            
+            // Exibir a partir de 2 atrasos já alerta que está no limite
+            if (count >= 2) {
+                countEl.innerText = count;
+                warnEl.classList.remove('hidden');
+            } else {
+                warnEl.classList.add('hidden');
+            }
+        }
+
         function selectStudent(s) {
             selectedStudent = s;
             document.getElementById('searchResults').classList.add('hidden');
@@ -500,6 +548,8 @@
                 badgeAvatar.src = avatar;
                 badgeAvatar.onerror = () => { badgeAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=003c5b&color=fff`; };
             }
+
+            checkStudentMonthlyDelays(s.ra);
         }
 
         function clearSelectedStudent() {
@@ -507,6 +557,7 @@
             document.getElementById('studentSearchInput').parentElement.classList.remove('hidden');
             document.getElementById('studentSearchInput').value = '';
             document.getElementById('selectedStudentBadge').classList.add('hidden');
+            document.getElementById('limitWarning').classList.add('hidden');
         }
 
         function openModal(recordObj = null) {
@@ -520,6 +571,7 @@
             document.getElementById('recReason').value = '';
             
             clearSelectedStudent();
+            document.getElementById('limitWarning').classList.add('hidden');
 
             if (recordObj) {
                 document.getElementById('modalTitle').innerText = "Editar Registro";
@@ -530,6 +582,8 @@
                 searchArea.classList.add('hidden');
                 btnDel.classList.remove('hidden');
                 selectedStudent = recordObj.alunos;
+                
+                checkStudentMonthlyDelays(recordObj.aluno_ra);
             } else {
                 document.getElementById('modalTitle').innerText = "Novo Atraso";
                 searchArea.classList.remove('hidden');
@@ -570,7 +624,6 @@
                 showToast("Sucesso!");
                 closeModal();
                 await fetchAllHistory();
-                checkGlobalAlerts(false); // Reavalia alertas
             } catch (err) { alert(err.message); } finally { btn.disabled = false; btn.innerText = "Salvar Registro"; }
         }
 
@@ -582,39 +635,93 @@
                 showToast("Registro removido"); 
                 closeModal(); 
                 await fetchAllHistory();
-                checkGlobalAlerts(false); // Reavalia alertas
             } catch(e) { alert(e.message); }
         }
 
-        async function checkGlobalAlerts(showModal = false) {
-            const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-            const { data } = await window.supabaseClient.from('atrasos').select('aluno_ra, alunos!inner(nome_completo, turmas!inner(nome, nivel))').gte('data_atraso', startOfMonth);
+        // Lógica de Relatório de Excessos Mensal
+        function openExcessosModal() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            document.getElementById('excessMonth').value = `${year}-${month}`;
             
-            if(!data) return;
-            const counts = {};
-            data.forEach(d => {
-                if(!userLevels.includes(d.alunos.turmas.nivel)) return;
-                counts[d.aluno_ra] = (counts[d.aluno_ra] || { nome: d.alunos.nome_completo, turma: d.alunos.turmas.nome, count: 0, ra: d.aluno_ra });
-                counts[d.aluno_ra].count++;
-            });
+            document.getElementById('excessosModal').classList.remove('hidden');
+            loadExcessos();
+        }
 
-            globalAlertsList = Object.values(counts).filter(a => a.count >= 3);
-            const btn = document.getElementById('btnAlerts');
-            if(globalAlertsList.length > 0) { btn.classList.remove('hidden'); document.getElementById('alertCount').innerText = globalAlertsList.length; }
-            else btn.classList.add('hidden');
+        function closeExcessosModal() {
+            document.getElementById('excessosModal').classList.add('hidden');
+        }
 
-            if(showModal) {
-                document.getElementById('alertsList').innerHTML = globalAlertsList.map(a => `
-                    <div class="bg-white p-4 border border-red-100 rounded-2xl flex justify-between items-center shadow-sm">
-                        <div class="text-left">
-                            <h4 class="text-sm font-black text-fmm-dark uppercase">${a.nome}</h4>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${a.turma} • RA: ${a.ra}</p>
-                        </div>
-                        <span class="bg-red-50 text-red-600 px-3 py-1 rounded-lg text-xs font-black">${a.count} Atrasos</span>
-                    </div>`).join('');
-                document.getElementById('alertsModal').classList.remove('hidden');
+        async function loadExcessos() {
+            const monthVal = document.getElementById('excessMonth').value; // "YYYY-MM"
+            if(!monthVal) return;
+
+            const [year, month] = monthVal.split('-');
+            const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
+            const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+
+            const listContainer = document.getElementById('excessosList');
+            const loading = document.getElementById('excessosLoading');
+            const empty = document.getElementById('excessosEmpty');
+
+            listContainer.innerHTML = '';
+            empty.classList.add('hidden');
+            loading.classList.remove('hidden');
+
+            try {
+                const { data, error } = await window.supabaseClient.from('atrasos')
+                    .select('aluno_ra, alunos!inner(nome_completo, turmas!inner(nome, nivel))')
+                    .gte('data_atraso', startDate)
+                    .lte('data_atraso', endDate);
+                
+                if(error) throw error;
+
+                const counts = {};
+                (data || []).forEach(ex => {
+                    if(userLevels.length > 0 && !userLevels.includes(ex.alunos.turmas.nivel)) return;
+                    counts[ex.aluno_ra] = counts[ex.aluno_ra] || { 
+                        ra: ex.aluno_ra,
+                        nome: ex.alunos.nome_completo, 
+                        turma: ex.alunos.turmas.nome, 
+                        count: 0 
+                    };
+                    counts[ex.aluno_ra].count++;
+                });
+
+                const alerts = Object.values(counts).filter(a => a.count >= 3).sort((a,b) => b.count - a.count);
+
+                loading.classList.add('hidden');
+
+                if(alerts.length === 0) {
+                    empty.classList.remove('hidden');
+                } else {
+                    listContainer.innerHTML = alerts.map(a => `
+                        <div class="bg-white p-4 border border-red-100 rounded-2xl flex justify-between items-center shadow-sm hover:border-red-300 transition-colors">
+                            <div class="text-left flex items-center gap-4">
+                                <div class="w-10 h-10 bg-red-50 text-red-500 rounded-full flex items-center justify-center font-black text-sm shrink-0">
+                                    ${a.count}
+                                </div>
+                                <div class="flex flex-col">
+                                    <h4 class="text-xs font-black text-fmm-dark uppercase leading-tight">${a.nome}</h4>
+                                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">${a.turma} • RA: ${a.ra}</p>
+                                </div>
+                            </div>
+                            <button onclick="filterByStudent('${a.ra}')" class="px-3 py-2 bg-slate-50 text-slate-500 hover:bg-fmm-blue hover:text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ml-2">Ver Histórico</button>
+                        </div>`).join('');
+                }
                 lucide.createIcons();
+            } catch(err) {
+                console.error(err);
+                loading.classList.add('hidden');
+                alert("Erro ao carregar excessos.");
             }
+        }
+
+        function filterByStudent(ra) {
+            closeExcessosModal();
+            document.getElementById('searchHistory').value = ra;
+            applyFiltersAndRender();
         }
 
         function showToast(msg) { 
@@ -626,10 +733,10 @@
 
         function openPhotoZoom(src) {
             document.getElementById('enlargedPhoto').src = src;
-            document.getElementById('photoModal').classList.remove('hidden');
+            document.getElementById('photoZoomModal').classList.remove('hidden');
             lucide.createIcons();
         }
-        function closePhotoModal() { document.getElementById('photoModal').classList.add('hidden'); }
+        function closePhotoZoom() { document.getElementById('photoZoomModal').classList.add('hidden'); }
 
         window.onload = init;
     </script>
