@@ -195,12 +195,13 @@
                     [roles.COORDENADOR]: 'Coordenador',
                     [roles.PROFESSOR]: 'Professor',
                     [roles.ORIENTADOR]: 'Orientador',
-                    [roles.SECRETARIA]: 'Secretaria'
+                    'secretaria': 'Secretaria',
+                    'counselor': 'Counselor'
                 };
                 
-                // Incluímos 'secretaria' manualmente caso não esteja nas constantes ainda
                 const allRoles = [...Object.values(roles)];
                 if (!allRoles.includes('secretaria')) allRoles.push('secretaria');
+                if (!allRoles.includes('counselor')) allRoles.push('counselor');
 
                 cargoSelect.innerHTML = allRoles.map(role => 
                     `<option value="${role}">${labels[role] || role.charAt(0).toUpperCase() + role.slice(1)}</option>`
@@ -222,7 +223,8 @@
                 'coordenador': 'bg-fmm-blue/10 text-fmm-blue', 
                 'professor': 'bg-fmm-green/10 text-fmm-green', 
                 'orientador': 'bg-orange-100 text-orange-700',
-                'secretaria': 'bg-teal-100 text-teal-700'
+                'secretaria': 'bg-teal-100 text-teal-700',
+                'counselor': 'bg-indigo-100 text-indigo-700'
             };
 
             body.innerHTML = data.map(u => {
@@ -253,7 +255,7 @@
             const cargo = document.getElementById('inCargo').value;
             const selector = document.getElementById('levelSelector');
             const roles = window.DB_CONSTANTS?.ROLES || {};
-            if([roles.COORDENADOR, roles.DIRETOR, roles.ORIENTADOR, 'secretaria'].includes(cargo)) selector.classList.remove('hidden');
+            if([roles.COORDENADOR, roles.DIRETOR, roles.ORIENTADOR, 'secretaria', 'counselor'].includes(cargo)) selector.classList.remove('hidden');
             else selector.classList.add('hidden');
         }
 

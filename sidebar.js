@@ -1,5 +1,5 @@
 /**
- * Componente de Sidebar Reutilizável SME FMM 2026 - Versão 5.7 (Fix Button Clipping)
+ * Componente de Sidebar Reutilizável SME FMM 2026 - Versão 5.8 (Counselor Prep)
  */
 const SidebarComponent = {
     styles: `
@@ -102,10 +102,23 @@ const SidebarComponent = {
             { label: 'Chamada', icon: 'calendar-check', link: 'professor/presenca_professor.html' },
             { label: 'Notas', icon: 'graduation-cap', link: 'professor/notas_professor.html' },
             { label: 'Individual', icon: 'user-search', link: 'professor/individual_professor.html' }
+        ],
+        'counselor': [
+            { label: 'Início', icon: 'home', link: 'counselor/dashboard_counselor.html' },
+            { label: 'Vestibular', icon: 'graduation-cap', link: 'counselor/aprovacoes_counselor.html' },
+            { label: 'Olimpíadas', icon: 'medal', link: 'counselor/olimpiadas_counselor.html' },
+            { label: 'Histórico', icon: 'users', link: 'counselor/acompanhamento_counselor.html' }
         ]
     },
 
     menuItems: {
+        counselor_principal: [
+            { label: 'Dashboard', icon: 'pie-chart', link: 'counselor/dashboard_counselor.html', roles: ['counselor'] },
+            { label: 'Aprovações (Vestibular)', icon: 'graduation-cap', link: 'counselor/aprovacoes_counselor.html', roles: ['counselor'] },
+            { label: 'Olimpíadas Acadêmicas', icon: 'medal', link: 'counselor/olimpiadas_counselor.html', roles: ['counselor'] },
+            { label: 'Acompanhamento', icon: 'users', link: 'counselor/acompanhamento_counselor.html', roles: ['counselor'] },
+            { label: 'Meu Perfil', icon: 'user-circle', link: 'counselor/perfil_counselor.html', roles: ['counselor'] }
+        ],
         orientador_principal: [
             { label: 'Dashboard', icon: 'pie-chart', link: 'orientador/dashboard_orientador.html', roles: ['orientador'] },
             { label: 'Meu Perfil', icon: 'user-circle', link: 'coordenador/operacional/perfil_coordenador.html', roles: ['orientador'] }
@@ -177,7 +190,8 @@ const SidebarComponent = {
     getRelativePrefix: function() {
         const path = window.location.pathname;
         if (path.includes('/coordenador/')) return '../../';
-        const paperFolders = ['/professor/', '/orientador/', '/inspetor/', '/secretaria/'];
+        
+        const paperFolders = ['/professor/', '/orientador/', '/inspetor/', '/secretaria/', '/counselor/'];
         if (paperFolders.some(folder => path.includes(folder))) {
             return '../';
         }
@@ -234,6 +248,8 @@ const SidebarComponent = {
             navHTML += this.buildSimpleCategory('Acessos Secretaria', this.filterItemsByRole(this.menuItems.secretaria_exclusivo, userRole), activePage, prefix);
         } else if (userRole === 'inspetor') {
             navHTML += this.buildSimpleCategory('Acessos Inspetoria', this.filterItemsByRole(this.menuItems.inspetor_exclusivo, userRole), activePage, prefix);
+        } else if (userRole === 'counselor') {
+            navHTML += this.buildSimpleCategory('Portal Counselor', this.filterItemsByRole(this.menuItems.counselor_principal, userRole), activePage, prefix);
         } else if (userRole === 'orientador') {
             navHTML += this.buildSimpleCategory('Principal', this.filterItemsByRole(this.menuItems.orientador_principal, userRole), activePage, prefix);
             navHTML += this.buildSimpleCategory('Pedagógico', this.filterItemsByRole(this.menuItems.orientador_pedagogico, userRole), activePage, prefix);
@@ -260,7 +276,7 @@ const SidebarComponent = {
                     </button>
                 </div>
                 
-                <!-- Botão de Minimizar movido para fora do overflow-hidden -->
+                <!-- Botão de Minimizar fora do overflow-hidden -->
                 <button onclick="SidebarComponent.toggleSidebar()" class="sidebar-toggle-btn">
                     <i id="sidebar-toggle-icon" data-lucide="chevron-left" class="w-4 h-4"></i>
                 </button>

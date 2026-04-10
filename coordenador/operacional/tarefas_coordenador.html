@@ -3,15 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tarefas Scrum | SME FMM</title>
+    <title>Organização Pessoal | SME FMM</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
-    <!-- Importação do Componente de Sidebar -->
     <script src="../../sidebar.js"></script>
-    <!-- Importação do Cliente Global -->
     <script src="../../assets/js/supabase_client.js"></script>
 
     <script>
@@ -19,13 +17,7 @@
             theme: {
                 extend: {
                     colors: {
-                        fmm: {
-                            dark: '#003c5b',
-                            blue: '#00638f',
-                            green: '#80a51b',
-                            lime: '#c8d400',
-                            bg: '#f8fafc'
-                        }
+                        fmm: { dark: '#003c5b', blue: '#00638f', green: '#80a51b', lime: '#c8d400', bg: '#f8fafc' }
                     }
                 }
             }
@@ -35,392 +27,779 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
         .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .sidebar-collapsed .sidebar-text, .sidebar-collapsed .sidebar-category-header, .sidebar-collapsed .chevron-icon { display: none; }
-        .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
-        .sidebar-collapsed .logo-full { display: none; }
-        .sidebar-collapsed .logo-short { display: block; }
-        .logo-short { display: none; }
-        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.05); }
-        .category-content.open { max-height: 1000px; }
-        .rotate-180 { transform: rotate(180deg); }
-        .kanban-board-vertical { display: flex; flex-direction: column; gap: 2rem; width: 100%; }
-        .kanban-column { width: 100%; background-color: white; border-radius: 24px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02); }
-        .task-list-item { background: white; padding: 16px 20px; border-bottom: 1px solid #f1f5f9; transition: all 0.2s; display: flex; flex-direction: column; gap: 6px; position: relative; cursor: pointer; }
-        .task-list-item:hover { background: #f8fafc; padding-left: 24px; }
-        .status-indicator { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; transition: width 0.2s; }
-        .task-list-item:hover .status-indicator { width: 10px; }
-        .status-todo { background-color: #ef4444; }    
-        .status-doing { background-color: #f59e0b; }   
-        .status-review { background-color: #f97316; }  
-        .status-done { background-color: #22c55e; }    
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        /* Animações de Transição SPA */
+        .view-content { transition: all 0.4s ease; }
+        .hidden-view { display: none; opacity: 0; transform: translateY(10px); }
+        .active-view { display: block; opacity: 1; transform: translateY(0); }
+
+        /* Cards e Layout */
+        .glass-card { background: white; border: 1px solid #e2e8f0; border-radius: 24px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02); }
+        .kanban-board-horizontal { display: flex; gap: 1.5rem; height: 100%; width: 100%; padding-bottom: 1rem; align-items: flex-start; }
+        .kanban-column { flex: 1; min-width: 300px; height: 100%; background-color: #f1f5f9; border-radius: 24px; border: 2px solid transparent; display: flex; flex-direction: column; transition: all 0.2s ease; }
+        .kanban-column.drag-over { background-color: #e2e8f0; border-color: #00638f; border-style: dashed; }
+        .column-content { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+
+        /* Estilo das Tasks */
+        .task-list-item { background: white; padding: 16px; border-radius: 16px; border: 1px solid #e2e8f0; transition: all 0.2s; position: relative; cursor: grab; display: flex; flex-direction: column; gap: 8px; }
+        .task-list-item:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); border-color: #00638f; }
+        .task-list-item.dragging { opacity: 0.5; transform: scale(0.95); border-style: dashed; }
+        .status-indicator { position: absolute; left: 0; top: 12px; bottom: 12px; width: 5px; border-radius: 0 4px 4px 0; }
+        
+        /* Cores de Prioridade */
+        .prio-indicator-Baixa { background-color: #22c55e; }
+        .prio-indicator-Média { background-color: #3b82f6; }
+        .prio-indicator-Alta { background-color: #f59e0b; }
+        .prio-indicator-Urgente { background-color: #ef4444; }
+
+        /* Calendário Semanal Grid (Atualizado para 6 dias) */
+        .calendar-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1rem; }
+        @media (max-width: 1024px) { .calendar-grid { display: flex; overflow-x: auto; padding-bottom: 8px; } .calendar-grid > div { min-width: 160px; } }
+
+        /* Botões de Status e Prioridade (Modal) */
+        .status-btn, .priority-btn { flex: 1; padding: 10px; border-radius: 12px; font-size: 10px; font-weight: 800; text-transform: uppercase; border: 2px solid transparent; transition: all 0.2s; filter: saturate(0.2) opacity(0.6); }
+        .status-btn.active, .priority-btn.active { filter: saturate(1) opacity(1); transform: scale(1.05); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        
+        .btn-todo { background: #fee2e2; color: #ef4444; } .btn-todo.active { border-color: #ef4444; }
+        .btn-doing { background: #fef3c7; color: #f59e0b; } .btn-doing.active { border-color: #f59e0b; }
+        .btn-done { background: #dcfce7; color: #22c55e; } .btn-done.active { border-color: #22c55e; }
+        
+        .prio-low { background: #dcfce7; color: #15803d; } .prio-low.active { border-color: #15803d; }
+        .prio-med { background: #eff6ff; color: #1d4ed8; } .prio-med.active { border-color: #1d4ed8; }
+        .prio-high { background: #fef3c7; color: #b45309; } .prio-high.active { border-color: #b45309; }
+        .prio-urg { background: #fee2e2; color: #b91c1c; } .prio-urg.active { border-color: #b91c1c; }
+
+        .overdue-alert { background-color: #fef2f2; border-color: #fecaca; }
+        .overdue-text { color: #dc2626 !important; font-weight: 800 !important; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-        .project-item.active { background: #00638f; color: white; }
-        .status-btn { flex: 1; padding: 10px; border-radius: 12px; font-size: 10px; font-weight: 800; text-transform: uppercase; border: 2px solid transparent; opacity: 0.5; transition: all 0.2s; }
-        .status-btn.active { opacity: 1; transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .btn-todo { background: #fee2e2; color: #ef4444; }
-        .btn-todo.active { border-color: #ef4444; }
-        .btn-doing { background: #fef3c7; color: #f59e0b; }
-        .btn-doing.active { border-color: #f59e0b; }
-        .btn-review { background: #ffedd5; color: #f97316; }
-        .btn-review.active { border-color: #f97316; }
-        .btn-done { background: #dcfce7; color: #22c55e; }
-        .btn-done.active { border-color: #22c55e; }
-        .filter-active { background-color: #c8d400 !important; color: #003c5b !important; border-color: #c8d400 !important; }
     </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden">
 
-    <!-- SIDEBAR CONTAINER -->
     <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
 
-    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
-        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0">
-            <div class="flex flex-col">
-                <h1 class="text-xl font-bold text-fmm-dark">Projetos e Sprints Scrum</h1>
-                <p class="text-xs text-slate-400" id="project-breadcrumb">Gestão > Selecione um evento</p>
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden text-left">
+        
+        <!-- HEADER DINÂMICO -->
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm shrink-0">
+            <div class="flex items-center gap-4">
+                <button id="btnBackToDash" onclick="toggleView('dashboard')" class="hidden p-2.5 bg-slate-100 text-slate-500 hover:bg-fmm-dark hover:text-white rounded-xl transition-all shadow-sm border border-slate-200">
+                    <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                </button>
+                <div class="flex flex-col text-left">
+                    <h1 id="viewTitle" class="text-xl font-bold text-fmm-dark uppercase tracking-tight">Minha Organização</h1>
+                    <p id="viewSubtitle" class="text-xs text-slate-400">Resumo da sua produtividade diária</p>
+                </div>
             </div>
             <div class="flex items-center gap-3">
-                <button onclick="togglePersonalFilter()" id="btnMyTasks" class="border-2 border-slate-200 text-slate-500 px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all hover:border-fmm-lime">
-                    <i data-lucide="user" class="w-4 h-4"></i> Minhas Tasks
+                <button onclick="toggleView('my-tasks')" id="btnMyTasks" class="border-2 border-slate-200 text-slate-500 hover:border-fmm-blue hover:text-fmm-blue px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-sm bg-white">
+                    <i data-lucide="kanban" class="w-4 h-4"></i> Meu Kanban
                 </button>
                 <div class="w-px h-6 bg-slate-200 mx-1"></div>
-                <button onclick="openEventModal()" class="bg-fmm-dark text-white px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all hover:bg-slate-800">
-                    <i data-lucide="folder-plus" class="w-4 h-4"></i> Criar Evento
-                </button>
-                <button onclick="openTaskModal()" class="bg-fmm-blue text-white px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-lg">
-                    <i data-lucide="plus" class="w-4 h-4"></i> Nova Task
+                <button onclick="openTaskModal()" class="bg-fmm-blue text-white px-6 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-lg hover:bg-fmm-dark transition-all active:scale-95">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Criar Task
                 </button>
             </div>
         </header>
 
-        <div class="flex-1 flex overflow-hidden">
-            <div class="w-72 bg-white border-r border-slate-100 flex flex-col p-6 space-y-4 flex-shrink-0">
-                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Eventos Ativos</h3>
-                <div class="space-y-2 overflow-y-auto custom-scrollbar" id="project-list"></div>
+        <!-- VIEW: DASHBOARD PESSOAL -->
+        <div id="view-dashboard" class="view-content active-view flex-1 overflow-y-auto p-8 custom-scrollbar space-y-8">
+            
+            <!-- WIDGETS DE RESUMO -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glass-card p-6 flex flex-col items-center text-center">
+                    <span id="dash-on-time" class="text-3xl font-black text-fmm-blue">0</span>
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Minhas Tasks no Prazo</span>
+                </div>
+                <div class="glass-card p-6 flex flex-col items-center text-center">
+                    <span id="dash-overdue" class="text-3xl font-black text-rose-500">0</span>
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Minhas Tasks Atrasadas</span>
+                </div>
+                <div class="glass-card p-6 flex flex-col items-center text-center">
+                    <span id="dash-today" class="text-3xl font-black text-amber-500">0</span>
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Vencendo Hoje</span>
+                </div>
             </div>
 
-            <div class="flex-1 overflow-y-auto p-8 custom-scrollbar bg-slate-50">
-                <div class="kanban-board-vertical" id="kanban-board">
-                    <div class="kanban-column animate-fade-in-up">
-                        <div class="p-5 flex items-center justify-between bg-white border-b border-slate-100">
-                            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-500"></span><h3 class="font-black text-slate-700 text-xs uppercase tracking-widest">À Fazer</h3></div>
-                            <span class="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black rounded-full" id="count-todo">0</span>
+            <!-- TASKS PARA HOJE -->
+            <div class="space-y-4">
+                <h3 class="text-xs font-black text-fmm-dark uppercase tracking-widest px-1">Tasks para Hoje</h3>
+                <div id="tasksTodayList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <!-- Injetado via JS -->
+                </div>
+            </div>
+
+            <!-- NOSSOS EVENTOS (CARDS) -->
+            <div class="space-y-4">
+                <div class="flex items-center justify-between px-1 border-b border-slate-200 pb-2">
+                    <h3 class="text-xs font-black text-fmm-dark uppercase tracking-widest">Nossos Eventos (Scrum)</h3>
+                    <button onclick="openEventModal()" class="text-[9px] font-black text-fmm-blue uppercase hover:underline flex items-center gap-1"><i data-lucide="folder-plus" class="w-3 h-3"></i> Novo Evento</button>
+                </div>
+                <div id="eventCardsList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Injetado via JS -->
+                </div>
+            </div>
+
+            <!-- CALENDÁRIO SEMANAL -->
+            <div class="space-y-4">
+                <div class="flex items-center justify-between mb-2 px-1">
+                    <div class="flex items-center gap-3">
+                        <h3 class="text-xs font-black text-fmm-dark uppercase tracking-widest">Agenda da Semana</h3>
+                        <!-- Controles de Navegação do Calendário -->
+                        <div class="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5 shadow-sm">
+                            <button onclick="changeWeek(-7)" class="p-1 hover:bg-slate-100 rounded text-slate-500 transition-colors" title="Semana Anterior"><i data-lucide="chevron-left" class="w-3 h-3"></i></button>
+                            <button onclick="resetWeek()" class="px-2 py-1 text-[9px] font-bold text-slate-500 hover:text-fmm-blue uppercase transition-colors" title="Voltar para Hoje">Hoje</button>
+                            <button onclick="changeWeek(7)" class="p-1 hover:bg-slate-100 rounded text-slate-500 transition-colors" title="Próxima Semana"><i data-lucide="chevron-right" class="w-3 h-3"></i></button>
                         </div>
-                        <div id="col-todo" class="flex flex-col min-h-[50px]"></div>
                     </div>
-                    <div class="kanban-column animate-fade-in-up" style="animation-delay: 0.1s;">
-                        <div class="p-5 flex items-center justify-between bg-white border-b border-slate-100">
-                            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-amber-500"></span><h3 class="font-black text-slate-700 text-xs uppercase tracking-widest">Em Andamento</h3></div>
-                            <span class="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black rounded-full" id="count-doing">0</span>
-                        </div>
-                        <div id="col-doing" class="flex flex-col min-h-[50px]"></div>
-                    </div>
-                    <div class="kanban-column animate-fade-in-up" style="animation-delay: 0.2s;">
-                        <div class="p-5 flex items-center justify-between bg-white border-b border-slate-100">
-                            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-orange-500"></span><h3 class="font-black text-slate-700 text-xs uppercase tracking-widest">Em Revisão</h3></div>
-                            <span class="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black rounded-full" id="count-review">0</span>
-                        </div>
-                        <div id="col-review" class="flex flex-col min-h-[50px]"></div>
-                    </div>
-                    <div class="kanban-column animate-fade-in-up" style="animation-delay: 0.3s;">
-                        <div class="p-5 flex items-center justify-between bg-white border-b border-slate-100">
-                            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-green-500"></span><h3 class="font-black text-slate-700 text-xs uppercase tracking-widest">Concluído</h3></div>
-                            <span class="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black rounded-full" id="count-done">0</span>
-                        </div>
-                        <div id="col-done" class="flex flex-col min-h-[50px]"></div>
+                    <span id="currentMonthYear" class="text-[10px] font-bold text-slate-400 uppercase bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">Abril 2026</span>
+                </div>
+                <div class="glass-card flex overflow-x-auto divide-x divide-slate-100 custom-scrollbar" id="weeklyCalendar">
+                    <!-- Injetado via JS -->
+                </div>
+            </div>
+
+            <!-- VISÃO DA EQUIPE (ANÁLISE DE KANBAN) -->
+            <div class="space-y-4 pt-6 border-t border-slate-200">
+                <div class="flex items-center justify-between px-1">
+                    <h3 class="text-xs font-black text-fmm-dark uppercase tracking-widest flex items-center gap-2">
+                        <i data-lucide="users" class="w-4 h-4 text-fmm-blue"></i> Visão da Equipe (Análise de Staff)
+                    </h3>
+                    <div class="relative w-64 text-left">
+                        <select id="teamMemberSelect" onchange="renderTeamTasks()" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-bold outline-none focus:ring-2 focus:ring-fmm-blue uppercase text-slate-600 cursor-pointer shadow-sm">
+                            <option value="">Selecione um coordenador...</option>
+                        </select>
                     </div>
                 </div>
-                <!-- Div de feedback para quando não há projetos -->
-                <div id="no-projects-view" class="hidden h-full flex flex-col items-center justify-center text-slate-300 gap-4">
-                    <i data-lucide="layout" class="w-16 h-16 opacity-10"></i>
-                    <p class="text-sm italic">Nenhum evento selecionado ou ativo.</p>
+
+                <!-- Stats da Equipe -->
+                <div id="teamStatsArea" class="hidden grid grid-cols-3 gap-4 mb-4">
+                    <div class="glass-card p-4 flex flex-col items-center text-center">
+                        <span id="team-total" class="text-2xl font-black text-fmm-dark">0</span>
+                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Total Atribuído</span>
+                    </div>
+                    <div class="glass-card p-4 flex flex-col items-center text-center">
+                        <span id="team-pending" class="text-2xl font-black text-amber-500">0</span>
+                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Pendentes / A Fazer</span>
+                    </div>
+                    <div class="glass-card p-4 flex flex-col items-center text-center">
+                        <span id="team-done" class="text-2xl font-black text-fmm-green">0</span>
+                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Concluídas</span>
+                    </div>
                 </div>
+
+                <div id="teamTasksList" class="w-full">
+                    <div class="py-8 text-center glass-card text-slate-300 italic text-[10px] uppercase font-black tracking-widest">
+                        Selecione um coordenador para analisar suas tarefas
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- VIEW: QUADRO SCRUM DO EVENTO -->
+        <div id="view-scrum" class="view-content hidden-view flex-1 overflow-x-auto p-8 bg-slate-50 custom-scrollbar text-left">
+            <div class="kanban-board-horizontal" id="kanban-board">
+                <!-- Colunas Injetadas via JS -->
             </div>
         </div>
+
+        <!-- VIEW: MEU KANBAN (GERAL E PESSOAL) -->
+        <div id="view-my-tasks" class="view-content hidden-view flex-1 overflow-x-auto p-8 bg-slate-50 custom-scrollbar text-left">
+            <div class="kanban-board-horizontal" id="my-tasks-board">
+                <!-- Colunas Injetadas via JS -->
+            </div>
+        </div>
+
     </main>
 
-    <!-- MODAIS -->
-    <div id="eventModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
-        <div class="bg-white w-full max-w-lg rounded-[32px] shadow-2xl flex flex-col animate-fade-in-up">
+    <!-- MODAL: EVENTO -->
+    <div id="eventModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4 text-left">
+        <div class="bg-white w-full max-w-lg rounded-[32px] shadow-2xl flex flex-col text-left">
             <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white rounded-t-[32px]">
-                <h2 class="text-2xl font-bold text-fmm-dark" id="eventModalTitle">Novo Evento</h2>
-                <button onclick="closeEventModal()" class="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-slate-100"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <h2 class="text-2xl font-bold text-fmm-dark text-left" id="eventModalTitle">Configurações do Evento</h2>
+                <button onclick="closeEventModal()" class="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-slate-100 text-right"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
-            <div class="p-8 space-y-4">
-                <div class="space-y-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Nome do Evento</label>
-                    <input type="text" id="evName" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
+            <div class="p-8 space-y-4 text-left">
+                <div class="space-y-1.5 text-left">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1 block text-left">Nome do Evento</label>
+                    <input type="text" id="evName" class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-left">
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-1.5"><label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Início</label><input type="date" id="evStart" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-sm"></div>
-                    <div class="space-y-1.5"><label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Fim</label><input type="date" id="evEnd" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-sm"></div>
+                <div class="grid grid-cols-2 gap-4 text-left">
+                    <div class="space-y-1.5 text-left"><label class="text-[11px] font-bold text-slate-400 uppercase ml-1 block text-left">Início</label><input type="date" id="evStart" class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-sm text-left"></div>
+                    <div class="space-y-1.5 text-left"><label class="text-[11px] font-bold text-slate-400 uppercase ml-1 block text-left">Fim</label><input type="date" id="evEnd" class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-sm text-left"></div>
                 </div>
             </div>
-            <div class="p-8 border-t bg-slate-50/50 rounded-b-[32px] flex justify-end gap-4">
-                <button id="btnDeleteEvent" onclick="deleteCurrentEvent()" class="hidden px-6 py-3 bg-red-50 text-red-600 rounded-2xl font-bold text-xs">Excluir</button>
-                <button onclick="closeEventModal()" class="px-6 py-3 text-sm font-bold text-slate-500">Cancelar</button>
-                <button onclick="saveCurrentEvent()" id="btnSaveEvent" class="px-10 py-3.5 bg-fmm-dark text-white font-bold text-sm rounded-2xl shadow-xl">Salvar</button>
+            <div class="p-8 border-t bg-slate-50/50 rounded-b-[32px] flex justify-end gap-4 text-right">
+                <button id="btnDeleteEvent" onclick="deleteCurrentEvent()" class="hidden px-6 py-3 bg-red-50 text-red-600 rounded-2xl font-bold text-xs text-left mr-auto">Excluir Evento</button>
+                <button onclick="closeEventModal()" class="px-6 py-3 text-sm font-bold text-slate-500 text-right">Cancelar</button>
+                <button onclick="saveCurrentEvent()" id="btnSaveEvent" class="px-10 py-3.5 bg-fmm-dark text-white font-bold text-sm rounded-2xl shadow-xl text-right">Salvar</button>
             </div>
         </div>
     </div>
 
-    <div id="taskModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
-        <div class="bg-white w-full max-w-xl rounded-[32px] shadow-2xl flex flex-col animate-fade-in-up">
-            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white rounded-t-[32px]">
-                <h2 class="text-2xl font-bold text-fmm-dark" id="taskModalTitle">Nova Task</h2>
-                <button onclick="closeTaskModal()" class="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-slate-100"><i data-lucide="x" class="w-6 h-6"></i></button>
+    <!-- MODAL: TASK -->
+    <div id="taskModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4 text-left">
+        <div class="bg-white w-full max-w-xl rounded-[32px] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden text-left">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 text-left">
+                <h2 class="text-2xl font-bold text-fmm-dark text-left" id="taskModalTitle">Detalhes da Tarefa</h2>
+                <button onclick="closeTaskModal()" class="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-slate-100 text-right"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
-            <div class="p-8 space-y-6 overflow-y-auto custom-scrollbar max-h-[70vh]">
-                <div class="space-y-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Título</label>
-                    <input type="text" id="taskTitleInput" placeholder="O que precisa ser feito?" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue">
+            <div class="p-8 space-y-6 overflow-y-auto custom-scrollbar flex-1 text-left">
+                <div class="space-y-1.5 text-left">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1 block text-left">Vincular a Evento</label>
+                    <select id="taskProjectSelect" class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-xs font-bold uppercase cursor-pointer text-left">
+                        <!-- Gerado via JS no momento da abertura do Modal -->
+                    </select>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-1.5"><label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Data Limite</label><input type="date" id="taskDeadline" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm outline-none"></div>
-                    <div class="space-y-1.5">
-                        <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Responsáveis</label>
-                        <div class="relative">
-                            <input type="text" id="taskResponsiblesSearch" onkeyup="searchStaff(this.value)" placeholder="Buscar staff..." class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm outline-none">
-                            <div id="staffSearchResults" class="absolute w-full mt-2 bg-white border border-slate-100 rounded-2xl shadow-2xl max-h-40 overflow-y-auto z-50 hidden"></div>
+                <div class="space-y-1.5 text-left">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1 block text-left">Título</label>
+                    <input type="text" id="taskTitleInput" placeholder="O que precisa ser feito?" class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue text-left">
+                </div>
+                <div class="space-y-1.5 text-left">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1 block text-left">Prioridade</label>
+                    <div class="flex gap-2 text-center">
+                        <button onclick="setPriority('Baixa')" id="btn-prio-Baixa" class="priority-btn prio-low">Baixa</button>
+                        <button onclick="setPriority('Média')" id="btn-prio-Média" class="priority-btn prio-med">Média</button>
+                        <button onclick="setPriority('Alta')" id="btn-prio-Alta" class="priority-btn prio-high">Alta</button>
+                        <button onclick="setPriority('Urgente')" id="btn-prio-Urgente" class="priority-btn prio-urg">Urgente</button>
+                    </div>
+                    <input type="hidden" id="taskPriorityValue" value="Baixa">
+                </div>
+                <div class="grid grid-cols-2 gap-4 text-left">
+                    <div class="space-y-1.5 text-left"><label class="text-[11px] font-bold text-slate-400 uppercase ml-1 block text-left">Data Limite</label><input type="date" id="taskDeadline" class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none text-left"></div>
+                    <div class="space-y-1.5 text-left">
+                        <label class="text-[11px] font-bold text-slate-400 uppercase ml-1 block text-left">Responsáveis (Staff)</label>
+                        <div class="relative text-left">
+                            <input type="text" onkeyup="searchStaff(this.value)" placeholder="Buscar staff..." class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none text-left" id="taskStaffSearch">
+                            <div id="staffSearchResults" class="absolute w-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl max-h-40 overflow-y-auto z-50 hidden custom-scrollbar text-left"></div>
                         </div>
                     </div>
                 </div>
-                <div id="selectedStaffList" class="flex flex-wrap gap-2"></div>
-                <div class="space-y-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Status</label>
-                    <div class="flex gap-2">
+                <div id="selectedStaffList" class="flex flex-wrap gap-2 text-left"></div>
+                <div class="space-y-1.5 text-left">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1 block text-left">Status Kanban</label>
+                    <div class="flex gap-2 text-center">
                         <button onclick="setStatus('todo')" id="btn-status-todo" class="status-btn btn-todo">À Fazer</button>
                         <button onclick="setStatus('doing')" id="btn-status-doing" class="status-btn btn-doing">Execução</button>
-                        <button onclick="setStatus('review')" id="btn-status-review" class="status-btn btn-review">Revisão</button>
                         <button onclick="setStatus('done')" id="btn-status-done" class="status-btn btn-done">Concluído</button>
                     </div>
                     <input type="hidden" id="taskStatusValue" value="todo">
                 </div>
-                <div class="space-y-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Descrição</label>
-                    <textarea id="taskDescription" rows="4" placeholder="Detalhes da tarefa..." class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm resize-none outline-none focus:ring-2 focus:ring-fmm-blue"></textarea>
+                <div class="space-y-1.5 text-left">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1 block text-left">Descrição</label>
+                    <textarea id="taskDescription" rows="3" placeholder="Detalhes..." class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm resize-none outline-none focus:ring-2 focus:ring-fmm-blue text-left"></textarea>
                 </div>
             </div>
-            <div class="p-8 border-t bg-slate-50/50 rounded-b-[32px] flex justify-end gap-4">
-                <button id="btnDeleteTask" onclick="deleteCurrentTask()" class="hidden px-6 py-3 bg-red-50 text-red-600 rounded-2xl font-bold text-xs">Excluir</button>
-                <button onclick="closeTaskModal()" class="px-6 py-3 text-sm font-bold text-slate-500">Cancelar</button>
-                <button onclick="saveCurrentTask()" id="btnSaveTask" class="px-10 py-3.5 bg-fmm-blue text-white font-bold text-sm rounded-2xl shadow-xl">Salvar Task</button>
+            <div class="p-8 border-t bg-slate-50 shrink-0 flex justify-end gap-4 text-right">
+                <button id="btnDeleteTask" onclick="deleteCurrentTask()" class="hidden px-6 py-3.5 text-xs font-black text-red-500 uppercase rounded-xl hover:bg-red-50 transition-all mr-auto text-left">Excluir</button>
+                <button onclick="closeTaskModal()" class="px-8 py-3.5 text-xs font-black text-slate-500 uppercase rounded-xl hover:bg-slate-200 transition-all text-right">Cancelar</button>
+                <button onclick="saveCurrentTask()" class="px-10 py-3.5 bg-fmm-blue text-white font-bold text-xs uppercase rounded-xl shadow-xl active:scale-95 transition-all text-right">Salvar</button>
             </div>
         </div>
     </div>
 
     <script>
-        let currentUserProfile = null, myTasksOnly = false, allStaff = [], selectedStaff = [], selectedProjectId = null, editingTaskId = null, editingProjectId = null;
+        let currentUserProfile = null, myTasksOnly = false, allStaff = [], selectedStaff = [], selectedProjectId = null, editingTaskId = null, editingProjectId = null, currentView = 'dashboard';
+        let dbTasks = [], dbEvents = [];
+        let currentCalendarDate = new Date(); 
+
+        // Fix de Timezone: Converte a data para ISO mantendo o fuso local
+        function getLocalISODate(dateObj) {
+            const d = new Date(dateObj);
+            d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+            return d.toISOString().split('T')[0];
+        }
+
+        // Dicionários Universais de Cores com Fallback Seguro
+        const prioColorsData = { 
+            'Baixa': 'bg-emerald-50 text-emerald-600 border-l-emerald-500', 
+            'Média': 'bg-blue-50 text-blue-600 border-l-blue-500', 
+            'Alta': 'bg-amber-50 text-amber-600 border-l-amber-500', 
+            'Urgente': 'bg-rose-50 text-rose-600 border-l-rose-500' 
+        };
+
+        const prioBadgeColors = {
+            'Baixa': 'bg-emerald-50 text-emerald-600 border-emerald-200', 
+            'Média': 'bg-blue-50 text-blue-600 border-blue-200', 
+            'Alta': 'bg-amber-50 text-amber-600 border-amber-200', 
+            'Urgente': 'bg-rose-50 text-rose-600 border-rose-200' 
+        };
 
         async function init() {
-            // Inicializar Sidebar Componentizada
             if (window.SidebarComponent) await SidebarComponent.render('sidebar-container');
-            
             const { data: { user } } = await window.supabaseClient.auth.getUser();
             if (!user) return window.location.href = '../../index.html';
-
             const { data: profile } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).single();
             currentUserProfile = profile;
 
-            const { data: staff } = await window.supabaseClient.from('perfis').select('id, nome_completo, cargo').order('nome_completo');
+            // Busca apenas STAFF
+            const { data: staff } = await window.supabaseClient.from('perfis').select('id, nome_completo, cargo').neq('cargo', 'aluno').order('nome_completo');
             allStaff = staff || [];
 
-            await fetchProjects();
+            await loadData();
             lucide.createIcons();
         }
 
-        async function fetchProjects() {
-            const { data } = await window.supabaseClient.from('vw_progresso_projetos').select('*').order('nome');
-            const { data: fullProj } = await window.supabaseClient.from('projetos_scrum').select('*');
-            const list = document.getElementById('project-list');
-            const kanban = document.getElementById('kanban-board');
-            const empty = document.getElementById('no-projects-view');
+        async function loadData() {
+            const { data: events } = await window.supabaseClient.from('vw_progresso_projetos').select('*').order('nome');
+            const { data: fullEvents } = await window.supabaseClient.from('projetos_scrum').select('*');
+            dbEvents = (events || []).map(e => ({ ...e, ...(fullEvents || []).find(fe => fe.id === e.id) }));
+
+            const { data: tasks } = await window.supabaseClient.from('tarefas_scrum').select('*, tarefa_responsaveis(id_perfil)').order('data_limite');
+            dbTasks = tasks || [];
+
+            updateDashboardUI();
+            if(currentView === 'scrum' && selectedProjectId) renderScrumBoard();
+            if(currentView === 'my-tasks') renderMyTasksBoard();
+        }
+
+        function togglePersonalFilter() { 
+            myTasksOnly = !myTasksOnly; 
+            document.getElementById('btnMyTasks').classList.toggle('filter-active', myTasksOnly); 
             
-            if (!data || data.length === 0) { 
-                list.innerHTML = `<p class="text-center py-10 text-slate-300 text-xs italic">Sem eventos</p>`; 
-                kanban.classList.add('hidden');
-                empty.classList.remove('hidden');
-                return; 
+            if(currentView === 'scrum') {
+                renderScrumBoard();
+            } else {
+                updateDashboardUI();
+            }
+        }
+
+        function toggleView(view, projectId = null) {
+            currentView = view;
+            const dash = document.getElementById('view-dashboard');
+            const scrum = document.getElementById('view-scrum');
+            const myTasksView = document.getElementById('view-my-tasks');
+            const btnBack = document.getElementById('btnBackToDash');
+            const title = document.getElementById('viewTitle');
+            const subtitle = document.getElementById('viewSubtitle');
+
+            // Esconde todas as views
+            dash.classList.add('hidden-view'); dash.classList.remove('active-view');
+            scrum.classList.add('hidden-view'); scrum.classList.remove('active-view');
+            myTasksView.classList.add('hidden-view'); myTasksView.classList.remove('active-view');
+
+            if (view === 'dashboard') {
+                dash.classList.add('active-view'); dash.classList.remove('hidden-view');
+                btnBack.classList.add('hidden');
+                title.innerText = "Minha Organização";
+                subtitle.innerText = "Resumo da sua produtividade diária";
+                selectedProjectId = null;
+                updateDashboardUI(); 
+            } else if (view === 'scrum') {
+                scrum.classList.add('active-view'); scrum.classList.remove('hidden-view');
+                btnBack.classList.remove('hidden');
+                selectedProjectId = projectId;
+                const proj = dbEvents.find(e => e.id === projectId);
+                title.innerText = proj?.nome || "Quadro Scrum";
+                subtitle.innerText = "Gestão ágil do evento";
+                renderScrumBoard();
+            } else if (view === 'my-tasks') {
+                myTasksView.classList.add('active-view'); myTasksView.classList.remove('hidden-view');
+                btnBack.classList.remove('hidden');
+                title.innerText = "Meu Kanban Geral";
+                subtitle.innerText = "Todas as suas tarefas em todos os eventos";
+                renderMyTasksBoard();
+            }
+            lucide.createIcons();
+        }
+
+        function getMyTasks() {
+            return dbTasks.filter(t => (t.tarefa_responsaveis || []).some(r => r.id_perfil === currentUserProfile?.id));
+        }
+
+        function updateDashboardUI() {
+            const today = new Date(); today.setHours(0,0,0,0);
+            const todayIso = getLocalISODate(today);
+            const myTasks = getMyTasks();
+            
+            // Popula o select da equipe, filtrando apenas coordenadores e EXCLUINDO o usuário logado
+            const teamSelect = document.getElementById('teamMemberSelect');
+            if(teamSelect.options.length <= 1) {
+                const coordStaff = allStaff.filter(s => s.cargo && s.cargo.toLowerCase() === 'coordenador' && s.id !== currentUserProfile?.id);
+                teamSelect.innerHTML = '<option value="" disabled selected>Selecione um coordenador...</option>' + 
+                    coordStaff.map(s => `<option value="${s.id}">${s.nome_completo}</option>`).join('');
             }
 
-            kanban.classList.remove('hidden');
-            empty.classList.add('hidden');
+            // KPIs
+            const onTime = myTasks.filter(t => t.status !== 'done' && (!t.data_limite || new Date(t.data_limite + 'T00:00:00') >= today)).length;
+            const overdue = myTasks.filter(t => t.status !== 'done' && t.data_limite && new Date(t.data_limite + 'T00:00:00') < today).length;
+            const vencendoHoje = myTasks.filter(t => t.status !== 'done' && t.data_limite === todayIso).length;
 
-            list.innerHTML = data.map(p => {
-                const proj = fullProj.find(x => x.id === p.id);
-                const isActive = p.id === selectedProjectId;
-                const startStr = proj.data_inicio ? proj.data_inicio.split('-').reverse().slice(0,2).join('/') : '--';
-                const endStr = proj.data_fim ? proj.data_fim.split('-').reverse().slice(0,2).join('/') : '--';
+            document.getElementById('dash-on-time').innerText = onTime;
+            document.getElementById('dash-overdue').innerText = overdue;
+            document.getElementById('dash-today').innerText = vencendoHoje;
 
-                return `
-                <div onclick="selectProject('${p.id}')" class="project-item ${isActive ? 'active' : 'bg-slate-50'} group p-4 rounded-2xl cursor-pointer transition-all border border-transparent mb-2">
-                    <div class="flex justify-between items-start">
-                        <h4 class="text-sm font-bold truncate">${p.nome}</h4>
-                        <button onclick="event.stopPropagation(); openEventModal('${p.id}')" class="p-1 opacity-0 group-hover:opacity-100 ${isActive ? 'text-white' : 'text-fmm-blue'}">
-                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
-                        </button>
-                    </div>
-                    <p class="text-[10px] ${isActive ? 'text-white/70' : 'text-slate-400'} font-medium">${startStr} à ${endStr}</p>
-                    <div class="mt-3 h-1 w-full bg-black/10 rounded-full overflow-hidden">
-                        <div class="h-full bg-fmm-lime" style="width: ${p.progresso}%"></div>
-                    </div>
-                </div>`;
-            }).join('');
+            // Renderiza Tasks de Hoje
+            const todayListEl = document.getElementById('tasksTodayList');
+            const tasksToday = myTasks.filter(t => t.data_limite === todayIso && t.status !== 'done');
             
-            if (!selectedProjectId && data.length > 0) selectProject(data[0].id);
+            if(tasksToday.length === 0) {
+                todayListEl.innerHTML = `<div class="md:col-span-2 lg:col-span-4 py-8 text-center glass-card text-slate-300 italic text-[10px] uppercase font-black tracking-widest">Nenhuma tarefa agendada para hoje</div>`;
+            } else {
+                todayListEl.innerHTML = tasksToday.map(t => renderTaskCard(t, true, false)).join('');
+            }
+
+            // Renderiza Cards de Eventos (COM EDIÇÃO DIRETA)
+            const eventCardsEl = document.getElementById('eventCardsList');
+            if (dbEvents.length === 0) {
+                eventCardsEl.innerHTML = `<div class="col-span-4 text-center p-8 glass-card text-slate-400 italic text-xs">Sem eventos ativos.</div>`;
+            } else {
+                eventCardsEl.innerHTML = dbEvents.map(e => {
+                    const projTasks = dbTasks.filter(t => t.id_projeto === e.id);
+                    const totalT = projTasks.length;
+                    const doneT = projTasks.filter(t => t.status === 'done').length;
+                    const progresso = totalT === 0 ? 0 : Math.round((doneT / totalT) * 100);
+
+                    return `
+                    <div onclick="toggleView('scrum', '${e.id}')" class="glass-card p-5 cursor-pointer hover:border-fmm-blue hover:shadow-lg transition-all group text-left relative">
+                        <button onclick="event.stopPropagation(); openEventModal('${e.id}')" class="absolute top-4 right-4 p-1.5 bg-slate-50 hover:bg-fmm-blue hover:text-white rounded-lg text-slate-400 opacity-0 group-hover:opacity-100 transition-all z-10" title="Editar Evento">
+                            <i data-lucide="settings" class="w-3.5 h-3.5"></i>
+                        </button>
+                        
+                        <div class="flex justify-between items-start mb-4 text-left pr-8">
+                            <h4 class="text-[13px] font-black text-fmm-dark uppercase group-hover:text-fmm-blue tracking-tight leading-tight text-left">${e.nome}</h4>
+                        </div>
+                        <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mb-2">
+                            <div class="h-full bg-fmm-lime transition-all duration-1000" style="width: ${progresso}%"></div>
+                        </div>
+                        <div class="flex justify-between items-center text-left">
+                            <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest text-left">${doneT} / ${totalT} Tasks Concluídas</span>
+                            <span class="text-[10px] font-black text-fmm-dark text-right">${progresso}%</span>
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+            }
+
+            renderWeeklyCalendar();
+            renderTeamTasks();
             lucide.createIcons();
         }
 
-        async function selectProject(id) {
-            selectedProjectId = id;
-            await fetchProjects();
-            const { data: proj } = await window.supabaseClient.from('projetos_scrum').select('nome').eq('id', id).single();
-            if(proj) document.getElementById('project-breadcrumb').innerText = `Gestão > ${proj.nome}`;
-            fetchTasks();
+        function renderTeamTasks() {
+            const staffId = document.getElementById('teamMemberSelect').value;
+            const listEl = document.getElementById('teamTasksList');
+            const statsArea = document.getElementById('teamStatsArea');
+            
+            if(!staffId) {
+                statsArea.classList.add('hidden');
+                listEl.innerHTML = `<div class="py-8 text-center glass-card text-slate-300 italic text-[10px] uppercase font-black tracking-widest">Selecione um coordenador para analisar suas tarefas</div>`;
+                return;
+            }
+
+            statsArea.classList.remove('hidden');
+
+            const staffTasks = dbTasks.filter(t => (t.tarefa_responsaveis || []).some(r => r.id_perfil === staffId));
+            
+            const total = staffTasks.length;
+            const done = staffTasks.filter(t => t.status === 'done').length;
+            const pending = total - done;
+
+            document.getElementById('team-total').innerText = total;
+            document.getElementById('team-pending').innerText = pending;
+            document.getElementById('team-done').innerText = done;
+
+            if(staffTasks.length === 0) {
+                listEl.innerHTML = `<div class="py-8 text-center glass-card text-slate-300 italic text-[10px] uppercase font-black tracking-widest">Este coordenador não possui tarefas atribuídas</div>`;
+            } else {
+                const cols = [
+                    { id: 'todo', label: 'À Fazer', color: 'bg-rose-500' },
+                    { id: 'doing', label: 'Execução', color: 'bg-amber-500' },
+                    { id: 'done', label: 'Concluído', color: 'bg-green-500' }
+                ];
+                
+                listEl.innerHTML = `
+                    <div class="kanban-board-horizontal overflow-x-auto pb-4 custom-scrollbar">
+                        ${cols.map(col => {
+                            const colTasks = staffTasks.filter(t => t.status === col.id);
+                            colTasks.sort((a, b) => {
+                                const dateA = a.data_limite ? new Date(a.data_limite + 'T00:00:00') : new Date(2100,0,1);
+                                const dateB = b.data_limite ? new Date(b.data_limite + 'T00:00:00') : new Date(2100,0,1);
+                                return dateA - dateB;
+                            });
+                            
+                            return `
+                                <div class="kanban-column" ondragover="allowDrop(event)" ondragenter="highlightColumn(event, true)" ondragleave="highlightColumn(event, false)" ondrop="drop(event, '${col.id}')">
+                                    <div class="p-5 flex items-center justify-between bg-white border-b border-slate-100 rounded-t-[24px] shrink-0 text-left">
+                                        <div class="flex items-center gap-2 text-left"><span class="w-3 h-3 rounded-full ${col.color}"></span><h3 class="font-black text-slate-700 text-[10px] uppercase tracking-widest text-left">${col.label}</h3></div>
+                                        <span class="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black rounded-full">${colTasks.length}</span>
+                                    </div>
+                                    <div class="column-content custom-scrollbar text-left max-h-[500px]">
+                                        ${colTasks.map(t => renderTaskCard(t, true, true)).join('')}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            }
+            lucide.createIcons();
         }
 
-        async function fetchTasks() {
-            const cols = { 
-                todo: document.getElementById('col-todo'), 
-                doing: document.getElementById('col-doing'), 
-                review: document.getElementById('col-review'), 
-                done: document.getElementById('col-done') 
-            };
+        // Função universal de renderização de Card com Opção de Drag and Drop
+        function renderTaskCard(task, showProject = false, isDraggable = false) {
+            const dateStr = task.data_limite ? task.data_limite.split('-').reverse().slice(0,2).join('/') : '--/--';
             
-            // Segurança: Verifica se os elementos existem antes de limpar
-            Object.values(cols).forEach(c => { if(c) c.innerHTML = ''; });
+            const prioridadeSegura = task.prioridade || 'Baixa';
+            const prioClassColor = prioBadgeColors[prioridadeSegura] || prioBadgeColors['Baixa'];
             
-            const counts = { todo: 0, doing: 0, review: 0, done: 0 };
-            if (!selectedProjectId) return;
+            const proj = dbEvents.find(e => e.id === task.id_projeto);
+            const projName = proj ? proj.nome : 'Sem Evento';
 
-            const { data: tasks } = await window.supabaseClient.from('tarefas_scrum').select('*, tarefa_responsaveis(id_perfil)').eq('id_projeto', selectedProjectId);
-            let filtered = tasks || [];
-            if (myTasksOnly && currentUserProfile) filtered = filtered.filter(t => t.tarefa_responsaveis.some(r => r.id_perfil === currentUserProfile.id));
+            const names = (task.tarefa_responsaveis || []).map(tr => { 
+                const p = allStaff.find(s => s.id === tr.id_perfil); 
+                return p ? p.nome_completo.split(' ')[0] : 'Desconhecido'; 
+            }).join(', ');
 
-            filtered.forEach(task => {
-                const names = task.tarefa_responsaveis.map(tr => { 
-                    const p = allStaff.find(s => s.id === tr.id_perfil); 
-                    return p ? p.nome_completo.split(' ')[0] : '...'; 
-                }).join(', ');
-                
-                const dateStr = task.data_limite ? task.data_limite.split('-').reverse().slice(0,2).join('/') : '--/--';
-                
-                const item = document.createElement('div');
-                item.className = 'task-list-item group animate-fade-in-up';
-                item.onclick = () => openTaskModal(task.id);
-                item.innerHTML = `
-                    <div class="status-indicator status-${task.status}"></div>
-                    <div class="flex justify-between items-start">
-                        <h4 class="text-[14px] font-bold text-fmm-dark leading-snug">${task.titulo}</h4>
+            const today = new Date(); today.setHours(0,0,0,0);
+            let isOverdue = false;
+            if (task.data_limite && task.status !== 'done') {
+                const deadline = new Date(task.data_limite + 'T00:00:00');
+                if (deadline < today) isOverdue = true;
+            }
+
+            const dragProps = isDraggable ? `draggable="true" ondragstart="drag(event, '${task.id}')" ondragend="dragEnd(event)"` : '';
+
+            return `
+                <div onclick="openTaskModal('${task.id}')" ${dragProps} class="task-list-item group animate-fade-in-up ${isOverdue ? 'overdue-alert' : ''}">
+                    <div class="status-indicator prio-indicator-${prioridadeSegura}"></div>
+                    <div class="flex flex-col gap-1 text-left">
+                        ${showProject ? `<span class="text-[8px] font-black uppercase text-fmm-blue truncate block w-full mb-1" title="${projName}">${projName}</span>` : ''}
+                        <span class="text-[8px] font-black uppercase px-2 py-0.5 rounded-md border w-fit ${prioClassColor}">${prioridadeSegura}</span>
+                        <h4 class="text-[13px] font-bold text-fmm-dark leading-tight mt-1 text-left">${task.titulo}</h4>
                     </div>
-                    <div class="flex items-center gap-6 mt-1">
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter truncate max-w-[120px]">${names || 'Ninguém'}</span>
-                        <div class="flex items-center gap-1.5 text-[10px] font-black text-slate-500">
-                            <i data-lucide="calendar-check" class="w-3 h-3 text-slate-300"></i>
+                    <div class="flex items-center justify-between pt-3 mt-1 border-t border-slate-50/50 text-left">
+                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-tighter truncate max-w-[120px] text-left">${names || 'S/ Resp.'}</span>
+                        <div class="flex items-center gap-1.5 text-[10px] font-black ${isOverdue ? 'overdue-text' : 'text-slate-500'} text-right">
+                            <i data-lucide="clock" class="w-3 h-3 ${isOverdue ? 'text-rose-500' : 'text-slate-300'}"></i>
                             <span>${dateStr}</span>
                         </div>
-                    </div>`;
-                
-                if(cols[task.status]) {
-                    cols[task.status].appendChild(item);
-                    counts[task.status]++;
-                }
-            });
+                    </div>
+                </div>
+            `;
+        }
 
-            // Atualizar contadores
-            ['todo', 'doing', 'review', 'done'].forEach(s => {
-                const el = document.getElementById(`count-${s}`);
-                if(el) el.innerText = counts[s];
-            });
-            
+        function changeWeek(days) {
+            currentCalendarDate.setDate(currentCalendarDate.getDate() + days);
+            renderWeeklyCalendar();
             lucide.createIcons();
         }
 
+        function resetWeek() {
+            currentCalendarDate = new Date();
+            renderWeeklyCalendar();
+            lucide.createIcons();
+        }
+
+        function renderWeeklyCalendar() {
+            const container = document.getElementById('weeklyCalendar');
+            const days = [];
+            const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+            const myTasks = getMyTasks();
+            
+            const realTodayIso = getLocalISODate(new Date());
+
+            let currentDayOfWeek = currentCalendarDate.getDay();
+            // Ajuste para considerar Segunda = 1 e Domingo = 7 no escopo visual
+            let adjustedDayOfWeek = currentDayOfWeek === 0 ? 7 : currentDayOfWeek;
+
+            // Loop de 1 (Segunda) até 6 (Sábado) - Removendo o Domingo para dar mais espaço
+            for (let i = 1; i <= 6; i++) {
+                const d = new Date(currentCalendarDate);
+                d.setDate(currentCalendarDate.getDate() - adjustedDayOfWeek + i); 
+                
+                const iso = getLocalISODate(d);
+                const isRealToday = iso === realTodayIso;
+                
+                const dayTasks = myTasks.filter(t => t.data_limite === iso);
+
+                let tasksHtml = dayTasks.map(t => {
+                    const colorClass = prioColorsData[t.prioridade] || prioColorsData['Baixa']; 
+                    const bgClass = colorClass.match(/bg-([a-z]+-\d+)/)?.[0] || 'bg-slate-50';
+                    const borderClass = colorClass.match(/border-l-([a-z]+-\d+)/)?.[0] || 'border-l-slate-400';
+                    
+                    return `<div onclick="openTaskModal('${t.id}')" class="p-2 mb-1.5 ${bgClass} border border-slate-100 border-l-[3px] ${borderClass} rounded-md cursor-pointer hover:shadow-md transition-all text-left" title="${t.titulo}">
+                        <p class="text-[9.5px] font-bold text-slate-700 leading-tight line-clamp-2">${t.titulo}</p>
+                    </div>`;
+                }).join('');
+
+                if(dayTasks.length === 0) tasksHtml = `<div class="h-full flex items-center justify-center py-4"><p class="text-[9px] text-slate-300 font-bold italic uppercase tracking-widest text-center">Dia Livre</p></div>`;
+
+                days.push(`
+                    <div class="flex-1 min-w-[140px] flex flex-col ${isRealToday ? 'bg-slate-50/50' : 'bg-white'} border-r border-slate-100 last:border-r-0">
+                        <div class="p-3 text-center border-b border-slate-100 relative ${isRealToday ? 'bg-fmm-blue/5' : ''}">
+                            ${isRealToday ? '<div class="absolute top-0 left-0 w-full h-1 bg-fmm-blue"></div>' : ''}
+                            <span class="text-[9px] font-black uppercase tracking-widest ${isRealToday ? 'text-fmm-blue' : 'text-slate-400'}">${dayNames[d.getDay()]}</span>
+                            <h4 class="text-xl font-black mt-0.5 ${isRealToday ? 'text-fmm-blue' : 'text-fmm-dark'}">${d.getDate()}</h4>
+                        </div>
+                        <div class="p-3 flex-1 flex flex-col h-[220px] overflow-y-auto custom-scrollbar">
+                            ${tasksHtml}
+                        </div>
+                    </div>
+                `);
+            }
+            container.innerHTML = days.join('');
+            
+            // Formatando a legenda do Cabeçalho (Mês - Ano) baseado na semana útil (Seg - Sáb)
+            const firstDayOfWeek = new Date(currentCalendarDate);
+            firstDayOfWeek.setDate(currentCalendarDate.getDate() - adjustedDayOfWeek + 1);
+            const lastDayOfWeek = new Date(firstDayOfWeek);
+            lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 5);
+            
+            let monthYearStr = firstDayOfWeek.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            if (firstDayOfWeek.getMonth() !== lastDayOfWeek.getMonth()) {
+                monthYearStr = `${firstDayOfWeek.toLocaleDateString('pt-BR', { month: 'short' })} - ${lastDayOfWeek.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}`;
+            }
+            document.getElementById('currentMonthYear').innerText = monthYearStr;
+        }
+
+        // Renderiza Scrum por Evento Selecionado
+        function renderScrumBoard() {
+            const board = document.getElementById('kanban-board');
+            const cols = [
+                { id: 'todo', label: 'À Fazer', color: 'bg-rose-500' },
+                { id: 'doing', label: 'Execução', color: 'bg-amber-500' },
+                { id: 'done', label: 'Concluído', color: 'bg-green-500' }
+            ];
+
+            let projectTasks = dbTasks.filter(t => t.id_projeto === selectedProjectId);
+
+            board.innerHTML = cols.map(col => `
+                <div class="kanban-column" ondragover="allowDrop(event)" ondragenter="highlightColumn(event, true)" ondragleave="highlightColumn(event, false)" ondrop="drop(event, '${col.id}')">
+                    <div class="p-5 flex items-center justify-between bg-white border-b border-slate-100 rounded-t-[24px] shrink-0 text-left">
+                        <div class="flex items-center gap-2 text-left"><span class="w-3 h-3 rounded-full ${col.color}"></span><h3 class="font-black text-slate-700 text-[10px] uppercase tracking-widest text-left">${col.label}</h3></div>
+                        <span class="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black rounded-full">${projectTasks.filter(t => t.status === col.id).length}</span>
+                    </div>
+                    <div id="col-${col.id}" class="column-content custom-scrollbar text-left">
+                        ${projectTasks.filter(t => t.status === col.id).map(t => renderTaskCard(t, false, true)).join('')}
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        // Renderiza Kanban Pessoal de TODAS as Tarefas
+        function renderMyTasksBoard() {
+            const board = document.getElementById('my-tasks-board');
+            const cols = [
+                { id: 'todo', label: 'À Fazer', color: 'bg-rose-500' },
+                { id: 'doing', label: 'Execução', color: 'bg-amber-500' },
+                { id: 'done', label: 'Concluído', color: 'bg-green-500' }
+            ];
+
+            let myTasks = getMyTasks();
+
+            board.innerHTML = cols.map(col => {
+                const colTasks = myTasks.filter(t => t.status === col.id);
+                return `
+                <div class="kanban-column" ondragover="allowDrop(event)" ondragenter="highlightColumn(event, true)" ondragleave="highlightColumn(event, false)" ondrop="drop(event, '${col.id}')">
+                    <div class="p-5 flex items-center justify-between bg-white border-b border-slate-100 rounded-t-[24px] shrink-0 text-left">
+                        <div class="flex items-center gap-2 text-left"><span class="w-3 h-3 rounded-full ${col.color}"></span><h3 class="font-black text-slate-700 text-[10px] uppercase tracking-widest text-left">${col.label}</h3></div>
+                        <span class="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black rounded-full">${colTasks.length}</span>
+                    </div>
+                    <div class="column-content custom-scrollbar text-left">
+                        ${colTasks.map(t => renderTaskCard(t, true, true)).join('')}
+                    </div>
+                </div>
+            `}).join('');
+            lucide.createIcons();
+        }
+
+        // LÓGICA DE DRAG & DROP
+        function allowDrop(e) { e.preventDefault(); }
+        function highlightColumn(e, active) { const col = e.target.closest('.kanban-column'); if(col) col.classList.toggle('drag-over', active); }
+        function drag(e, taskId) { e.dataTransfer.setData("taskId", taskId); e.target.classList.add('dragging'); }
+        function dragEnd(e) { e.target.classList.remove('dragging'); }
+        async function drop(e, status) {
+            e.preventDefault(); highlightColumn(e, false);
+            const taskId = e.dataTransfer.getData("taskId");
+            if(!taskId) return;
+            const { error } = await window.supabaseClient.from('tarefas_scrum').update({ status }).eq('id', taskId);
+            if(!error) { 
+                await loadData(); // A função updateDashboardUI (que contém renderTeamTasks) já é chamada aqui.
+                if(currentView === 'scrum') renderScrumBoard();
+                else if (currentView === 'my-tasks') renderMyTasksBoard();
+            }
+        }
+
+        // MODAIS E CONTROLES VISUAIS
         function setStatus(s) { 
             document.getElementById('taskStatusValue').value = s; 
             document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active')); 
-            const btn = document.getElementById(`btn-status-${s}`);
-            if(btn) btn.classList.add('active'); 
+            document.getElementById(`btn-status-${s}`).classList.add('active'); 
         }
 
-        function openEventModal(id = null) { 
-            editingProjectId = id; 
-            const modalTitle = document.getElementById('eventModalTitle');
-            const deleteBtn = document.getElementById('btnDeleteEvent');
-            const saveBtn = document.getElementById('btnSaveEvent');
-            
-            document.getElementById('evName').value = '';
-            document.getElementById('evStart').value = '';
-            document.getElementById('evEnd').value = '';
-
-            if (id) {
-                window.supabaseClient.from('projetos_scrum').select('*').eq('id', id).single().then(({ data }) => {
-                    if(!data) return;
-                    modalTitle.innerText = "Editar Evento";
-                    document.getElementById('evName').value = data.nome;
-                    document.getElementById('evStart').value = data.data_inicio;
-                    document.getElementById('evEnd').value = data.data_fim;
-                    deleteBtn.classList.remove('hidden');
-                    saveBtn.innerText = "Atualizar Evento";
-                });
-            } else {
-                modalTitle.innerText = "Novo Evento";
-                deleteBtn.classList.add('hidden');
-                saveBtn.innerText = "Criar Evento";
-            }
-            document.getElementById('eventModal').classList.remove('hidden'); 
+        function setPriority(p) { 
+            document.getElementById('taskPriorityValue').value = p; 
+            document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('active')); 
+            document.getElementById(`btn-prio-${p}`).classList.add('active'); 
         }
 
-        function closeEventModal() { document.getElementById('eventModal').classList.add('hidden'); editingProjectId = null; }
-
+        function openEventModal(id = null) {
+            editingProjectId = id;
+            document.getElementById('eventModalTitle').innerText = id ? "Editar Evento" : "Novo Evento";
+            document.getElementById('evName').value = ''; document.getElementById('evStart').value = ''; document.getElementById('evEnd').value = '';
+            if(id) {
+                const e = dbEvents.find(x => x.id === id);
+                document.getElementById('evName').value = e.nome || '';
+                document.getElementById('evStart').value = e.data_inicio || '';
+                document.getElementById('evEnd').value = e.data_fim || '';
+                document.getElementById('btnDeleteEvent').classList.remove('hidden');
+            } else document.getElementById('btnDeleteEvent').classList.add('hidden');
+            document.getElementById('eventModal').classList.remove('hidden');
+        }
+        function closeEventModal() { document.getElementById('eventModal').classList.add('hidden'); }
+        
         async function saveCurrentEvent() {
-            const nome = document.getElementById('evName').value;
-            if (!nome) return alert("Nome do evento obrigatório.");
-            const payload = { nome, data_inicio: document.getElementById('evStart').value || null, data_fim: document.getElementById('evEnd').value || null };
+            const payload = { nome: document.getElementById('evName').value, data_inicio: document.getElementById('evStart').value || null, data_fim: document.getElementById('evEnd').value || null };
             if (editingProjectId) payload.id = editingProjectId;
-            const { data, error } = await window.supabaseClient.from('projetos_scrum').upsert(payload).select().single();
-            if (error) return alert(error.message);
-            selectedProjectId = data.id; closeEventModal(); fetchProjects();
+            await window.supabaseClient.from('projetos_scrum').upsert(payload);
+            closeEventModal(); loadData();
         }
 
         async function deleteCurrentEvent() {
-            if (!confirm("Excluir evento e todas as tarefas?")) return;
+            if (!confirm("Excluir este evento permanentemente?")) return;
             await window.supabaseClient.from('projetos_scrum').delete().eq('id', editingProjectId);
-            selectedProjectId = null; closeEventModal(); fetchProjects();
+            selectedProjectId = null; 
+            closeEventModal(); 
+            
+            if(currentView === 'scrum') toggleView('dashboard');
+            else loadData();
         }
 
-        function openTaskModal(id = null) { 
-            if (!selectedProjectId) return alert("Selecione um evento primeiro!");
-            editingTaskId = id;
-            selectedStaff = [];
-            document.getElementById('taskTitleInput').value = '';
-            document.getElementById('taskDeadline').value = '';
-            document.getElementById('taskDescription').value = '';
-            setStatus('todo');
+        function openTaskModal(id = null) {
+            editingTaskId = id; selectedStaff = [];
+            document.getElementById('taskModalTitle').innerText = id ? "Editar Tarefa" : "Criar Tarefa";
+            document.getElementById('taskTitleInput').value = ''; document.getElementById('taskDeadline').value = ''; document.getElementById('taskDescription').value = '';
+            
+            const selectProj = document.getElementById('taskProjectSelect');
+            selectProj.innerHTML = '<option value="" disabled selected>Selecione um evento...</option>' + dbEvents.map(e => `<option value="${e.id}">${e.nome}</option>`).join('');
 
             if (id) {
-                window.supabaseClient.from('tarefas_scrum').select('*, tarefa_responsaveis(id_perfil)').eq('id', id).single().then(({ data }) => {
-                    if(!data) return;
-                    document.getElementById('taskModalTitle').innerText = "Editar Task";
-                    document.getElementById('taskTitleInput').value = data.titulo;
-                    document.getElementById('taskDeadline').value = data.data_limite;
-                    document.getElementById('taskDescription').value = data.descricao || '';
-                    setStatus(data.status);
-                    if (data.tarefa_responsaveis) {
-                        data.tarefa_responsaveis.forEach(tr => {
-                            const p = allStaff.find(s => s.id === tr.id_perfil);
-                            if (p) selectedStaff.push({ id: p.id, nome: p.nome_completo });
-                        });
-                        renderSelectedStaff();
-                    }
-                    document.getElementById('btnDeleteTask').classList.remove('hidden');
+                const t = dbTasks.find(x => x.id === id);
+                document.getElementById('taskTitleInput').value = t.titulo || '';
+                document.getElementById('taskDeadline').value = t.data_limite || '';
+                document.getElementById('taskDescription').value = t.descricao || '';
+                document.getElementById('taskProjectSelect').value = t.id_projeto || '';
+                setStatus(t.status); 
+                setPriority(t.prioridade || 'Baixa');
+                
+                (t.tarefa_responsaveis || []).forEach(tr => { 
+                    const p = allStaff.find(s => s.id === tr.id_perfil); 
+                    if(p) selectedStaff.push({ id: p.id, nome: p.nome_completo }); 
                 });
+                renderSelectedStaff();
+                document.getElementById('btnDeleteTask').classList.remove('hidden');
             } else {
-                document.getElementById('taskModalTitle').innerText = "Nova Task";
-                if (currentUserProfile) selectedStaff.push({ id: currentUserProfile.id, nome: currentUserProfile.nome_completo });
+                if(selectedProjectId) document.getElementById('taskProjectSelect').value = selectedProjectId;
+
+                setStatus('todo'); 
+                setPriority('Baixa');
+                if(currentUserProfile && currentUserProfile.cargo !== 'aluno') selectedStaff.push({ id: currentUserProfile.id, nome: currentUserProfile.nome_completo });
                 renderSelectedStaff();
                 document.getElementById('btnDeleteTask').classList.add('hidden');
             }
@@ -428,40 +807,54 @@
             lucide.createIcons();
         }
 
-        function closeTaskModal() { document.getElementById('taskModal').classList.add('hidden'); editingTaskId = null; }
-
+        function closeTaskModal() { document.getElementById('taskModal').classList.add('hidden'); }
+        
         async function saveCurrentTask() {
             const titulo = document.getElementById('taskTitleInput').value;
-            if (!titulo) return alert("Título obrigatório.");
-            const payload = { id_projeto: selectedProjectId, titulo, data_limite: document.getElementById('taskDeadline').value || null, status: document.getElementById('taskStatusValue').value, descricao: document.getElementById('taskDescription').value };
-            if (editingTaskId) payload.id = editingTaskId;
+            const projId = document.getElementById('taskProjectSelect').value;
+            if (!titulo || !projId) return alert("Título e Evento são obrigatórios.");
+
+            const payload = { 
+                id_projeto: projId,
+                titulo: titulo, 
+                data_limite: document.getElementById('taskDeadline').value || null, 
+                status: document.getElementById('taskStatusValue').value, 
+                prioridade: document.getElementById('taskPriorityValue').value,
+                descricao: document.getElementById('taskDescription').value 
+            };
+            
+            if(editingTaskId) payload.id = editingTaskId;
             const { data: task, error } = await window.supabaseClient.from('tarefas_scrum').upsert(payload).select().single();
-            if (error) return alert(error.message);
+            if (error) { console.error(error); return alert("Erro ao salvar tarefa."); }
+            
             await window.supabaseClient.from('tarefa_responsaveis').delete().eq('id_tarefa', task.id);
             if (selectedStaff.length > 0) await window.supabaseClient.from('tarefa_responsaveis').insert(selectedStaff.map(s => ({ id_tarefa: task.id, id_perfil: s.id })));
-            closeTaskModal(); fetchTasks(); fetchProjects();
+            
+            closeTaskModal(); 
+            await loadData(); 
+            if(currentView === 'scrum') renderScrumBoard();
+            else if (currentView === 'my-tasks') renderMyTasksBoard();
         }
 
         async function deleteCurrentTask() {
-            if (!confirm("Excluir esta tarefa?")) return;
+            if(!confirm("Excluir?")) return;
             await window.supabaseClient.from('tarefas_scrum').delete().eq('id', editingTaskId);
-            closeTaskModal(); fetchTasks(); fetchProjects();
+            closeTaskModal(); 
+            await loadData(); 
+            if(currentView === 'scrum') renderScrumBoard();
+            else if (currentView === 'my-tasks') renderMyTasksBoard();
         }
 
         function searchStaff(val) {
             const results = document.getElementById('staffSearchResults');
             if (!val) return results.classList.add('hidden');
             const filtered = allStaff.filter(s => s.nome_completo.toLowerCase().includes(val.toLowerCase()));
-            results.innerHTML = filtered.map(s => `<div onclick="addStaffToTask('${s.id}', '${s.nome_completo}')" class="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0"><span class="text-xs font-bold text-fmm-dark block">${s.nome_completo}</span><span class="text-[9px] text-slate-400 uppercase font-bold">${s.cargo}</span></div>`).join('');
+            results.innerHTML = filtered.map(s => `<div onclick="addStaff('${s.id}', '${s.nome_completo.replace(/'/g, "\\'")}')" class="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 text-[10px] font-bold text-fmm-dark uppercase text-left">${s.nome_completo}</div>`).join('');
             results.classList.remove('hidden');
         }
-
-        function addStaffToTask(id, nome) { if (!selectedStaff.some(s => s.id === id)) { selectedStaff.push({ id, nome }); renderSelectedStaff(); } document.getElementById('staffSearchResults').classList.add('hidden'); document.getElementById('taskResponsiblesSearch').value = ''; }
+        function addStaff(id, nome) { if(!selectedStaff.some(s => s.id === id)) { selectedStaff.push({ id, nome }); renderSelectedStaff(); } document.getElementById('staffSearchResults').classList.add('hidden'); document.getElementById('taskStaffSearch').value = ''; }
         function removeStaff(id) { selectedStaff = selectedStaff.filter(s => s.id !== id); renderSelectedStaff(); }
         function renderSelectedStaff() { document.getElementById('selectedStaffList').innerHTML = selectedStaff.map(s => `<div class="px-3 py-1 bg-fmm-blue/10 text-fmm-blue rounded-full text-[10px] font-bold flex items-center gap-2">${s.nome}<button onclick="removeStaff('${s.id}')"><i data-lucide="x" class="w-3 h-3"></i></button></div>`).join(''); lucide.createIcons(); }
-        function togglePersonalFilter() { myTasksOnly = !myTasksOnly; document.getElementById('btnMyTasks').classList.toggle('filter-active', myTasksOnly); fetchTasks(); }
-        function toggleSidebar() { if (window.SidebarComponent) SidebarComponent.toggleSidebar(); }
-        async function handleLogout() { if(confirm("Sair do sistema?")) { await window.supabaseClient.auth.signOut(); window.location.href = "../../index.html"; } }
 
         window.onload = init;
     </script>

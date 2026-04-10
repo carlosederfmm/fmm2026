@@ -267,14 +267,15 @@
 
                 if (perfError || !perfil) throw new Error("Perfil não localizado.");
 
-                // TASK: Atualização de caminhos sincronizada com a nova estrutura de pastas v2
+                // TASK: Atualização de caminhos sincronizada com a nova estrutura de pastas v2 e adição do Counselor
                 const destinos = {
                     'diretor': 'coordenador/operacional/dashboard_coordenador.html',
                     'coordenador': 'coordenador/operacional/dashboard_coordenador.html',
                     'professor': 'professor/dashboard_professor.html',
                     'orientador': 'orientador/dashboard_orientador.html',
                     'secretaria': 'secretaria/dashboard_secretaria.html',
-                    'inspetor': 'inspetor/dashboard_inspetor.html'
+                    'inspetor': 'inspetor/dashboard_inspetor.html',
+                    'counselor': 'counselor/dashboard_counselor.html'
                 };
 
                 const cargo = perfil.cargo ? perfil.cargo.toLowerCase() : '';

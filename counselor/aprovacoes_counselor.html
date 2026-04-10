@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aprovações | SME FMM</title>
+    
+    <!-- Bibliotecas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Scripts Base -->
+    <script src="../sidebar.js"></script>
+    <script src="../assets/js/supabase_client.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fadeInUp 0.5s ease-out forwards; }
+        
+        /* Premium KPI Cards */
+        .kpi-card { background: white; border: 1px solid #f1f5f9; border-radius: 32px; transition: all 0.3s ease; }
+        .kpi-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px -8px rgba(0, 60, 91, 0.1); }
+
+        /* Segmented Control Tabs (Master Tabs) */
+        .tab-btn { padding: 10px 24px; font-size: 11px; font-weight: 800; border-radius: 16px; transition: all 0.2s; color: #64748b; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em; }
+        .tab-btn.active { background-color: white; color: #003c5b; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+
+        /* Form Filters */
+        .filter-select { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 16px; font-size: 11px; font-weight: 700; color: #475569; outline: none; transition: all 0.2s; appearance: none; cursor: pointer; }
+        .filter-select:focus { border-color: #00638f; background: white; box-shadow: 0 0 0 4px rgba(0, 99, 143, 0.05); }
+
+        /* Badges */
+        .status-badge { padding: 4px 10px; border-radius: 8px; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 4px; }
+        .status-aprovado { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+        .status-espera { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+        .status-reprovado { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+        .status-aguardando { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+
+        .finance-badge { padding: 4px 10px; border-radius: 8px; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid; }
+        .fin-isento { background: #f0f9ff; color: #0369a1; border-color: #bae6fd; }
+        .fin-pago { background: #ecfccb; color: #4d7c0f; border-color: #d9f99d; }
+        .fin-pendente { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
+        .fin-atrasado { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+
+        /* Table & Modals */
+        .table-row-custom { transition: background-color 0.2s; cursor: pointer; }
+        .table-row-custom:hover { background-color: #f8fafc; }
+        .modal-overlay { background-color: rgba(0, 60, 91, 0.8); backdrop-filter: blur(8px); }
+        .search-result-item:hover { background-color: #f0f9ff; }
+        
+        .student-avatar { width: 36px; height: 36px; border-radius: 10px; object-fit: cover; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden text-left bg-slate-50">
+
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-40"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden relative text-left">
+        
+        <!-- HEADER PREMIUM -->
+        <header class="bg-white h-auto py-6 px-8 border-b border-slate-200 z-30 shadow-sm shrink-0 flex flex-col gap-6">
+            <div class="flex items-center justify-between">
+                 <div class="flex flex-col text-left">
+                <h1 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none flex items-center gap-2">
+                    <span class="w-1.5 h-4 bg-fmm-lime rounded-full"></span>
+                    Gestão de Aprovações
+                </h1>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Gestão de Vestibulares e Olimpíadas</p>
+            </div>
+
+                <div class="flex items-center gap-4">
+                    <!-- Widget do Usuário -->
+                    <div class="hidden sm:flex flex-col items-end border-r border-slate-200 pr-5 mr-1">
+                        <span id="headerUserName" class="text-xs font-black text-fmm-dark uppercase">...</span>
+                        <span class="text-[9px] text-fmm-blue font-black uppercase tracking-widest opacity-60">Counselor</span>
+                    </div>
+
+                    <button onclick="openExamsManagerModal()" class="bg-white border border-slate-200 text-slate-600 hover:border-fmm-blue hover:text-fmm-blue px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm transition-all active:scale-95">
+                        <i data-lucide="settings" class="w-4 h-4"></i> Configurar
+                    </button>
+
+                    <button onclick="openModal()" class="bg-fmm-blue hover:bg-fmm-dark text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-fmm-blue/20 transition-all active:scale-95">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i> Nova Inscrição
+                    </button>
+                </div>
+            </div>
+
+            <!-- MASTER TABS: Segmented Control Style -->
+            <div class="flex items-center justify-between">
+                <div class="bg-slate-100 p-1.5 rounded-[20px] flex gap-1 border border-slate-200 w-fit">
+                    <button onclick="switchMasterTab('Único')" id="tab-Unico" class="tab-btn active">Vestibulares Únicos</button>
+                    <button onclick="switchMasterTab('Seriado')" id="tab-Seriado" class="tab-btn">Processos Seriados</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-8">
+            
+            <!-- KPIs ANIMADOS (Dashboard Orientador Style) -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="kpi-card p-6 flex flex-col text-left">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-12 h-12 bg-fmm-blue/10 rounded-2xl flex items-center justify-center text-fmm-blue">
+                            <i data-lucide="file-text" class="w-6 h-6"></i>
+                        </div>
+                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Inscrições</span>
+                    </div>
+                    <p id="kpi-inscritos" class="text-4xl font-black text-fmm-dark text-left" data-val="0">0</p>
+                    <h3 class="text-[9px] font-bold text-fmm-blue uppercase tracking-widest mt-1 text-left">Registros Totais</h3>
+                </div>
+
+                <div class="kpi-card p-6 flex flex-col text-left">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-12 h-12 bg-fmm-green/10 rounded-2xl flex items-center justify-center text-fmm-green">
+                            <i data-lucide="award" class="w-6 h-6"></i>
+                        </div>
+                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Sucesso</span>
+                    </div>
+                    <p id="kpi-aprovados" class="text-4xl font-black text-fmm-green text-left" data-val="0">0</p>
+                    <h3 id="kpi-aprovados-label" class="text-[9px] font-bold text-fmm-green uppercase tracking-widest mt-1 text-left">Aprovações Oficiais</h3>
+                </div>
+
+                <div class="kpi-card p-6 flex flex-col text-left">
+                    <div class="flex justify-between items-start mb-4 text-left">
+                        <div class="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600">
+                            <i data-lucide="clock" class="w-6 h-6"></i>
+                        </div>
+                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Aguardando</span>
+                    </div>
+                    <p id="kpi-espera" class="text-4xl font-black text-amber-500 text-left" data-val="0">0</p>
+                    <h3 id="kpi-espera-label" class="text-[9px] font-bold text-amber-600 uppercase tracking-widest mt-1 text-left">Lista de Espera</h3>
+                </div>
+
+                <div class="kpi-card p-6 flex flex-col text-left">
+                    <div class="flex justify-between items-start mb-4 text-left">
+                        <div class="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center text-red-500">
+                            <i data-lucide="user-x" class="w-6 h-6"></i>
+                        </div>
+                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Abstenções</span>
+                    </div>
+                    <p id="kpi-faltas" class="text-4xl font-black text-red-500 text-left" data-val="0">0</p>
+                    <h3 class="text-[9px] font-bold text-red-500 uppercase tracking-widest mt-1 text-left">Ausências nas Provas</h3>
+                </div>
+            </div>
+
+            <!-- GRÁFICOS DINÂMICOS (ROW 1) -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                <div class="lg:col-span-2 bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm animate-fade-in-up text-left">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2 text-left">
+                        <i data-lucide="bar-chart" class="w-4 h-4 text-fmm-blue"></i> Cursos Mais Procurados
+                    </h3>
+                    <div class="h-64 relative text-left">
+                        <canvas id="chartTopCursos"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm animate-fade-in-up text-left" style="animation-delay: 0.1s;">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2 text-left">
+                        <i data-lucide="pie-chart" class="w-4 h-4 text-fmm-lime"></i> Resultados Globais
+                    </h3>
+                    <div class="h-64 relative flex items-center justify-center text-center">
+                        <canvas id="chartResultados"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GRÁFICOS DINÂMICOS (ROW 2) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                <div class="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm animate-fade-in-up text-left" style="animation-delay: 0.15s;">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2 text-left">
+                        <i data-lucide="credit-card" class="w-4 h-4 text-emerald-500"></i> Status Financeiro
+                    </h3>
+                    <div class="h-48 relative flex items-center justify-center">
+                        <canvas id="chartFinanceiro"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm animate-fade-in-up text-left" style="animation-delay: 0.2s;">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2 text-left">
+                        <i data-lucide="user-check" class="w-4 h-4 text-purple-500"></i> Presença na Prova
+                    </h3>
+                    <div class="h-48 relative flex items-center justify-center">
+                        <canvas id="chartPresenca"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm animate-fade-in-up text-left" style="animation-delay: 0.25s;">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2 text-left">
+                        <i data-lucide="globe" class="w-4 h-4 text-teal-500"></i> Abrangência
+                    </h3>
+                    <div class="h-48 relative flex items-center justify-center">
+                        <canvas id="chartAbrangencia"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABELA COM TOOLBAR COMPLETA -->
+            <div class="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden animate-fade-in-up text-left" style="animation-delay: 0.4s;">
+                <div class="p-6 border-b border-slate-50 bg-slate-50/50 flex flex-col gap-4 text-left">
+                    <div class="flex items-center justify-between text-left">
+                        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 text-left">
+                            <i data-lucide="list-filter" class="w-4 h-4 text-fmm-blue"></i> Relatório Analítico: <span id="tableTitleDynamic" class="text-fmm-blue">Vestibulares Únicos</span>
+                        </h3>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 text-left">
+                        <div class="relative group lg:col-span-2 text-left">
+                            <i data-lucide="search" class="absolute left-4 top-3.5 w-4 h-4 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
+                            <input type="text" id="filterSearch" oninput="updateDashboard()" placeholder="Buscar aluno, RA ou curso..." class="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
+                        </div>
+                        <div class="relative text-left">
+                            <i data-lucide="filter" class="absolute left-4 top-3.5 w-4 h-4 text-slate-400"></i>
+                            <select id="filterProcesso" onchange="updateDashboard()" class="filter-select w-full pl-11">
+                                <option value="all">Processo (Todos)</option>
+                            </select>
+                        </div>
+                        <div class="relative text-left">
+                            <i data-lucide="filter" class="absolute left-4 top-3.5 w-4 h-4 text-slate-400"></i>
+                            <select id="filterAbrangencia" onchange="updateDashboard()" class="filter-select w-full pl-11">
+                                <option value="all">Abrangência (Todas)</option>
+                                <option value="Regional">Regional</option>
+                                <option value="Nacional">Nacional</option>
+                                <option value="Internacional">Internacional</option>
+                            </select>
+                        </div>
+                        <div class="relative text-left">
+                            <i data-lucide="filter" class="absolute left-4 top-3.5 w-4 h-4 text-slate-400"></i>
+                            <select id="filterPagamento" onchange="updateDashboard()" class="filter-select w-full pl-11">
+                                <option value="all">Pagamento (Todos)</option>
+                                <option value="Pendente">Pendente</option>
+                                <option value="Isento">Isento</option>
+                                <option value="Pago">Pago</option>
+                            </select>
+                        </div>
+                        <div class="relative text-left">
+                            <i data-lucide="filter" class="absolute left-4 top-3.5 w-4 h-4 text-slate-400"></i>
+                            <select id="filterResultado" onchange="updateDashboard()" class="filter-select w-full pl-11">
+                                <option value="all">Resultado (Todos)</option>
+                                <option value="Aprovado">Aprovados</option>
+                                <option value="Lista de Espera">Lista de Espera</option>
+                                <option value="Reprovado">Reprovados</option>
+                                <option value="Aguardando">Aguardando</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="overflow-x-auto custom-scrollbar text-left">
+                    <table class="w-full text-left border-collapse whitespace-nowrap">
+                        <thead id="dynamicTableHead">
+                            <!-- Gerado dinamicamente via JS -->
+                        </thead>
+                        <tbody id="tableBody" class="divide-y divide-slate-50 text-xs font-medium text-slate-600">
+                            <!-- Injetado via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- MODAL DE CADASTRO / EDIÇÃO DE REGISTRO DO ALUNO -->
+    <div id="recordModal" class="hidden fixed inset-0 z-[100] modal-overlay flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-4xl rounded-[40px] shadow-2xl flex flex-col animate-fade-in-up overflow-hidden max-h-[90vh]">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 text-left">
+                <div class="flex flex-col text-left">
+                    <h2 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none text-left" id="modalTitle">Registrar Vestibular</h2>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2 text-left">Acompanhamento de Aluno</p>
+                </div>
+                <button onclick="closeModal()" class="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-all text-slate-400"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-8 text-left bg-slate-50/30">
+                
+                <!-- SEÇÃO 1: ALUNO E PROCESSO -->
+                <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6 text-left">
+                    <h3 class="text-[10px] font-black text-fmm-blue uppercase tracking-widest border-b border-slate-100 pb-2 text-left">1. Seleção Inteligente de Processo</h3>
+                    
+                    <!-- Busca de Aluno DB -->
+                    <div id="studentSearchArea" class="space-y-1.5 relative text-left">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest block text-left">Buscar Aluno</label>
+                        <div class="relative">
+                            <i data-lucide="search" class="absolute left-4 top-3.5 w-4 h-4 text-slate-400"></i>
+                            <input type="text" id="studentSearchInput" onkeyup="searchStudentDB(this.value)" placeholder="Nome ou RA do aluno..." class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
+                        </div>
+                        <div id="studentSearchResults" class="absolute w-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl max-h-48 overflow-y-auto z-50 hidden custom-scrollbar"></div>
+                    </div>
+
+                    <!-- Badge do Aluno Selecionado -->
+                    <div id="selectedStudentBadge" class="hidden p-4 bg-fmm-blue/5 border border-fmm-blue/10 rounded-2xl flex items-center justify-between text-left">
+                        <div class="flex items-center gap-4 text-left">
+                            <img src="" id="badgeAvatar" class="w-10 h-10 rounded-xl object-cover border border-white shadow-sm" onerror="this.src='https://ui-avatars.com/api/?name=AL&background=003c5b&color=fff'">
+                            <div class="text-left">
+                                <p class="text-xs font-black text-fmm-dark uppercase text-left" id="badgeName">---</p>
+                                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 text-left" id="badgeInfo">RA: --- | ---</p>
+                            </div>
+                        </div>
+                        <button onclick="clearStudent()" class="text-slate-400 hover:text-red-500 bg-white p-2 rounded-full shadow-sm transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 text-left">
+                        <div class="space-y-1.5 text-left">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1 flex items-center justify-between text-left">
+                                Processo Seletivo (Livre Escolha)
+                            </label>
+                            <select id="inProcesso" onchange="handleProcessoChange()" disabled class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue uppercase text-slate-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                                <option value="">Selecione um aluno primeiro...</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1.5 text-left">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block text-left">Curso Pretendido</label>
+                            <input type="text" id="inCurso" placeholder="Ex: Engenharia de Computação (ou Treineiro)" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue uppercase text-slate-700">
+                        </div>
+                        <div class="space-y-1.5 text-left">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block text-left">Abrangência</label>
+                            <select id="inAbrangencia" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600 uppercase cursor-pointer">
+                                <option value="Regional">Regional</option>
+                                <option value="Nacional">Nacional</option>
+                                <option value="Internacional">Internacional</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Resumo de Prazos (Inteligência Counselor) -->
+                    <div id="deadlinesSummary" class="hidden p-5 mt-2 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col gap-3 text-left">
+                        <div class="flex items-center gap-2 text-fmm-blue">
+                            <i data-lucide="info" class="w-4 h-4"></i>
+                            <span class="text-[10px] font-black uppercase tracking-widest text-left">Resumo de Prazos da Instituição</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 text-left">
+                            <div><p class="text-[8px] font-black text-slate-400 uppercase text-left">Prazo Isenção</p><p id="sumIsencao" class="text-[10px] font-bold text-fmm-dark text-left">--/--</p></div>
+                            <div><p class="text-[8px] font-black text-slate-400 uppercase text-left">Prazo Pagamento</p><p id="sumPgto" class="text-[10px] font-bold text-fmm-dark text-left">--/--</p></div>
+                            <div><p class="text-[8px] font-black text-slate-400 uppercase text-left">Prova Dia 1</p><p id="sumP1" class="text-[10px] font-bold text-fmm-dark text-left">--/--</p></div>
+                            <div><p class="text-[8px] font-black text-slate-400 uppercase text-left">Prova Dia 2</p><p id="sumP2" class="text-[10px] font-bold text-fmm-dark text-left">--/--</p></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SEÇÃO 2: ACOMPANHAMENTO -->
+                <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6 text-left">
+                    <h3 class="text-[10px] font-black text-fmm-blue uppercase tracking-widest border-b border-slate-100 pb-2 text-left">2. Acompanhamento Logístico</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 text-left">
+                        <div class="space-y-1.5 text-left">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block text-left">Status Financeiro</label>
+                            <select id="inStatusFin" onchange="checkPaymentDeadline()" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600 uppercase cursor-pointer transition-all">
+                                <option value="Pendente">Pendente</option>
+                                <option value="Isento">Isento</option>
+                                <option value="Pago">Pago</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1.5 text-left">
+                            <div class="flex items-center justify-between ml-1">
+                                <label class="text-[10px] font-black text-slate-400 uppercase block text-left">Data Pagamento</label>
+                                <span id="paymentDeadlineStatus" class="hidden text-[8px] font-black px-2 py-0.5 rounded-md text-left"></span>
+                            </div>
+                            <input type="date" id="inDataPgto" onchange="checkPaymentDeadline()" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600 transition-all">
+                        </div>
+                        <div class="space-y-1.5 text-left">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block text-left">Presença na Prova</label>
+                            <select id="inPresenca" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600 uppercase cursor-pointer">
+                                <option value="Pendente">Ainda não ocorreu</option>
+                                <option value="Presente">Presente</option>
+                                <option value="Faltou">Faltou</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SEÇÃO 3: RESULTADO -->
+                <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6 text-left">
+                    <h3 class="text-[10px] font-black text-fmm-blue uppercase tracking-widest border-b border-slate-100 pb-2 text-left">3. Resultados</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 text-left">
+                        <div class="space-y-1.5 text-left">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block text-left">Resultado Final</label>
+                            <select id="inResultado" onchange="toggleColocacao()" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600 uppercase cursor-pointer">
+                                <option value="Aguardando">Aguardando</option>
+                                <option value="Aprovado">Aprovado</option>
+                                <option value="Lista de Espera">Lista de Espera</option>
+                                <option value="Reprovado">Reprovado</option>
+                            </select>
+                        </div>
+                        <div id="divColocacao" class="space-y-1.5 hidden text-left">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block text-left">Colocação</label>
+                            <input type="number" id="inColocacao" placeholder="Ex: 15" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-700">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-8 border-t border-slate-100 bg-white flex justify-end gap-3 shrink-0 text-left">
+                <button id="btnDelete" onclick="deleteRecord()" class="hidden px-6 py-3.5 text-xs font-black text-red-500 uppercase rounded-xl hover:bg-red-50 mr-auto transition-all"><i data-lucide="trash-2" class="w-4 h-4 inline mr-1"></i> Excluir</button>
+                <button onclick="closeModal()" class="px-8 py-3.5 text-xs font-black text-slate-500 uppercase rounded-xl hover:bg-slate-50 transition-all border border-transparent">Cancelar</button>
+                <button onclick="saveRecord()" class="px-10 py-3.5 bg-fmm-blue hover:bg-fmm-dark text-white text-xs font-black uppercase rounded-xl shadow-lg shadow-fmm-blue/20 transition-all active:scale-95 flex items-center gap-2"><i data-lucide="save" class="w-4 h-4"></i> Salvar Registro</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: GERENCIAR VESTIBULARES (CRUD COMPLETO) -->
+    <div id="examsManagerModal" class="hidden fixed inset-0 z-[150] modal-overlay flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-5xl rounded-[40px] shadow-2xl flex flex-col md:flex-row animate-fade-in-up overflow-hidden max-h-[90vh]">
+            
+            <!-- ESQUERDA: LISTA -->
+            <div class="w-full md:w-1/2 flex flex-col border-r border-slate-100 bg-slate-50/50 text-left">
+                <div class="p-8 border-b border-slate-100 bg-white shrink-0 text-left">
+                    <h2 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none text-left">Bases Ativas</h2>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2 text-left">Configuração Institucional de Vestibulares</p>
+                </div>
+                <div class="flex-1 overflow-y-auto p-6 custom-scrollbar space-y-3 text-left" id="examsConfigList">
+                    <!-- Injetado via JS -->
+                </div>
+            </div>
+
+            <!-- DIREITA: FORMULÁRIO -->
+            <div class="w-full md:w-1/2 flex flex-col bg-white text-left">
+                <div class="p-8 border-b border-slate-100 flex justify-between items-center shrink-0 text-left">
+                    <h3 id="mgrExamTitle" class="text-xs font-black text-fmm-blue uppercase tracking-widest flex items-center gap-2 text-left"><i data-lucide="plus" class="w-4 h-4"></i> Adicionar Nova Prova</h3>
+                    <button onclick="closeExamsManagerModal()" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-full transition-all text-slate-400"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-6 text-left">
+                    <div class="space-y-1.5 text-left">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block text-left">Nome do Vestibular / Processo</label>
+                        <input type="text" id="newExamName" placeholder="Ex: ENEM, SIS - UEA (1ª Etapa)..." class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue uppercase text-slate-700">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-5 text-left">
+                        <div class="space-y-1.5 text-left">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block text-left">Tipo de Prova</label>
+                            <select id="newExamType" onchange="toggleSeriesConfig()" class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600 uppercase cursor-pointer">
+                                <option value="Único">Vestibular Único</option>
+                                <option value="Seriado">Seriado (Etapas)</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1.5 text-left">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block text-left">Quantidade de Dias</label>
+                            <select id="newExamDays" class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600 uppercase cursor-pointer">
+                                <option value="1">1 Dia de Prova</option>
+                                <option value="2">2 Dias de Prova</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- DEFINIÇÃO DE SÉRIE PARA SERIADOS -->
+                    <div id="seriesConfigArea" class="hidden space-y-2 p-5 bg-fmm-blue/5 border border-fmm-blue/10 rounded-2xl animate-fade text-left">
+                        <label class="text-[10px] font-black text-fmm-blue uppercase ml-1 text-left">Série Aplicável (Obrigatório para Seriados)</label>
+                        <div class="flex gap-4 px-2 mt-2 text-left">
+                            <label class="flex items-center gap-2 cursor-pointer text-left">
+                                <input type="checkbox" value="1ª Série" class="cb-serie-exam w-4 h-4 text-fmm-blue border-slate-300 rounded focus:ring-fmm-blue">
+                                <span class="text-xs font-bold text-slate-600">1ª Série</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer text-left">
+                                <input type="checkbox" value="2ª Série" class="cb-serie-exam w-4 h-4 text-fmm-blue border-slate-300 rounded focus:ring-fmm-blue">
+                                <span class="text-xs font-bold text-slate-600">2ª Série</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer text-left">
+                                <input type="checkbox" value="3ª Série" class="cb-serie-exam w-4 h-4 text-fmm-blue border-slate-300 rounded focus:ring-fmm-blue">
+                                <span class="text-xs font-bold text-slate-600">3ª Série</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5 text-left">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block text-left">Abrangência Padrão</label>
+                        <select id="newExamScope" class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600 uppercase cursor-pointer">
+                            <option value="Regional">Regional</option>
+                            <option value="Nacional">Nacional</option>
+                            <option value="Internacional">Internacional</option>
+                        </select>
+                    </div>
+
+                    <div class="p-5 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between text-left">
+                        <div class="text-left">
+                            <p class="text-xs font-black text-fmm-dark uppercase text-left">Contém Redação?</p>
+                            <p class="text-[9px] font-bold text-slate-400 uppercase text-left">Marque se esta etapa exige texto.</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="newExamEssay" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fmm-blue"></div>
+                        </label>
+                    </div>
+
+                    <!-- DATAS DA BASE V2 -->
+                    <!-- Ajuste UX: Usando flex e gap, dividindo em duas linhas para não sobrepor -->
+                    <div class="flex flex-col gap-4 mt-4 text-left">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-1.5 text-left">
+                                <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block text-left">Prazo Isenção</label>
+                                <input type="date" id="newExamLimitIsen" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600">
+                            </div>
+                            <div class="space-y-1.5 text-left">
+                                <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block text-left">Prazo Pagamento</label>
+                                <input type="date" id="newExamLimitPgto" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-1.5 text-left">
+                                <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block text-left">Data Prova 1</label>
+                                <input type="date" id="newExamDateP1" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600">
+                            </div>
+                            <div class="space-y-1.5 text-left">
+                                <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block text-left">Data Prova 2</label>
+                                <input type="date" id="newExamDateP2" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6 border-t border-slate-100 bg-slate-50 shrink-0 flex gap-3 text-left">
+                    <button onclick="resetExamManagerForm()" class="px-6 py-4 text-xs font-black text-slate-500 uppercase rounded-2xl hover:bg-slate-200 transition-all">Limpar</button>
+                    <button onclick="saveNewExam()" class="flex-1 py-4 bg-fmm-blue hover:bg-fmm-dark text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-fmm-blue/20 transition-all active:scale-95 flex items-center justify-center gap-2">
+                        <i data-lucide="save" class="w-4 h-4"></i> Salvar Configuração
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Função de Segurança para Gráficos
+        function safeGetContext(id) {
+            const canvas = document.getElementById(id);
+            return canvas ? canvas.getContext('2d') : null;
+        }
+
+        try {
+            Chart.register(ChartDataLabels);
+        } catch(e) { console.warn("ChartDataLabels não inicializado."); }
+
+        const datalabelsConfig = {
+            color: '#fff',
+            font: { weight: 'bold', size: 10 },
+            formatter: (value, ctx) => {
+                if (value === 0) return '';
+                let sum = 0;
+                ctx.chart.data.datasets[0].data.forEach(data => sum += data);
+                if (sum === 0) return '';
+                return (value * 100 / sum).toFixed(0) + "%";
+            }
+        };
+
+        const barDatalabels = {
+            color: '#fff',
+            font: { weight: 'bold', size: 10 },
+            anchor: 'end',
+            align: 'start',
+            formatter: (value) => value > 0 ? value : ''
+        };
+
+        function formatDriveUrl(url) {
+            if (!url) return null;
+            const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+            return idMatch ? `https://lh3.googleusercontent.com/d/${idMatch[1]}` : url;
+        }
+
+        let dbVestibulares = [];
+        let dbInscricoes = [];
+
+        let currentEditId = null;
+        let currentExamEditId = null;
+        let currentStudentForRecord = null;
+        let activeMasterTab = 'Único'; 
+
+        let chartTop = null;
+        let chartRosca = null;
+        let chartFinanceiro = null;
+        let chartPresenca = null;
+        let chartAbrangencia = null;
+
+        async function init() {
+            const { data: authData, error: authError } = await window.supabaseClient.auth.getUser();
+            if (authError || !authData.user) {
+                window.location.href = '../index.html';
+                return;
+            }
+
+            const { data: profile } = await window.supabaseClient.from('perfis').select('nome_completo').eq('id', authData.user.id).maybeSingle();
+            if (profile && document.getElementById('headerUserName')) {
+                document.getElementById('headerUserName').innerText = profile.nome_completo;
+            }
+
+            if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            lucide.createIcons();
+            
+            await loadData();
+        }
+
+        async function loadData() {
+            try {
+                const { data: vestData, error: vestErr } = await window.supabaseClient.from('counselor_vestibulares').select('*').order('nome');
+                if (vestErr) throw vestErr;
+                dbVestibulares = vestData || [];
+
+                const { data: inscData, error: inscErr } = await window.supabaseClient
+                    .from('counselor_inscricoes')
+                    .select('*, alunos(nome_completo, url_foto, turmas(nome, serie)), counselor_vestibulares(*)')
+                    .order('criado_em', {ascending: false});
+                if (inscErr) throw inscErr;
+
+                dbInscricoes = (inscData || []).map(d => ({
+                    id: d.id,
+                    ra: d.ra_aluno,
+                    nome: d.alunos?.nome_completo || 'N/A',
+                    foto: d.alunos?.url_foto || null,
+                    turma: d.alunos?.turmas?.nome || 'N/A',
+                    serie: d.alunos?.turmas?.serie || '',
+                    processo: d.counselor_vestibulares?.nome || '',
+                    tipo: d.counselor_vestibulares?.tipo || 'Único',
+                    curso: d.curso_pretendido || '',
+                    abrangencia: d.abrangencia || d.counselor_vestibulares?.abrangencia_padrao,
+                    status_fin: d.status_financeiro || 'Pendente',
+                    presenca: d.presenca_prova || 'Pendente',
+                    data_pagamento: d.data_pagamento_aluno || '',
+                    resultado: d.resultado_final || 'Aguardando',
+                    colocacao: d.colocacao || null,
+                    vestibular_id: d.vestibular_id
+                }));
+
+                populateFilterOptions();
+                updateDashboard();
+            } catch (e) {
+                console.error(e);
+                alert("Erro ao carregar dados do banco.");
+            }
+        }
+
+        function switchMasterTab(tabName) {
+            activeMasterTab = tabName;
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('active');
+                if(el.id === `tab-${tabName === 'Único' ? 'Unico' : 'Seriado'}`) el.classList.add('active');
+            });
+            
+            document.getElementById('tableTitleDynamic').innerText = tabName === 'Único' ? 'Vestibulares Únicos' : 'Processos Seriados';
+            document.getElementById('kpi-aprovados-label').innerText = tabName === 'Único' ? 'Aprovações Oficiais' : 'Aprovações na Etapa';
+            document.getElementById('kpi-espera-label').innerText = tabName === 'Único' ? 'Lista de Espera' : 'Etapa Aguardando';
+
+            updateDashboard();
+        }
+
+        function populateFilterOptions() {
+            const pSelect = document.getElementById('filterProcesso');
+            const uniqueProcessos = [...new Set(dbVestibulares.filter(v => v.tipo === activeMasterTab).map(v => v.nome))].sort();
+            pSelect.innerHTML = '<option value="all">Processo (Todos)</option>' + 
+                uniqueProcessos.map(p => `<option value="${p}">${p}</option>`).join('');
+        }
+
+        function updateDashboard() {
+            const search = document.getElementById('filterSearch').value.toLowerCase();
+            const filterProc = document.getElementById('filterProcesso').value;
+            const filterAbrangencia = document.getElementById('filterAbrangencia').value;
+            const filterPag = document.getElementById('filterPagamento').value;
+            const filterStatus = document.getElementById('filterResultado').value;
+
+            const filteredData = dbInscricoes.filter(item => {
+                const matchTab = item.tipo === activeMasterTab;
+                const matchSearch = item.nome.toLowerCase().includes(search) || item.ra.includes(search) || item.curso.toLowerCase().includes(search);
+                const matchProc = filterProc === 'all' || item.processo === filterProc;
+                const matchAbrangencia = filterAbrangencia === 'all' || item.abrangencia === filterAbrangencia;
+                const matchPag = filterPag === 'all' || item.status_fin === filterPag;
+                const matchStatus = filterStatus === 'all' || item.resultado === filterStatus;
+                return matchTab && matchSearch && matchProc && matchAbrangencia && matchPag && matchStatus;
+            });
+
+            const currentProcs = Array.from(document.getElementById('filterProcesso').options).map(o => o.value);
+            if (currentProcs.length <= 1 || dbVestibulares.find(v => v.nome === currentProcs[1])?.tipo !== activeMasterTab) {
+                populateFilterOptions();
+            }
+
+            renderKPIs(filteredData);
+            renderCharts(filteredData);
+            renderTable(filteredData);
+        }
+
+        function animateValue(id, start, end, duration) {
+            const obj = document.getElementById(id);
+            if (!obj) return;
+            const currentVal = parseInt(obj.getAttribute('data-val') || 0);
+            if (currentVal === end) return;
+            
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                obj.innerHTML = Math.floor(progress * (end - start) + start);
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                } else {
+                    obj.setAttribute('data-val', end);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        function renderKPIs(data) {
+            const inscritos = data.length;
+            const aprovados = data.filter(d => d.resultado === 'Aprovado').length;
+            const espera = data.filter(d => d.resultado === 'Lista de Espera' || (activeMasterTab === 'Seriado' && d.resultado === 'Aguardando')).length;
+            const faltas = data.filter(d => d.presenca === 'Faltou').length;
+
+            animateValue('kpi-inscritos', parseInt(document.getElementById('kpi-inscritos').getAttribute('data-val')||0), inscritos, 800);
+            animateValue('kpi-aprovados', parseInt(document.getElementById('kpi-aprovados').getAttribute('data-val')||0), aprovados, 800);
+            animateValue('kpi-espera', parseInt(document.getElementById('kpi-espera').getAttribute('data-val')||0), espera, 800);
+            animateValue('kpi-faltas', parseInt(document.getElementById('kpi-faltas').getAttribute('data-val')||0), faltas, 800);
+        }
+
+        function renderCharts(data) {
+            // UI FIX: devicePixelRatio forçado em todos os gráficos para evitar telas borradas (blur)
+            const countCursos = {};
+            data.forEach(d => { countCursos[d.curso] = (countCursos[d.curso] || 0) + 1; });
+            const sortedCursos = Object.entries(countCursos).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+            const ctxTop = safeGetContext('chartTopCursos');
+            if (ctxTop) {
+                if(chartTop) chartTop.destroy();
+                chartTop = new Chart(ctxTop, {
+                    type: 'bar',
+                    data: {
+                        labels: sortedCursos.map(c => c[0]),
+                        datasets: [{ label: 'Inscrições', data: sortedCursos.map(c => c[1]), backgroundColor: '#00638f', borderRadius: 6 }]
+                    },
+                    options: { 
+                        devicePixelRatio: Math.max(window.devicePixelRatio || 1, 2),
+                        indexAxis: 'y', responsive: true, maintainAspectRatio: false, 
+                        animation: { duration: 1200, easing: 'easeOutQuart' },
+                        plugins: { legend: { display: false }, datalabels: barDatalabels }, 
+                        scales: { x: { grid: { display: false } }, y: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' } } } } 
+                    }
+                });
+            }
+
+            const countsRes = { 'Aprovado': 0, 'Lista de Espera': 0, 'Reprovado': 0, 'Aguardando': 0 };
+            data.forEach(d => { if(countsRes[d.resultado] !== undefined) countsRes[d.resultado]++; });
+
+            const ctxRosca = safeGetContext('chartResultados');
+            if (ctxRosca) {
+                if(chartRosca) chartRosca.destroy();
+                chartRosca = new Chart(ctxRosca, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(countsRes),
+                        datasets: [{
+                            data: Object.values(countsRes),
+                            backgroundColor: ['#80a51b', '#f59e0b', '#ef4444', '#cbd5e1'],
+                            borderWidth: 0, hoverOffset: 10
+                        }]
+                    },
+                    options: { 
+                        devicePixelRatio: Math.max(window.devicePixelRatio || 1, 2),
+                        responsive: true, maintainAspectRatio: false, cutout: '60%',
+                        animation: { animateScale: true, animateRotate: true, duration: 1500 },
+                        plugins: { 
+                            datalabels: datalabelsConfig,
+                            legend: { position: 'right', labels: { usePointStyle: true, font: { size: 10, weight: 'bold' } } } 
+                        } 
+                    }
+                });
+            }
+
+            const countsFin = { 'Pago': 0, 'Isento': 0, 'Pendente': 0 };
+            data.forEach(d => { if(countsFin[d.status_fin] !== undefined) countsFin[d.status_fin]++; });
+
+            const ctxFin = safeGetContext('chartFinanceiro');
+            if (ctxFin) {
+                if(chartFinanceiro) chartFinanceiro.destroy();
+                chartFinanceiro = new Chart(ctxFin, {
+                    type: 'pie',
+                    data: {
+                        labels: Object.keys(countsFin),
+                        datasets: [{
+                            data: Object.values(countsFin),
+                            backgroundColor: ['#10b981', '#0ea5e9', '#f43f5e'],
+                            borderWidth: 0, hoverOffset: 10
+                        }]
+                    },
+                    options: {
+                        devicePixelRatio: Math.max(window.devicePixelRatio || 1, 2),
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { 
+                            datalabels: datalabelsConfig,
+                            legend: { position: 'right', labels: { usePointStyle: true, font: { size: 10, weight: 'bold' } } } 
+                        }
+                    }
+                });
+            }
+
+            const countsPres = { 'Presente': 0, 'Faltou': 0, 'Pendente': 0 };
+            data.forEach(d => { if(countsPres[d.presenca] !== undefined) countsPres[d.presenca]++; });
+
+            const ctxPres = safeGetContext('chartPresenca');
+            if (ctxPres) {
+                if(chartPresenca) chartPresenca.destroy();
+                chartPresenca = new Chart(ctxPres, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(countsPres),
+                        datasets: [{
+                            data: Object.values(countsPres),
+                            backgroundColor: ['#8b5cf6', '#f43f5e', '#cbd5e1'],
+                            borderWidth: 0, hoverOffset: 10
+                        }]
+                    },
+                    options: {
+                        devicePixelRatio: Math.max(window.devicePixelRatio || 1, 2),
+                        responsive: true, maintainAspectRatio: false, cutout: '65%',
+                        plugins: { 
+                            datalabels: datalabelsConfig,
+                            legend: { position: 'right', labels: { usePointStyle: true, font: { size: 10, weight: 'bold' } } } 
+                        }
+                    }
+                });
+            }
+
+            const countsAbrangencia = { 'Regional': 0, 'Nacional': 0, 'Internacional': 0 };
+            data.forEach(d => { if(countsAbrangencia[d.abrangencia] !== undefined) countsAbrangencia[d.abrangencia]++; });
+
+            const ctxAbr = safeGetContext('chartAbrangencia');
+            if (ctxAbr) {
+                if(chartAbrangencia) chartAbrangencia.destroy();
+                chartAbrangencia = new Chart(ctxAbr, {
+                    type: 'pie',
+                    data: {
+                        labels: Object.keys(countsAbrangencia),
+                        datasets: [{
+                            data: Object.values(countsAbrangencia),
+                            backgroundColor: ['#14b8a6', '#0ea5e9', '#8b5cf6'],
+                            borderWidth: 0, hoverOffset: 10
+                        }]
+                    },
+                    options: {
+                        devicePixelRatio: Math.max(window.devicePixelRatio || 1, 2),
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { 
+                            datalabels: datalabelsConfig,
+                            legend: { position: 'right', labels: { usePointStyle: true, font: { size: 10, weight: 'bold' } } } 
+                        }
+                    }
+                });
+            }
+        }
+
+        function renderTable(data = null) {
+            if(!data) return updateDashboard();
+            const head = document.getElementById('dynamicTableHead');
+            const body = document.getElementById('tableBody');
+            
+            if (activeMasterTab === 'Único') {
+                head.innerHTML = `
+                    <tr class="bg-slate-50/50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <th class="px-6 py-5">Aluno</th>
+                        <th class="px-6 py-5">Processo Seletivo</th>
+                        <th class="px-6 py-5">Curso Pretendido</th>
+                        <th class="px-6 py-5 text-center">Status Pagamento</th>
+                        <th class="px-6 py-5 text-center">Presença</th>
+                        <th class="px-6 py-5 text-center">Resultado</th>
+                        <th class="px-6 py-5 text-right">Ação</th>
+                    </tr>`;
+            } else {
+                head.innerHTML = `
+                    <tr class="bg-slate-50/50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <th class="px-6 py-5">Aluno</th>
+                        <th class="px-6 py-5">Processo (Etapa)</th>
+                        <th class="px-6 py-5">Status Treineiro/Curso</th>
+                        <th class="px-6 py-5 text-center">Pagamento</th>
+                        <th class="px-6 py-5 text-center">Presença Prova</th>
+                        <th class="px-6 py-5 text-center">Situação da Etapa</th>
+                        <th class="px-6 py-5 text-right">Ação</th>
+                    </tr>`;
+            }
+
+            if(data.length === 0) {
+                body.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-400 italic text-xs">Nenhum registro encontrado para os filtros atuais.</td></tr>';
+                return;
+            }
+
+            body.innerHTML = data.map(item => {
+                const statusClass = item.resultado === 'Aprovado' ? 'status-aprovado' : item.resultado === 'Reprovado' ? 'status-reprovado' : item.resultado === 'Lista de Espera' ? 'status-espera' : 'status-aguardando';
+                const finClass = item.status_fin === 'Pago' ? 'fin-pago' : item.status_fin === 'Isento' ? 'fin-isento' : 'fin-pendente';
+                const iconRes = item.resultado === 'Aprovado' ? '<i data-lucide="check-circle" class="w-3 h-3"></i>' : item.resultado === 'Reprovado' ? '<i data-lucide="x-circle" class="w-3 h-3"></i>' : item.resultado === 'Lista de Espera' ? '<i data-lucide="clock" class="w-3 h-3"></i>' : '<i data-lucide="help-circle" class="w-3 h-3"></i>';
+                
+                const mockAvatar = formatDriveUrl(item.foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.nome)}&background=003c5b&color=fff`;
+
+                return `
+                <tr onclick="openModal('${item.id}')" class="table-row-custom border-b border-slate-50">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3 text-left">
+                            <img src="${mockAvatar}" class="student-avatar flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=AL&background=003c5b&color=fff'">
+                            <div class="flex flex-col text-left">
+                                <span class="text-xs font-black text-fmm-dark uppercase text-left">${item.nome}</span>
+                                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 text-left">${item.turma} • RA: ${item.ra}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 font-black text-fmm-blue uppercase text-[11px] text-left">${item.processo}</td>
+                    <td class="px-6 py-4">
+                        <div class="flex flex-col text-left">
+                            <span class="font-bold text-slate-600 uppercase text-[11px] truncate max-w-[200px] text-left">${item.curso}</span>
+                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 text-left">${item.abrangencia}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-center"><span class="finance-badge ${finClass}">${item.status_fin}</span></td>
+                    <td class="px-6 py-4 text-center font-bold text-[10px] uppercase ${item.presenca === 'Presente' ? 'text-green-600' : item.presenca === 'Faltou' ? 'text-red-500' : 'text-slate-400'}">${item.presenca}</td>
+                    <td class="px-6 py-4 text-center"><div class="status-badge ${statusClass} mx-auto w-fit">${iconRes} ${item.resultado} ${item.colocacao ? `(${item.colocacao}º)` : ''}</div></td>
+                    <td class="px-6 py-4 text-right">
+                        <button class="p-2.5 bg-slate-100 text-slate-400 hover:text-fmm-blue hover:bg-fmm-blue/10 rounded-xl transition-all inline-flex items-center justify-center shadow-sm">
+                            <i data-lucide="edit-3" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        let studentSearchTimeout;
+        async function searchStudentDB(val) {
+            const results = document.getElementById('studentSearchResults');
+            clearTimeout(studentSearchTimeout);
+            if(val.length < 3) { results.classList.add('hidden'); return; }
+            
+            studentSearchTimeout = setTimeout(async () => {
+                const { data, error } = await window.supabaseClient
+                    .from('alunos')
+                    .select('ra, nome_completo, url_foto, turmas(nome, serie)')
+                    .or(`nome_completo.ilike.%${val}%,ra.ilike.%${val}%`)
+                    .eq('status', 'Cursando')
+                    .limit(5);
+                    
+                if (data && data.length > 0) {
+                    results.innerHTML = data.map(a => {
+                        const mockAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(a.nome_completo)}&background=003c5b&color=fff`;
+                        return `
+                        <div onclick='selectStudentForRecord(${JSON.stringify({ra: a.ra, nome: a.nome_completo, serie: a.turmas?.serie, turma: a.turmas?.nome}).replace(/'/g, "&apos;")})' class="p-4 search-result-item cursor-pointer flex items-center justify-between border-b border-slate-50 last:border-0 text-left">
+                            <div class="flex items-center gap-3 text-left">
+                                <img src="${mockAvatar}" class="student-avatar w-8 h-8 rounded-lg flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=AL&background=003c5b&color=fff'">
+                                <div class="flex flex-col text-left">
+                                    <span class="text-xs font-black text-fmm-dark uppercase text-left">${a.nome_completo}</span>
+                                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 text-left">${a.turmas?.serie} • RA: ${a.ra}</span>
+                                </div>
+                            </div>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
+                        </div>`;
+                    }).join('');
+                } else {
+                    results.innerHTML = '<div class="p-6 text-center text-xs font-bold text-slate-300 italic uppercase tracking-widest text-left">Nenhum aluno localizado</div>';
+                }
+                results.classList.remove('hidden');
+                lucide.createIcons();
+            }, 300);
+        }
+
+        function selectStudentForRecord(aluno) {
+            currentStudentForRecord = aluno;
+            document.getElementById('studentSearchResults').classList.add('hidden');
+            document.getElementById('studentSearchInput').parentElement.classList.add('hidden');
+            document.getElementById('studentSearchInput').value = '';
+            
+            document.getElementById('badgeName').innerText = aluno.nome;
+            document.getElementById('badgeInfo').innerText = `RA: ${aluno.ra} | ${aluno.serie}`;
+            document.getElementById('badgeAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(aluno.nome)}&background=003c5b&color=fff`;
+            document.getElementById('selectedStudentBadge').classList.remove('hidden');
+
+            populateProcessosSelect(aluno.serie);
+        }
+
+        function clearStudent() {
+            currentStudentForRecord = null;
+            document.getElementById('studentSearchInput').parentElement.classList.remove('hidden');
+            document.getElementById('studentSearchInput').value = '';
+            document.getElementById('selectedStudentBadge').classList.add('hidden');
+            const select = document.getElementById('inProcesso');
+            select.innerHTML = '<option value="">Selecione um aluno primeiro...</option>';
+            select.disabled = true;
+            document.getElementById('deadlinesSummary').classList.add('hidden');
+        }
+
+        function populateProcessosSelect(serieAluno) {
+            const select = document.getElementById('inProcesso');
+            const allowed = dbVestibulares;
+
+            if (allowed.length === 0) {
+                select.innerHTML = '<option value="">Nenhum processo configurado no sistema.</option>';
+                select.disabled = true;
+            } else {
+                select.innerHTML = '<option value="">Selecione o Vestibular...</option>' + 
+                    allowed.map(v => `<option value="${v.id}">${v.nome}</option>`).join('');
+                select.disabled = false;
+            }
+        }
+
+        function handleProcessoChange() {
+            const idStr = document.getElementById('inProcesso').value;
+            if(!idStr) {
+                document.getElementById('deadlinesSummary').classList.add('hidden');
+                return;
+            }
+            
+            const vest = dbVestibulares.find(v => v.id === idStr);
+            const sumArea = document.getElementById('deadlinesSummary');
+            
+            if (vest) {
+                document.getElementById('inAbrangencia').value = vest.abrangencia_padrao;
+                sumArea.classList.remove('hidden');
+                
+                const formatDate = (dateStr) => {
+                    if (!dateStr) return '--/--';
+                    const [year, month, day] = dateStr.split('-');
+                    return `${day}/${month}/${year}`;
+                };
+
+                document.getElementById('sumIsencao').innerText = formatDate(vest.prazo_isencao);
+                document.getElementById('sumPgto').innerText = formatDate(vest.prazo_pagamento);
+                document.getElementById('sumP1').innerText = formatDate(vest.data_prova_1);
+                document.getElementById('sumP2').innerText = formatDate(vest.data_prova_2);
+
+                checkPaymentDeadline();
+            } else {
+                sumArea.classList.add('hidden');
+            }
+        }
+
+        function checkPaymentDeadline() {
+            const idStr = document.getElementById('inProcesso').value;
+            const vest = dbVestibulares.find(v => v.id === idStr);
+            const status = document.getElementById('inStatusFin').value;
+            const dataAluInput = document.getElementById('inDataPgto');
+            const dataAlu = dataAluInput.value;
+            const badge = document.getElementById('paymentDeadlineStatus');
+
+            // UX/UI FIX: Desabilita e limpa a Data de Pagamento se for "Isento", impedindo o usuário de errar.
+            if (status === 'Isento') {
+                dataAluInput.value = '';
+                dataAluInput.disabled = true;
+                dataAluInput.classList.add('opacity-50', 'bg-slate-100', 'cursor-not-allowed');
+            } else {
+                dataAluInput.disabled = false;
+                dataAluInput.classList.remove('opacity-50', 'bg-slate-100', 'cursor-not-allowed');
+            }
+
+            if (!vest || status === 'Pendente') { 
+                badge.classList.add('hidden'); 
+                return; 
+            }
+
+            badge.classList.remove('hidden');
+            if (status === 'Isento') {
+                badge.innerText = 'ISENTO';
+                badge.className = 'text-[8px] font-black px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 border border-blue-100 ml-2';
+            } else if (status === 'Pago' && dataAlu && vest.prazo_pagamento) {
+                const isLate = dataAlu > vest.prazo_pagamento;
+                badge.innerText = isLate ? 'ATRASADO' : 'NO PRAZO';
+                badge.className = isLate 
+                    ? 'text-[8px] font-black px-2 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-100 ml-2'
+                    : 'text-[8px] font-black px-2 py-0.5 rounded-md bg-green-50 text-green-600 border border-green-100 ml-2';
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function toggleColocacao() {
+            const res = document.getElementById('inResultado').value;
+            const div = document.getElementById('divColocacao');
+            if(res === 'Aprovado' || res === 'Lista de Espera') div.classList.remove('hidden');
+            else div.classList.add('hidden');
+        }
+
+        function openModal(id = null) {
+            currentEditId = id;
+            document.querySelectorAll('#recordModal input').forEach(i => {
+                i.value = '';
+                i.disabled = false;
+                i.classList.remove('opacity-50', 'bg-slate-100', 'cursor-not-allowed');
+            });
+            document.querySelectorAll('#recordModal select').forEach(i => i.selectedIndex = 0);
+            
+            clearStudent();
+            toggleColocacao();
+
+            if(id) {
+                const item = dbInscricoes.find(d => d.id === id);
+                document.getElementById('modalTitle').innerText = "Editar Inscrição";
+                
+                const mockedUser = { nome: item.nome, ra: item.ra, serie: item.serie, turma: item.turma };
+                selectStudentForRecord(mockedUser);
+
+                const vest = dbVestibulares.find(v => v.id === item.vestibular_id);
+                if(vest) {
+                    document.getElementById('inProcesso').value = vest.id;
+                    handleProcessoChange();
+                }
+
+                document.getElementById('inCurso').value = item.curso;
+                document.getElementById('inAbrangencia').value = item.abrangencia;
+                document.getElementById('inStatusFin').value = item.status_fin;
+                document.getElementById('inDataPgto').value = item.data_pagamento;
+                document.getElementById('inPresenca').value = item.presenca;
+                document.getElementById('inResultado').value = item.resultado;
+                document.getElementById('inColocacao').value = item.colocacao || '';
+                
+                checkPaymentDeadline();
+                toggleColocacao();
+                document.getElementById('btnDelete').classList.remove('hidden');
+            } else {
+                document.getElementById('modalTitle').innerText = "Registrar Vestibular";
+                document.getElementById('btnDelete').classList.add('hidden');
+            }
+            document.getElementById('recordModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeModal() {
+            document.getElementById('recordModal').classList.add('hidden');
+            currentEditId = null;
+        }
+
+        async function saveRecord() {
+            if(!currentStudentForRecord) return alert("Selecione o aluno primeiro.");
+            const vestId = document.getElementById('inProcesso').value;
+            if(!vestId) return alert("Selecione o processo seletivo.");
+
+            const payload = {
+                ra_aluno: currentStudentForRecord.ra,
+                vestibular_id: vestId,
+                curso_pretendido: document.getElementById('inCurso').value || null,
+                abrangencia: document.getElementById('inAbrangencia').value || null,
+                status_financeiro: document.getElementById('inStatusFin').value,
+                data_pagamento_aluno: document.getElementById('inDataPgto').value || null,
+                presenca_prova: document.getElementById('inPresenca').value,
+                resultado_final: document.getElementById('inResultado').value,
+                colocacao: document.getElementById('inColocacao').value ? parseInt(document.getElementById('inColocacao').value) : null
+            };
+
+            try {
+                const { data: userData } = await window.supabaseClient.auth.getUser();
+                if(userData && userData.user) payload.registrado_por = userData.user.id;
+
+                if (currentEditId) {
+                    const { error } = await window.supabaseClient.from('counselor_inscricoes').update(payload).eq('id', currentEditId);
+                    if (error) throw error;
+                } else {
+                    const { error } = await window.supabaseClient.from('counselor_inscricoes').insert([payload]);
+                    if (error) {
+                        if (error.code === '23505') throw new Error("Este aluno já está inscrito neste processo seletivo.");
+                        throw error;
+                    }
+                }
+                alert("Inscrição salva com sucesso!");
+                closeModal();
+                await loadData();
+            } catch (e) {
+                alert("Erro: " + e.message);
+            }
+        }
+
+        async function deleteRecord() {
+            if(!confirm("Deseja excluir esta inscrição permanentemente?")) return;
+            try {
+                const { error } = await window.supabaseClient.from('counselor_inscricoes').delete().eq('id', currentEditId);
+                if (error) throw error;
+                alert("Inscrição removida!");
+                closeModal();
+                await loadData();
+            } catch(e) {
+                alert("Erro: " + e.message);
+            }
+        }
+
+        function openExamsManagerModal() {
+            resetExamManagerForm();
+            renderExamsManagerList();
+            document.getElementById('examsManagerModal').classList.remove('hidden');
+        }
+
+        function closeExamsManagerModal() {
+            document.getElementById('examsManagerModal').classList.add('hidden');
+            if(currentStudentForRecord) {
+                populateProcessosSelect(currentStudentForRecord.serie);
+            }
+            populateFilterOptions(); 
+            updateDashboard(); 
+        }
+
+        function renderExamsManagerList() {
+            const list = document.getElementById('examsConfigList');
+            list.innerHTML = dbVestibulares.map(v => `
+                <div class="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm">
+                    <div class="flex items-center gap-4 text-left">
+                        <div class="w-10 h-10 bg-fmm-blue/5 rounded-xl flex items-center justify-center text-fmm-blue">
+                            <i data-lucide="book-check" class="w-5 h-5"></i>
+                        </div>
+                        <div class="text-left">
+                            <h4 class="text-xs font-black text-fmm-dark uppercase text-left">${v.nome}</h4>
+                            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 text-left">
+                                ${v.tipo} • ${v.qtd_dias} Dia(s) ${v.tem_redacao ? '• Redação' : ''} ${v.tipo === 'Seriado' ? `• [${(v.series_aplicaveis || []).map(s => s.split(' ')[0]).join(', ')}]` : ''}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="editExamConfig('${v.id}')" class="p-2 bg-slate-50 hover:bg-fmm-blue/10 text-slate-400 hover:text-fmm-blue rounded-xl transition-all shadow-sm">
+                            <i data-lucide="edit-3" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="deleteExamConfig('${v.id}')" class="p-2 bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-xl transition-all shadow-sm">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function toggleSeriesConfig() {
+            const tipo = document.getElementById('newExamType').value;
+            const area = document.getElementById('seriesConfigArea');
+            if (tipo === 'Seriado') area.classList.remove('hidden');
+            else area.classList.add('hidden');
+        }
+
+        function editExamConfig(id) {
+            const v = dbVestibulares.find(x => x.id === id);
+            if (!v) return;
+            currentExamEditId = id;
+            document.getElementById('mgrExamTitle').innerHTML = '<i data-lucide="edit-2" class="w-4 h-4"></i> Editar Vestibular';
+            
+            document.getElementById('newExamName').value = v.nome;
+            document.getElementById('newExamType').value = v.tipo;
+            document.getElementById('newExamDays').value = v.qtd_dias;
+            document.getElementById('newExamScope').value = v.abrangencia_padrao;
+            document.getElementById('newExamEssay').checked = v.tem_redacao;
+            
+            toggleSeriesConfig();
+            document.querySelectorAll('.cb-serie-exam').forEach(cb => {
+                cb.checked = v.series_aplicaveis && v.series_aplicaveis.includes(cb.value);
+            });
+
+            if(document.getElementById('newExamLimitIsen')) document.getElementById('newExamLimitIsen').value = v.prazo_isencao || '';
+            if(document.getElementById('newExamLimitPgto')) document.getElementById('newExamLimitPgto').value = v.prazo_pagamento || '';
+            if(document.getElementById('newExamDateP1')) document.getElementById('newExamDateP1').value = v.data_prova_1 || '';
+            if(document.getElementById('newExamDateP2')) document.getElementById('newExamDateP2').value = v.data_prova_2 || '';
+
+            lucide.createIcons();
+        }
+
+        function resetExamManagerForm() {
+            currentExamEditId = null;
+            document.getElementById('mgrExamTitle').innerHTML = '<i data-lucide="plus" class="w-4 h-4"></i> Adicionar Nova Prova';
+            document.getElementById('newExamName').value = '';
+            document.getElementById('newExamType').value = 'Único';
+            document.getElementById('newExamDays').value = '1';
+            document.getElementById('newExamScope').value = 'Regional';
+            document.getElementById('newExamEssay').checked = false;
+            document.querySelectorAll('.cb-serie-exam').forEach(cb => cb.checked = false);
+            
+            if(document.getElementById('newExamLimitIsen')) document.getElementById('newExamLimitIsen').value = '';
+            if(document.getElementById('newExamLimitPgto')) document.getElementById('newExamLimitPgto').value = '';
+            if(document.getElementById('newExamDateP1')) document.getElementById('newExamDateP1').value = '';
+            if(document.getElementById('newExamDateP2')) document.getElementById('newExamDateP2').value = '';
+
+            toggleSeriesConfig();
+            lucide.createIcons();
+        }
+
+        async function saveNewExam() {
+            const name = document.getElementById('newExamName').value.trim();
+            const tipo = document.getElementById('newExamType').value;
+            const days = parseInt(document.getElementById('newExamDays').value);
+            const scope = document.getElementById('newExamScope').value;
+            const essay = document.getElementById('newExamEssay').checked;
+
+            if(!name) return alert("Informe o nome do Vestibular/Processo.");
+
+            let seriesSelecionadas = [];
+            if (tipo === 'Seriado') {
+                document.querySelectorAll('.cb-serie-exam:checked').forEach(cb => seriesSelecionadas.push(cb.value));
+                if (seriesSelecionadas.length === 0) return alert("Para vestibulares seriados, selecione pelo menos uma série aplicável.");
+            }
+
+            const payload = {
+                nome: name,
+                tipo: tipo,
+                qtd_dias: days,
+                abrangencia_padrao: scope,
+                tem_redacao: essay,
+                series_aplicaveis: seriesSelecionadas,
+                prazo_isencao: document.getElementById('newExamLimitIsen')?.value || null,
+                prazo_pagamento: document.getElementById('newExamLimitPgto')?.value || null,
+                data_prova_1: document.getElementById('newExamDateP1')?.value || null,
+                data_prova_2: document.getElementById('newExamDateP2')?.value || null
+            };
+
+            try {
+                if (currentExamEditId) {
+                    const { error } = await window.supabaseClient.from('counselor_vestibulares').update(payload).eq('id', currentExamEditId);
+                    if (error) throw error;
+                    alert("Configuração atualizada com sucesso!");
+                } else {
+                    const { error } = await window.supabaseClient.from('counselor_vestibulares').insert([payload]);
+                    if (error) {
+                        if (error.code === '23505') throw new Error("Já existe um processo com este nome.");
+                        throw error;
+                    }
+                    alert("Novo Vestibular adicionado à base da escola!");
+                }
+                resetExamManagerForm();
+                const { data } = await window.supabaseClient.from('counselor_vestibulares').select('*').order('nome');
+                dbVestibulares = data || [];
+                renderExamsManagerList();
+            } catch(e) {
+                alert("Erro: " + e.message);
+            }
+        }
+
+        async function deleteExamConfig(id) {
+            if(!confirm("Deseja remover este vestibular da base? Isso NÃO apagará as inscrições passadas, mas impedirá novas. Confirma?")) return;
+            try {
+                const { error } = await window.supabaseClient.from('counselor_vestibulares').delete().eq('id', id);
+                if (error) {
+                    if (error.code === '23503') throw new Error("Existem alunos inscritos neste processo. Não é possível excluir.");
+                    throw error;
+                }
+                if(currentExamEditId === id) resetExamManagerForm();
+                const { data } = await window.supabaseClient.from('counselor_vestibulares').select('*').order('nome');
+                dbVestibulares = data || [];
+                renderExamsManagerList();
+            } catch(e) {
+                alert("Erro: " + e.message);
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
