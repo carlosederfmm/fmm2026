@@ -456,7 +456,7 @@
             const { data: profile } = await window.supabaseClient.from('perfis').select('cargo, niveis_acesso').eq('id', user.id).single();
             if (profile) {
                 userLevels = (profile.cargo === 'diretor' || profile.cargo === 'coordenador') 
-                    ? (profile.niveis_acesso && profile.niveis_acesso.length > 0 ? profile.niveis_acesso : ['EF1', 'EF2', 'EMT']) 
+                    ? (profile.niveis_acesso && profile.niveis_acesso.length > 0 ? profile.niveis_acesso : []) 
                     : [];
             }
 
@@ -636,8 +636,14 @@
             grid.innerHTML = examStats.map(exam => `
                 <div onclick='openExamDetailModal(${JSON.stringify(exam).replace(/'/g, "&apos;")})' class="exam-card bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex flex-col gap-5 text-left">
                     <div class="flex justify-between items-start text-left">
-                        <div class="p-3 bg-fmm-blue/10 rounded-2xl text-fmm-blue"><i data-lucide="clipboard-list" class="w-6 h-6"></i></div>
-                        <div class="text-right"><span class="text-[9px] font-black text-slate-300 uppercase text-right">${new Date(exam.data_prova + 'T12:00:00').toLocaleDateString('pt-BR')}</span></div>
+                        <div class="flex items-center gap-3 text-left">
+                            <div class="p-3 bg-fmm-blue/10 rounded-2xl text-fmm-blue shrink-0"><i data-lucide="clipboard-list" class="w-6 h-6"></i></div>
+                            <div>
+                                <span class="text-[9px] font-black text-fmm-blue uppercase tracking-widest bg-fmm-blue/5 px-2 py-0.5 rounded border border-fmm-blue/10">${exam.matriz}</span>
+                                <p class="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">${exam.periodo_ref.replace('_', ' ')}</p>
+                            </div>
+                        </div>
+                        <div class="text-right shrink-0"><span class="text-[9px] font-black text-slate-300 uppercase text-right">${new Date(exam.data_prova + 'T12:00:00').toLocaleDateString('pt-BR')}</span></div>
                     </div>
                     <div>
                         <h4 class="text-base font-black text-fmm-dark uppercase tracking-tight leading-tight text-left">${exam.disciplinas?.nome || exam.sigla_disciplina}</h4>

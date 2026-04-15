@@ -167,8 +167,8 @@ const SidebarComponent = {
             { label: 'Orientação', icon: 'heart-handshake', link: 'coordenador/disciplina/orientacao_coordenador.html', roles: ['diretor', 'coordenador'] }
         ],
         resultados: [
-            { label: 'Mapa de Notas', icon: 'grid', link: 'coordenador/resultados/mapa_coordenador.html', roles: ['diretor', 'coordenador'] },
-            { label: 'Boletim Individual', icon: 'user', link: 'coordenador/resultados/boletim_coordenador.html', roles: ['diretor', 'coordenador', 'orientador'] }
+            { label: 'Mapa de Notas', icon: 'grid', link: 'coordenador/resultados/mapa_coordenador.html', roles: ['diretor', 'coordenador', 'orientador'] },
+            { label: 'Boletim Individual', icon: 'user', link: 'coordenador/resultados/boletim_coordenador.html', roles: ['diretor', 'coordenador'] }
         ],
         sistema: [
             { label: 'Grade Horária', icon: 'calendar-range', link: 'coordenador/sistema/grade_coordenador.html', roles: ['diretor', 'coordenador'] },
