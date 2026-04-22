@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alunos Neurodivergentes | SME FMM</title>
+    <title>Sistema em Manutenção</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -36,34 +36,8 @@
         .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         
-        /* Ajuste para Sidebar e Estado Colapsado */
         .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        
-        .sidebar-collapsed .sidebar-text, 
-        .sidebar-collapsed .sidebar-category-header, 
-        .sidebar-collapsed .chevron-icon, 
-        .sidebar-collapsed .sidebar-category-title,
-        .sidebar-collapsed .sidebar-category { display: none; }
-        
-        .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
-        .sidebar-collapsed .logo-full { display: none; }
-        .sidebar-collapsed .logo-short { display: block; }
-        .logo-short { display: none; }
-
-        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.05); }
-        .category-content.open { max-height: 1000px; }
-        .rotate-180 { transform: rotate(180deg); }
-        
-        .sidebar-item-active { background-color: rgba(255, 255, 255, 0.05); border-right: 4px solid #c8d400; color: #ffffff !important; }
-
-        .table-container {
-            background: white;
-            border-radius: 24px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            overflow: hidden;
-        }
-
+        .table-container { background: white; border-radius: 24px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); overflow: hidden; }
         .tr-hover { transition: background-color 0.2s; }
         .tr-hover:hover { background-color: #f8fafc; }
 
@@ -76,13 +50,16 @@
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
+
+        /* Estilo Manutenção */
+        .maintenance-card { background: white; border-radius: 32px; box-shadow: 0 20px 50px rgba(0, 60, 91, 0.1); }
     </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden text-left">
 
     <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
 
-    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden relative">
+    <main id="main-content" class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden relative">
         
         <!-- Header -->
         <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0">
@@ -103,7 +80,6 @@
                            class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
                 </div>
                 
-                <!-- Novo Filtro por Etapa -->
                 <select id="filterEtapa" onchange="filterResults()" class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-fmm-blue cursor-pointer">
                     <option value="all">Todas as Etapas</option>
                     <option value="Médio">Médio</option>
@@ -136,9 +112,7 @@
                             <th class="px-6 py-5 text-center">Ação</th>
                         </tr>
                     </thead>
-                    <tbody id="studentsListBody" class="divide-y divide-slate-50 text-sm font-medium text-slate-600">
-                        <!-- Conteúdo injetado via JS -->
-                    </tbody>
+                    <tbody id="studentsListBody" class="divide-y divide-slate-50 text-sm font-medium text-slate-600"></tbody>
                 </table>
 
                 <div id="emptyState" class="hidden flex flex-col items-center justify-center py-20 text-slate-300">
@@ -148,7 +122,6 @@
             </div>
         </div>
 
-        <!-- Footer -->
         <footer class="h-10 bg-white border-t border-slate-100 px-8 flex items-center justify-between shrink-0">
             <p class="text-[9px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-2">
                 <span class="w-1.5 h-1.5 rounded-full bg-fmm-blue"></span>
@@ -157,6 +130,27 @@
             <span id="counter" class="text-[9px] font-black text-fmm-blue uppercase">0 Alunos Ativos</span>
         </footer>
     </main>
+
+    <!-- Overlay de Manutenção (Injetado via JS se necessário) -->
+    <div id="maintenance-view" class="hidden flex-1 flex flex-col items-center justify-center bg-slate-50 p-6 text-center animate-fade">
+        <div class="maintenance-card p-12 max-w-lg w-full flex flex-col items-center gap-6">
+            <div class="w-24 h-24 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-500 shadow-inner">
+                <i data-lucide="construction" class="w-12 h-12"></i>
+            </div>
+            <div>
+                <h2 class="text-2xl font-black text-fmm-dark uppercase tracking-tight">Sistema em Manutenção</h2>
+                <p class="text-sm text-slate-500 font-medium mt-3 leading-relaxed">
+                    Olá, Professor. Estamos realizando atualizações importantes nos prontuários e orientações pedagógicas para garantir maior segurança e precisão nos dados.
+                </p>
+            </div>
+            <div class="w-full h-px bg-slate-100 my-2"></div>
+            <div class="flex flex-col gap-2 w-full">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Previsão de retorno</p>
+                <div class="bg-fmm-dark text-white py-3 rounded-2xl font-bold text-sm">Hoje, às 18:30h</div>
+            </div>
+            <p class="text-[10px] text-slate-400 italic">Agradecemos a compreensão. Equipe de Tecnologia FMM.</p>
+        </div>
+    </div>
 
     <!-- MODAL DE ZOOM DA FOTO -->
     <div id="photoZoomModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onclick="closePhotoZoom()">
@@ -185,8 +179,29 @@
 
         async function init() {
             if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            
+            // 1. Verificar Perfil e Cargo
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if (user) {
+                const { data: profile } = await window.supabaseClient.from('perfis').select('cargo').eq('id', user.id).single();
+                
+                // 2. Aplicar Manutenção se for Professor
+                if (profile && profile.cargo === 'professor') {
+                    showMaintenance();
+                    return;
+                }
+            }
+
             lucide.createIcons();
             await fetchData();
+        }
+
+        function showMaintenance() {
+            document.getElementById('main-content').style.display = 'none';
+            const maintenance = document.getElementById('maintenance-view');
+            maintenance.classList.remove('hidden');
+            maintenance.classList.add('flex');
+            lucide.createIcons();
         }
 
         async function fetchData() {
@@ -254,14 +269,11 @@
                 const urlFoto = formatDriveUrl(s.url_foto);
                 const avatarImg = urlFoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=003c5b&color=fff`;
 
-                const avatarHtml = `
-                    <img src="${avatarImg}" 
-                         class="avatar-clickable mx-auto" 
-                         onclick="openPhotoZoom('${avatarImg}', '${s.nome_completo}')" 
-                         onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=003c5b&color=fff'">`;
-                
                 tr.innerHTML = `
-                    <td class="px-6 py-4">${avatarHtml}</td>
+                    <td class="px-6 py-4">
+                        <img src="${avatarImg}" class="avatar-clickable mx-auto" onclick="openPhotoZoom('${avatarImg}', '${s.nome_completo}')" 
+                             onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=003c5b&color=fff'">
+                    </td>
                     <td class="px-6 py-4 font-mono text-[11px] text-slate-400 font-bold">${s.ra}</td>
                     <td class="px-6 py-4">
                         <span class="text-fmm-dark font-black uppercase text-xs tracking-tight">${s.nome_completo}</span>
@@ -297,7 +309,6 @@
                 const matchText = s.nome_completo.toLowerCase().includes(search) || s.ra.toString().includes(search);
                 const matchTurma = turma === 'all' || s.turmas?.nome === turma;
                 
-                // TASK: Implementação do Filtro por Etapa
                 let matchEtapa = true;
                 if (etapa === 'Médio') {
                     matchEtapa = s.turmas?.nivel?.startsWith('EMT');

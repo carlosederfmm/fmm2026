@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Recuperação | SME FMM</title>
+    
+    <!-- Scripts Base -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../assets/js/supabase_client.js"></script>
+    <script src="../../sidebar.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: { dark: '#003c5b', blue: '#00638f', green: '#80a51b', lime: '#c8d400', bg: '#f8fafc' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        .glass-card { background: white; border: 1px solid #e2e8f0; border-radius: 24px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02); }
+        .animate-fade-in-up { animation: fadeInUp 0.4s ease-out forwards; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Estilização para Tabela de Disciplinas */
+        .disc-row { transition: all 0.2s; }
+        .disc-row:hover { background-color: #f8fafc; }
+
+        /* Status Badges */
+        .badge { padding: 4px 10px; border-radius: 8px; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; cursor: default; }
+        .badge-pendente { background: #fff7ed; color: #d97706; border: 1px solid #fef08a; }
+        .badge-lancado { background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7; }
+
+        /* Tooltip customizado para mostrar nomes dos alunos pendentes */
+        [title] { position: relative; cursor: help; }
+
+        /* Esconder tudo na impressão exceto a área de print */
+        @media print {
+            @page { size: A4 portrait; margin: 10mm; }
+            body > *:not(main) { display: none !important; }
+            main > *:not(#printArea) { display: none !important; }
+            #printArea { display: block !important; width: 100%; color: #000; font-family: Arial, sans-serif; }
+            
+            .print-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+            .print-header img { height: 40px; }
+            .print-header h1 { font-size: 14pt; font-weight: 900; margin: 0; text-transform: uppercase; }
+            .print-header p { font-size: 9pt; font-weight: 700; margin: 2px 0 0 0; text-transform: uppercase; color: #555; }
+
+            .print-info { display: flex; gap: 20px; margin-bottom: 15px; }
+            .print-info div { border: 1px solid #000; padding: 5px 10px; flex: 1; }
+            .print-info label { font-size: 7pt; font-weight: bold; text-transform: uppercase; color: #555; display: block; }
+            .print-info span { font-size: 10pt; font-weight: 900; text-transform: uppercase; }
+
+            table.print-table { width: 100%; border-collapse: collapse; border: 1.5px solid #000; margin-bottom: 20px; }
+            table.print-table th { background-color: #f1f5f9 !important; -webkit-print-color-adjust: exact; border: 1px solid #000; padding: 6px; font-size: 8pt; font-weight: 900; text-transform: uppercase; text-align: left; }
+            table.print-table td { border: 1px solid #000; padding: 6px; font-size: 8pt; text-transform: uppercase; }
+            
+            .text-center { text-align: center !important; }
+            .w-10 { width: 40px !important; }
+            .w-24 { width: 90px !important; }
+            
+            .signature-box { height: 25px; border-bottom: 1px solid #ccc; margin-top: 5px; }
+        }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden text-slate-700">
+
+    <aside id="sidebar-container" class="sidebar-transition w-72 flex-shrink-0 bg-fmm-dark text-white z-20 shadow-2xl print:hidden"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden text-left relative">
+        
+        <!-- HEADER -->
+        <header class="bg-white h-24 border-b border-slate-200 flex items-center justify-between px-8 z-10 shadow-sm shrink-0 print:hidden">
+            <div class="text-left">
+                <h1 class="text-2xl font-black text-fmm-dark uppercase tracking-tight leading-none flex items-center gap-3">
+                    <i data-lucide="file-warning" class="w-6 h-6 text-rose-500"></i> Gestão de Recuperação
+                </h1>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Análise de Lançamentos P1 e P2 e Geração de Listas</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="bg-slate-50 p-1.5 rounded-xl border border-slate-200 flex gap-2 shadow-sm">
+                    <select id="filtroMatriz" onchange="updatePeriodos()" class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg font-bold text-xs outline-none focus:ring-2 focus:ring-fmm-blue cursor-pointer">
+                        <option value="fundamental">Fundamental (Bimestral)</option>
+                        <option value="basica" selected>Médio Básica (Trimestral)</option>
+                        <option value="tecnica">Médio Técnica (Semestral)</option>
+                    </select>
+                    <select id="filtroPeriodo" onchange="loadRecuperacoes()" class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg font-bold text-xs outline-none focus:ring-2 focus:ring-fmm-blue cursor-pointer min-w-[140px]">
+                        <!-- Injetado via JS -->
+                    </select>
+                </div>
+                <div class="w-px h-8 bg-slate-200 mx-1"></div>
+                <button onclick="printResumoReprografia()" class="bg-fmm-dark hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-black text-xs flex items-center gap-2 transition-all shadow-lg active:scale-95">
+                    <i data-lucide="printer" class="w-4 h-4"></i> Resumo Reprografia
+                </button>
+            </div>
+        </header>
+
+        <!-- DASHBOARD CENTRAL -->
+        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar print:hidden">
+            
+            <div id="loadingState" class="hidden h-full flex-col items-center justify-center text-slate-300">
+                <i data-lucide="loader-2" class="w-12 h-12 animate-spin mb-4 text-fmm-blue"></i>
+                <p class="text-xs font-bold uppercase tracking-widest">Cruzando dados de turmas, disciplinas e notas...</p>
+            </div>
+
+            <div id="emptyState" class="hidden h-full flex-col items-center justify-center text-slate-300">
+                <div class="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mb-6">
+                    <i data-lucide="inbox" class="w-10 h-10 opacity-20"></i>
+                </div>
+                <h3 class="text-lg font-black text-slate-400 uppercase tracking-tight">Nenhuma turma encontrada</h3>
+                <p class="text-xs font-bold uppercase tracking-widest opacity-60 mt-1">Verifique o segmento e o período selecionados.</p>
+            </div>
+
+            <!-- GRID DE TURMAS -->
+            <div id="turmasGrid" class="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
+                <!-- Cards Injetados via JS -->
+            </div>
+        </div>
+
+        <!-- ÁREA DE IMPRESSÃO INVISÍVEL -->
+        <div id="printArea" class="hidden print:block bg-white p-8"></div>
+    </main>
+
+    <!-- MODAL DE LISTA DE PRESENÇA (PREVIEW) -->
+    <div id="previewModal" class="hidden fixed inset-0 z-[150] flex items-center justify-center p-4 bg-fmm-dark/80 backdrop-blur-md print:hidden text-left">
+        <div class="bg-white w-full max-w-4xl h-[85vh] rounded-[40px] shadow-2xl flex flex-col animate-fade-in-up overflow-hidden">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                <div class="text-left">
+                    <h2 class="text-2xl font-black text-fmm-dark uppercase tracking-tight" id="modalTitle">Lista de Recuperação</h2>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1" id="modalSubtitle">Turma • Disciplina • Período</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="triggerPrint()" class="bg-fmm-blue hover:bg-fmm-dark text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase flex items-center gap-2 transition-all shadow-lg active:scale-95">
+                        <i data-lucide="printer" class="w-4 h-4"></i> Imprimir Documento Oficial
+                    </button>
+                    <button onclick="closePreviewModal()" class="w-12 h-12 flex items-center justify-center hover:bg-slate-100 rounded-full transition-all text-slate-400"><i data-lucide="x" class="w-6 h-6"></i></button>
+                </div>
+            </div>
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-8 bg-slate-50/50 text-left">
+                <div class="bg-white border border-slate-200 rounded-[24px] shadow-sm overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 border-b border-slate-200">
+                            <tr class="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                <th class="py-4 px-6 text-center w-16">Nº</th>
+                                <th class="py-4 px-6 w-24 text-center">RA</th>
+                                <th class="py-4 px-6">Nome do Aluno</th>
+                                <th class="py-4 px-6 text-center w-24">Média (P1+P2)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="previewTableBody" class="divide-y divide-slate-100 text-xs font-bold text-slate-600 uppercase">
+                            <!-- Injetado via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let dbTurmas = [];
+        let dbDisciplinas = [];
+        let dbMatriculas = [];
+        let dbNotas = [];
+        
+        let currentDataMap = []; 
+
+        const MEDIA_APROVACAO = 6.0;
+
+        // Função para dividir arrays em lotes (Evita erro de URL muito grande na API REST)
+        const chunkArray = (arr, size) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) => arr.slice(i * size, i * size + size));
+
+        /**
+         * PARSER OFICIAL FMM (Idêntico ao boletim_coordenador.html)
+         * - Ignora: null, undefined, "", "-", "S.N", "NULL" e 0 (Se 0 for padrão do banco para vazio)
+         * - Se o professor lançou uma nota válida, retorna o Float.
+         */
+        function parseNota(val) {
+            if (val === null || val === undefined) return null;
+            
+            const strVal = String(val).trim().toUpperCase();
+            
+            // FMM trata "0" ou valores nulos como vazios (não lançados) na maioria de seus fluxos oficiais
+            if (strVal === '' || strVal === '-' || strVal === 'S.N' || strVal === 'NULL') return null;
+            
+            const num = parseFloat(strVal.replace(',', '.'));
+            
+            // Se o parsing falhar ou for 0 absoluto (estado default do banco para campos int/numeric não preenchidos)
+            if (isNaN(num) || num === 0) return null; 
+            
+            return num;
+        }
+
+        async function init() {
+            // Trava de segurança para LocalServer (Evita o erro de CORS do Chrome/Edge)
+            if (window.location.protocol === 'file:') {
+                document.body.innerHTML = `
+                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#f8fafc; font-family:sans-serif; text-align:center; padding:2rem;">
+                        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:1.5rem;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+                        <h1 style="color:#003c5b; font-size:1.8rem; font-weight:900; margin-bottom:0.5rem; text-transform:uppercase;">Alerta de Segurança do Navegador</h1>
+                        <p style="color:#64748b; font-size:1rem; max-width:600px; margin-bottom:1.5rem;">Você está tentando rodar o sistema diretamente dos arquivos do seu computador (protocolo <b>file://</b>). Por motivos de segurança, navegadores modernos bloqueiam a comunicação com o banco de dados (CORS) neste formato, o que "quebra" a tela.</p>
+                        <div style="background:#fff7ed; border:1px solid #fef08a; padding:1.5rem; border-radius:16px; color:#b45309; text-align:left; max-width:600px;">
+                            <p style="font-weight:900; text-transform:uppercase; margin-bottom:0.5rem;">✅ Como resolver imediatamente:</p>
+                            <p style="font-size:0.9rem; font-weight:bold;">1. Abra a pasta FMM_WEB no seu VS Code.</p>
+                            <p style="font-size:0.9rem; font-weight:bold;">2. Clique em "Go Live" (extensão Live Server) no canto inferior direito.</p>
+                            <p style="font-size:0.9rem; font-weight:bold;">3. Acesse pelo link local gerado (ex: http://localhost:5500/...)</p>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            if (window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if (!user) return window.location.href = '../../index.html';
+
+            lucide.createIcons();
+            updatePeriodos(); 
+        }
+
+        function updatePeriodos() {
+            const matriz = document.getElementById('filtroMatriz').value;
+            const periodoSelect = document.getElementById('filtroPeriodo');
+            
+            if (matriz === 'fundamental') {
+                periodoSelect.innerHTML = `
+                    <option value="1_BIMESTRE">1º Bimestre</option>
+                    <option value="2_BIMESTRE">2º Bimestre</option>
+                    <option value="3_BIMESTRE">3º Bimestre</option>
+                    <option value="4_BIMESTRE">4º Bimestre</option>`;
+            } else if (matriz === 'basica') {
+                periodoSelect.innerHTML = `
+                    <option value="1_TRIMESTRE">1º Trimestre</option>
+                    <option value="2_TRIMESTRE">2º Trimestre</option>
+                    <option value="3_TRIMESTRE">3º Trimestre</option>`;
+            } else if (matriz === 'tecnica') {
+                periodoSelect.innerHTML = `
+                    <option value="1_SEMESTRE">1º Semestre</option>
+                    <option value="2_SEMESTRE">2º Semestre</option>`;
+            }
+            loadRecuperacoes();
+        }
+
+        async function loadRecuperacoes() {
+            const matriz = document.getElementById('filtroMatriz').value;
+            const periodo = document.getElementById('filtroPeriodo').value;
+
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('turmasGrid').innerHTML = '';
+            document.getElementById('loadingState').style.display = 'flex';
+
+            try {
+                let tableNotas = '';
+                let nivelFiltro = '';
+
+                if (matriz === 'fundamental') {
+                    tableNotas = 'notas_fundamental';
+                    nivelFiltro = 'EF';
+                } else if (matriz === 'basica') {
+                    tableNotas = 'notas_basica';
+                    nivelFiltro = 'EMT';
+                } else if (matriz === 'tecnica') {
+                    tableNotas = 'notas_tecnica';
+                    nivelFiltro = 'EMT';
+                }
+
+                // 1. Fetch Disciplinas
+                const { data: resDisciplinas, error: errDisc } = await window.supabaseClient.from('disciplinas').select('*');
+                if (errDisc) throw errDisc;
+                dbDisciplinas = resDisciplinas || [];
+
+                // 2. Fetch Turmas
+                const { data: resTurmas, error: errTurmas } = await window.supabaseClient.from('turmas')
+                    .select('*').ilike('nivel', `%${nivelFiltro}%`).order('nome');
+                if (errTurmas) throw errTurmas;
+                dbTurmas = resTurmas || [];
+
+                if (dbTurmas.length === 0) throw new Error("Sem turmas");
+                const turmaIds = dbTurmas.map(t => t.id);
+
+                // 3. Fetch Matrículas Ativas (Chunking seguro: lotes de 10 turmas para não exceder limites)
+                let allMatriculas = [];
+                const chunksTurmas = chunkArray(turmaIds, 10); 
+                
+                for (const chunk of chunksTurmas) {
+                    const { data: mats, error: errMat } = await window.supabaseClient.from('matriculas')
+                        .select(`id, ra_aluno, id_turma, alunos!inner(nome_completo, status)`)
+                        .in('id_turma', chunk);
+                    if (errMat) throw errMat;
+                    allMatriculas.push(...(mats || []));
+                }
+                
+                // Lista Negra de Status: Se houver qualquer inconsistência no cadastro, ignoramos alunos nestes status
+                const inactiveStatuses = ['transferido', 'desistente', 'cancelado', 'inativo', 'evadido', 'concluido', 'concluído', 'formado'];
+                dbMatriculas = allMatriculas.filter(m => {
+                    if (!m.alunos || !m.alunos.status) return true;
+                    return !inactiveStatuses.includes(m.alunos.status.toLowerCase().trim());
+                });
+
+                const matriculaIds = dbMatriculas.map(m => m.id);
+
+                // 4. Fetch Notas Seguras (Lotes de 30 Matrículas para evitar corte de 1000 linhas de retorno no Supabase)
+                let allNotas = [];
+                const chunksMatriculas = chunkArray(matriculaIds, 30); 
+                
+                for (const chunk of chunksMatriculas) {
+                    const { data: nts, error: errNot } = await window.supabaseClient.from(tableNotas)
+                        .select('id_matricula, sigla_disciplina, p1, p2')
+                        .eq('periodo', periodo)
+                        .in('id_matricula', chunk);
+                    if (errNot) throw errNot;
+                    allNotas.push(...(nts || []));
+                }
+                dbNotas = allNotas || [];
+
+                // --- PROCESSAMENTO IN-MEMORY ---
+                currentDataMap = processData(matriz);
+
+                renderGrid();
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById('emptyState').classList.remove('hidden');
+                document.getElementById('emptyState').style.display = 'flex';
+            } finally {
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('loadingState').classList.add('hidden');
+            }
+        }
+
+        function processData(matrizSelecionada) {
+            const dataMap = [];
+
+            dbTurmas.forEach(turma => {
+                const matriculados = dbMatriculas.filter(m => m.id_turma === turma.id);
+                if(matriculados.length === 0) return;
+
+                let disciplinasDaTurma = dbDisciplinas.filter(d => (d.series || []).includes(turma.serie));
+                
+                if(matrizSelecionada === 'basica') {
+                    disciplinasDaTurma = disciplinasDaTurma.filter(d => d.regime.toLowerCase().includes('trimestral') || d.regime.toLowerCase().includes('anual'));
+                } else if(matrizSelecionada === 'tecnica') {
+                    disciplinasDaTurma = disciplinasDaTurma.filter(d => d.regime.toLowerCase().includes('semestral'));
+                    if(!turma.area_tecnica) return; 
+                }
+
+                if(disciplinasDaTurma.length === 0) return;
+
+                const turmaData = {
+                    id: turma.id,
+                    nome: turma.nome,
+                    serie: turma.serie,
+                    area: turma.area_tecnica || 'Formação Geral',
+                    disciplinas: []
+                };
+
+                disciplinasDaTurma.forEach(disc => {
+                    const discItem = {
+                        sigla: disc.sigla,
+                        nome: disc.nome,
+                        isLancado: false,
+                        lancados: 0,
+                        total: matriculados.length,
+                        recuperacao: [],
+                        pendingStudents: [] 
+                    };
+
+                    let alunosComP1P2 = 0;
+
+                    matriculados.forEach(mat => {
+                        const notaRecord = dbNotas.find(n => n.id_matricula === mat.id && n.sigla_disciplina === disc.sigla);
+                        
+                        const nP1 = notaRecord ? parseNota(notaRecord.p1) : null;
+                        const nP2 = notaRecord ? parseNota(notaRecord.p2) : null;
+                        
+                        if (nP1 !== null && nP2 !== null) {
+                            alunosComP1P2++;
+                            
+                            const media = (nP1 + nP2) / 2;
+
+                            // ARREDONDAMENTO MATEMÁTICO (Evita que o aluno passe direto com 5.95 sendo lido como 5.9)
+                            const mediaRounded = Math.round(media * 10) / 10;
+
+                            if (mediaRounded < MEDIA_APROVACAO) {
+                                discItem.recuperacao.push({
+                                    ra: mat.ra_aluno,
+                                    nome: mat.alunos?.nome_completo || 'Aluno Desconhecido',
+                                    media: mediaRounded.toFixed(1).replace('.', ',')
+                                });
+                            }
+                        } else {
+                            // X-9 DETALHADO: Identifica extamente qual prova está faltando
+                            let faltasArr = [];
+                            if (nP1 === null) faltasArr.push('P1');
+                            if (nP2 === null) faltasArr.push('P2');
+                            
+                            const nomeAluno = mat.alunos?.nome_completo || 'Aluno Desconhecido';
+                            discItem.pendingStudents.push(`${nomeAluno} (Falta ${faltasArr.join(' e ')})`);
+                        }
+                    });
+
+                    discItem.lancados = alunosComP1P2;
+
+                    // A DISCIPLINA SÓ É MARCADA COMO LANÇADA SE TODOS OS ALUNOS ESTIVEREM COM AS 2 NOTAS
+                    if (alunosComP1P2 === matriculados.length && matriculados.length > 0) {
+                        discItem.isLancado = true;
+                        discItem.recuperacao.sort((a,b) => a.nome.localeCompare(b.nome));
+                    } else {
+                        discItem.isLancado = false;
+                        discItem.recuperacao = []; // Bloqueia a lista e evita "recuperações pela metade"
+                    }
+
+                    turmaData.disciplinas.push(discItem);
+                });
+
+                if(turmaData.disciplinas.length > 0) {
+                    turmaData.disciplinas.sort((a,b) => a.nome.localeCompare(b.nome));
+                    dataMap.push(turmaData);
+                }
+            });
+
+            return dataMap;
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('turmasGrid');
+            const emptyState = document.getElementById('emptyState');
+
+            if (currentDataMap.length === 0) {
+                emptyState.classList.remove('hidden');
+                emptyState.style.display = 'flex';
+                return;
+            }
+
+            grid.innerHTML = currentDataMap.map(turma => {
+                
+                const discRows = turma.disciplinas.map(disc => {
+                    
+                    // Tooltip Inteligente Formatado
+                    const pendingCount = disc.pendingStudents.length;
+                    const maxDisplay = 15;
+                    const pendingList = disc.pendingStudents.slice(0, maxDisplay).join('\n');
+                    const overflow = pendingCount > maxDisplay ? `\n... e mais ${pendingCount - maxDisplay} aluno(s)` : '';
+                    
+                    const tooltipTxt = !disc.isLancado && pendingCount > 0 
+                        ? `title="Faltam notas para os seguintes alunos:\n\n${pendingList}${overflow}"` 
+                        : '';
+
+                    const statusBadge = disc.isLancado 
+                        ? `<span class="badge badge-lancado"><i data-lucide="check" class="w-3 h-3 inline mr-1"></i> Lançado Completo</span>` 
+                        : `<span class="badge badge-pendente cursor-help" ${tooltipTxt}><i data-lucide="clock" class="w-3 h-3 inline mr-1"></i> Pendente (${disc.lancados}/${disc.total})</span>`;
+                    
+                    const btnClass = disc.isLancado 
+                        ? `bg-fmm-dark hover:bg-slate-800 text-white cursor-pointer` 
+                        : `bg-slate-100 text-slate-300 cursor-not-allowed`;
+
+                    const qtyAlert = disc.isLancado 
+                        ? (disc.recuperacao.length > 0 ? `<span class="bg-rose-50 text-rose-600 px-2 py-1 rounded font-black text-[10px]">${disc.recuperacao.length} Alunos</span>` : `<span class="text-[10px] font-bold text-slate-300">Nenhum</span>`)
+                        : `<span class="text-[10px] font-bold text-slate-300 italic">Aguardando</span>`;
+
+                    return `
+                        <div class="disc-row flex items-center justify-between py-3 px-2 border-b border-slate-50 last:border-0 text-left">
+                            <div class="flex-1 min-w-0 pr-4">
+                                <h4 class="text-[11px] font-black text-fmm-dark uppercase truncate text-left" title="${disc.nome}">${disc.nome} <span class="text-slate-400 font-bold ml-1">(${disc.sigla})</span></h4>
+                                <div class="mt-1">${statusBadge}</div>
+                            </div>
+                            <div class="w-24 text-center shrink-0 flex items-center justify-center">
+                                ${qtyAlert}
+                            </div>
+                            <div class="w-28 text-right shrink-0">
+                                <button ${!disc.isLancado ? 'disabled' : ''} onclick="openPreviewModal('${turma.id}', '${disc.sigla}')" class="${btnClass} px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all w-full flex justify-center items-center gap-1 shadow-sm">
+                                    <i data-lucide="file-text" class="w-3 h-3"></i> Gerar Lista
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="glass-card animate-fade-in-up flex flex-col h-full overflow-hidden text-left">
+                        <div class="p-6 bg-slate-50 border-b border-slate-100 shrink-0 text-left">
+                            <div class="flex justify-between items-start text-left">
+                                <div>
+                                    <h3 class="text-lg font-black text-fmm-dark uppercase tracking-tight text-left">${turma.nome}</h3>
+                                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 text-left">${turma.serie} • ${turma.area}</p>
+                                </div>
+                                <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-300 shadow-sm border border-slate-100 shrink-0"><i data-lucide="users" class="w-4 h-4"></i></div>
+                            </div>
+                        </div>
+                        <div class="p-4 flex-1 overflow-y-auto custom-scrollbar bg-white max-h-[350px]">
+                            <div class="flex text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 px-2 pb-2 border-b border-slate-100 text-left">
+                                <div class="flex-1 text-left">Disciplina</div>
+                                <div class="w-24 text-center">Recuperação</div>
+                                <div class="w-28 text-center">Ação</div>
+                            </div>
+                            ${discRows}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        // --- PREVIEW E IMPRESSÃO DE LISTA DE SALA ---
+        let currentPrintData = null;
+
+        function openPreviewModal(turmaId, discSigla) {
+            const turma = currentDataMap.find(t => t.id === turmaId);
+            const disc = turma.disciplinas.find(d => d.sigla === discSigla);
+            const periodoTxt = document.getElementById('filtroPeriodo').options[document.getElementById('filtroPeriodo').selectedIndex].text;
+
+            currentPrintData = { turma, disc, periodoTxt };
+
+            document.getElementById('modalSubtitle').innerText = `${turma.nome} • ${disc.nome} • ${periodoTxt}`;
+            
+            const tbody = document.getElementById('previewTableBody');
+            
+            if (disc.recuperacao.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-12 text-center text-slate-400 italic text-[10px] font-bold uppercase tracking-widest">Nenhum aluno de recuperação nesta disciplina.</td></tr>`;
+            } else {
+                tbody.innerHTML = disc.recuperacao.map((aluno, idx) => `
+                    <tr class="hover:bg-slate-50 transition-colors text-left">
+                        <td class="py-3 px-6 text-center text-slate-400 w-16">${(idx + 1).toString().padStart(2, '0')}</td>
+                        <td class="py-3 px-6 text-center text-fmm-blue w-24">${aluno.ra}</td>
+                        <td class="py-3 px-6 text-fmm-dark text-left">${aluno.nome}</td>
+                        <td class="py-3 px-6 text-center text-rose-600 font-black w-24">${aluno.media}</td>
+                    </tr>
+                `).join('');
+            }
+
+            document.getElementById('previewModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closePreviewModal() {
+            document.getElementById('previewModal').classList.add('hidden');
+        }
+
+        function triggerPrint() {
+            if (!currentPrintData) return;
+            const { turma, disc, periodoTxt } = currentPrintData;
+
+            if (disc.recuperacao.length === 0) {
+                alert("Não há alunos para gerar lista.");
+                return;
+            }
+
+            const printArea = document.getElementById('printArea');
+            
+            let html = `
+                <div class="print-header">
+                    <div>
+                        <h1>Lista de Assinatura - Recuperação</h1>
+                        <p>${periodoTxt} - Ano Letivo de 2026</p>
+                    </div>
+                    <img src="../../assets/logo-fmm-color.png" alt="FMM">
+                </div>
+                <div class="print-info">
+                    <div><label>Turma</label><span>${turma.nome}</span></div>
+                    <div><label>Disciplina</label><span>${disc.nome} (${disc.sigla})</span></div>
+                    <div><label>Professor Aplicador</label><span>_____________________________</span></div>
+                    <div><label>Data</label><span>___ / ___ / 2026</span></div>
+                </div>
+                <table class="print-table">
+                    <thead>
+                        <tr>
+                            <th class="w-10 text-center">Nº</th>
+                            <th class="w-24 text-center">RA</th>
+                            <th>Nome do Estudante</th>
+                            <th class="w-24 text-center">Média</th>
+                            <th>Assinatura do Aluno</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            disc.recuperacao.forEach((aluno, idx) => {
+                html += `
+                    <tr>
+                        <td class="text-center">${idx + 1}</td>
+                        <td class="text-center">${aluno.ra}</td>
+                        <td>${aluno.nome}</td>
+                        <td class="text-center">${aluno.media}</td>
+                        <td></td>
+                    </tr>
+                `;
+            });
+
+            const emptyLines = Math.max(0, 15 - disc.recuperacao.length);
+            for(let i=0; i<emptyLines; i++) {
+                html += `<tr><td class="text-center"></td><td></td><td></td><td></td><td></td></tr>`;
+            }
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            printArea.innerHTML = html;
+            window.print();
+        }
+
+        // --- IMPRESSÃO DE RESUMO PARA REPROGRAFIA ---
+        function printResumoReprografia() {
+            if (currentDataMap.length === 0) {
+                alert("Não há dados carregados para gerar o resumo.");
+                return;
+            }
+
+            const matrizTxt = document.getElementById('filtroMatriz').options[document.getElementById('filtroMatriz').selectedIndex].text;
+            const periodoTxt = document.getElementById('filtroPeriodo').options[document.getElementById('filtroPeriodo').selectedIndex].text;
+            
+            const resumoMap = {};
+            let totalGeral = 0;
+
+            currentDataMap.forEach(turma => {
+                turma.disciplinas.forEach(disc => {
+                    if (disc.isLancado && disc.recuperacao.length > 0) {
+                        if (!resumoMap[disc.sigla]) {
+                            resumoMap[disc.sigla] = { nome: disc.nome, total: 0, turmas: [] };
+                        }
+                        resumoMap[disc.sigla].total += disc.recuperacao.length;
+                        resumoMap[disc.sigla].turmas.push(`${turma.nome} (${disc.recuperacao.length})`);
+                        totalGeral += disc.recuperacao.length;
+                    }
+                });
+            });
+
+            const chaves = Object.keys(resumoMap).sort();
+            
+            if (chaves.length === 0) {
+                alert("Nenhuma disciplina lançada possui alunos em recuperação até o momento.");
+                return;
+            }
+
+            const printArea = document.getElementById('printArea');
+            
+            let html = `
+                <div class="print-header">
+                    <div>
+                        <h1>Requisição de Reprografia - Recuperação</h1>
+                        <p>${matrizTxt} • ${periodoTxt}</p>
+                    </div>
+                    <img src="../../assets/logo-fmm-color.png" alt="FMM">
+                </div>
+                <div class="print-info" style="margin-bottom: 30px;">
+                    <div><label>Data de Solicitação</label><span>${new Date().toLocaleDateString('pt-BR')}</span></div>
+                    <div><label>Total Geral de Cópias Necessárias</label><span style="font-size: 14pt;">${totalGeral} UNIDADES</span></div>
+                    <div><label>Visto da Coordenação</label><span>_____________________</span></div>
+                </div>
+                
+                <h3 style="font-size: 10pt; text-transform: uppercase; font-weight: 900; margin-bottom: 10px;">Detalhamento por Disciplina</h3>
+                <table class="print-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 120px;">Código</th>
+                            <th>Disciplina</th>
+                            <th style="width: 100px; text-align: center;">Qtd Cópias</th>
+                            <th>Distribuição por Turmas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            chaves.forEach(sigla => {
+                const item = resumoMap[sigla];
+                html += `
+                    <tr>
+                        <td><strong>${sigla}</strong></td>
+                        <td><strong>${item.nome}</strong></td>
+                        <td class="text-center" style="font-size: 12pt; font-weight: 900;">${item.total}</td>
+                        <td style="font-size: 7pt; color: #555;">${item.turmas.join(' / ')}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+                <p style="font-size: 7pt; font-style: italic; margin-top: 20px;">* Este relatório considera apenas as disciplinas cujas notas de P1 e P2 já foram registradas no sistema pelos docentes.</p>
+            `;
+
+            printArea.innerHTML = html;
+            window.print();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

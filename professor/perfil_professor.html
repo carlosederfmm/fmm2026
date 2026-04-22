@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meu Perfil | SME FMM</title>
+    <title>Sistema em Manutenção</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- Importação do Componente de Sidebar -->
-    <script src="../sidebar.js"></script>
+
+    <!-- Assets SME -->
     <script src="../assets/js/supabase_client.js"></script>
+    <script src="../sidebar.js"></script>
 
     <script>
         tailwind.config = {
@@ -33,274 +33,307 @@
 
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
-        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .sidebar-collapsed .sidebar-text, .sidebar-collapsed .sidebar-category-header, .sidebar-collapsed .chevron-icon, .sidebar-collapsed .sidebar-category-title { display: none; }
-        .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
-        .sidebar-collapsed .logo-full { display: none; }
-        .sidebar-collapsed .logo-short { display: block; }
-        .logo-short { display: none; }
-        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.05); }
-        .category-content.open { max-height: 1000px; }
-        .rotate-180 { transform: rotate(180deg); }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .table-container { background: white; border-radius: 24px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); overflow: hidden; }
+        .tr-hover { transition: background-color 0.2s; }
+        .tr-hover:hover { background-color: #f8fafc; }
 
-        .form-card {
-            background: white;
-            border-radius: 32px;
-            border: 1px solid #f1f5f9;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-            transition: all 0.3s ease;
+        .avatar-clickable {
+            width: 40px; height: 40px; border-radius: 10px; object-fit: cover;
+            cursor: pointer; transition: transform 0.2s;
+            border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .form-card:hover {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
-        }
+        .avatar-clickable:hover { transform: scale(1.1); }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
+
+        /* Estilo Manutenção */
+        .maintenance-card { background: white; border-radius: 32px; box-shadow: 0 20px 50px rgba(0, 60, 91, 0.1); }
     </style>
 </head>
-<body class="flex h-screen w-screen overflow-hidden">
+<body class="flex h-screen w-screen overflow-hidden text-left">
 
-    <!-- SIDEBAR CONTAINER -->
     <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
 
-    <!-- CONTEÚDO PRINCIPAL -->
-    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
+    <main id="main-content" class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden relative">
+        
+        <!-- Header -->
         <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0">
-            <div class="flex flex-col">
-                <h1 class="text-xl font-bold text-fmm-dark">Configurações de Perfil</h1>
-                <p class="text-xs text-slate-400">Portal do Docente | SME FMM</p>
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-fmm-blue/10 rounded-xl flex items-center justify-center text-fmm-blue">
+                    <i data-lucide="brain" class="w-5 h-5"></i>
+                </div>
+                <div class="text-left">
+                    <h1 class="text-lg font-black text-fmm-dark uppercase tracking-tight leading-none">Alunos Neurodivergentes</h1>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Consulta de orientações pedagógicas</p>
+                </div>
             </div>
             
-            <div id="statusMessage" class="hidden px-4 py-2 rounded-xl text-xs font-bold animate-fade-in-up"></div>
+            <div class="flex items-center gap-4">
+                <div class="relative w-64 group">
+                    <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
+                    <input type="text" id="searchInput" onkeyup="filterResults()" placeholder="Nome ou RA..." 
+                           class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
+                </div>
+                
+                <select id="filterEtapa" onchange="filterResults()" class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-fmm-blue cursor-pointer">
+                    <option value="all">Todas as Etapas</option>
+                    <option value="Médio">Médio</option>
+                    <option value="Fundamental">Fundamental</option>
+                </select>
+
+                <select id="filterTurma" onchange="filterResults()" class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-fmm-blue cursor-pointer">
+                    <option value="all">Todas as Turmas</option>
+                </select>
+            </div>
         </header>
 
-        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
-            <div class="max-w-4xl mx-auto space-y-8 pb-12">
-                
-                <!-- SEÇÃO: DADOS PESSOAIS -->
-                <div class="form-card p-8 animate-fade-in-up" style="animation-delay: 0.1s">
-                    <div class="flex items-center gap-4 mb-8">
-                        <div class="w-12 h-12 bg-fmm-blue/10 rounded-2xl flex items-center justify-center">
-                            <i data-lucide="user" class="text-fmm-blue w-6 h-6"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-bold text-fmm-dark">Dados do Docente</h3>
-                            <p class="text-xs text-slate-400">Suas informações de contato institucionais</p>
-                        </div>
-                    </div>
+        <!-- Listagem em Tabela -->
+        <div class="flex-1 overflow-auto p-8 custom-scrollbar relative bg-slate-50">
+            
+            <div id="loadingState" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-50/50 z-20">
+                <i data-lucide="loader-2" class="w-10 h-10 animate-spin text-fmm-blue mb-2"></i>
+                <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Sincronizando laudos...</p>
+            </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="space-y-1.5 md:col-span-2">
-                            <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Nome Completo</label>
-                            <input type="text" id="profNome" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all font-medium text-fmm-dark">
-                        </div>
-                        
-                        <div class="space-y-1.5">
-                            <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">E-mail Corporativo</label>
-                            <input type="email" id="profEmail" disabled class="w-full px-5 py-3 bg-slate-100 border border-slate-100 rounded-2xl outline-none text-slate-400 cursor-not-allowed font-medium">
-                        </div>
+            <div class="table-container animate-fade">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-white border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            <th class="px-6 py-5 w-20 text-center">Foto</th>
+                            <th class="px-6 py-5">RA</th>
+                            <th class="px-6 py-5">Estudante</th>
+                            <th class="px-6 py-5">Turma / Série</th>
+                            <th class="px-6 py-5">Laudo e Orientações</th>
+                            <th class="px-6 py-5 text-center">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsListBody" class="divide-y divide-slate-50 text-sm font-medium text-slate-600"></tbody>
+                </table>
 
-                        <div class="space-y-1.5">
-                            <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">WhatsApp / Telefone</label>
-                            <input type="tel" id="profPhone" placeholder="(92) 9XXXX-XXXX" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all font-medium text-fmm-dark">
-                        </div>
-                    </div>
-
-                    <div class="mt-8 flex justify-end">
-                        <button onclick="updateProfile()" id="btnUpdateProfile" class="bg-fmm-blue hover:bg-fmm-dark text-white px-8 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all shadow-lg shadow-fmm-blue/20">
-                            <i data-lucide="save" class="w-4 h-4"></i> Salvar Alterações
-                        </button>
-                    </div>
+                <div id="emptyState" class="hidden flex flex-col items-center justify-center py-20 text-slate-300">
+                    <i data-lucide="user-x" class="w-12 h-12 mb-4 opacity-20"></i>
+                    <p class="text-xs font-black uppercase tracking-[0.2em] opacity-40">Nenhum aluno localizado</p>
                 </div>
-
-                <!-- SEÇÃO: SEGURANÇA -->
-                <div class="form-card p-8 animate-fade-in-up" style="animation-delay: 0.2s">
-                    <div class="flex items-center gap-4 mb-8">
-                        <div class="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center">
-                            <i data-lucide="lock" class="text-red-500 w-6 h-6"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-bold text-fmm-dark">Segurança de Acesso</h3>
-                            <p class="text-xs text-slate-400">Recomendamos trocar sua senha a cada 90 dias</p>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="space-y-1.5">
-                            <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Nova Senha</label>
-                            <input type="password" id="newPass" placeholder="••••••••" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-red-400 transition-all font-medium">
-                        </div>
-                        
-                        <div class="space-y-1.5">
-                            <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Confirmar Nova Senha</label>
-                            <input type="password" id="confirmPass" placeholder="••••••••" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-red-400 transition-all font-medium">
-                        </div>
-                    </div>
-
-                    <div class="mt-8 flex justify-end">
-                        <button onclick="updatePassword()" id="btnUpdatePass" class="bg-fmm-dark hover:bg-black text-white px-8 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all shadow-lg">
-                            <i data-lucide="key" class="w-4 h-4"></i> Atualizar Senha
-                        </button>
-                    </div>
-                </div>
-
-                <!-- SEÇÃO: DISCIPLINAS VINCULADAS -->
-                <div class="form-card p-8 animate-fade-in-up border-l-8 border-l-fmm-lime" style="animation-delay: 0.3s">
-                    <div class="flex items-center gap-4 mb-6">
-                        <div class="w-12 h-12 bg-fmm-lime/10 rounded-2xl flex items-center justify-center">
-                            <i data-lucide="book-open" class="text-fmm-lime w-6 h-6"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-bold text-fmm-dark">Suas Disciplinas</h3>
-                            <p class="text-xs text-slate-400">Matérias atribuídas à sua carga horária</p>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-wrap gap-3" id="subjectsList">
-                        <!-- Gerado via JS -->
-                        <div class="py-4 text-slate-300 italic text-xs">Carregando vínculos...</div>
-                    </div>
-                </div>
-
             </div>
         </div>
+
+        <footer class="h-10 bg-white border-t border-slate-100 px-8 flex items-center justify-between shrink-0">
+            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-fmm-blue"></span>
+                Dados confidenciais para uso pedagógico exclusivo.
+            </p>
+            <span id="counter" class="text-[9px] font-black text-fmm-blue uppercase">0 Alunos Ativos</span>
+        </footer>
     </main>
 
+    <!-- Overlay de Manutenção (Injetado via JS se necessário) -->
+    <div id="maintenance-view" class="hidden flex-1 flex flex-col items-center justify-center bg-slate-50 p-6 text-center animate-fade">
+        <div class="maintenance-card p-12 max-w-lg w-full flex flex-col items-center gap-6">
+            <div class="w-24 h-24 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-500 shadow-inner">
+                <i data-lucide="construction" class="w-12 h-12"></i>
+            </div>
+            <div>
+                <h2 class="text-2xl font-black text-fmm-dark uppercase tracking-tight">Sistema em Manutenção</h2>
+                <p class="text-sm text-slate-500 font-medium mt-3 leading-relaxed">
+                    Olá, Professor. Estamos realizando atualizações importantes nos prontuários e orientações pedagógicas para garantir maior segurança e precisão nos dados.
+                </p>
+            </div>
+            <div class="w-full h-px bg-slate-100 my-2"></div>
+            <div class="flex flex-col gap-2 w-full">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Previsão de retorno</p>
+                <div class="bg-fmm-dark text-white py-3 rounded-2xl font-bold text-sm">Hoje, às 18:30h</div>
+            </div>
+            <p class="text-[10px] text-slate-400 italic">Agradecemos a compreensão. Equipe de Tecnologia FMM.</p>
+        </div>
+    </div>
+
+    <!-- MODAL DE ZOOM DA FOTO -->
+    <div id="photoZoomModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onclick="closePhotoZoom()">
+        <div class="relative animate-fade" onclick="event.stopPropagation()">
+            <button onclick="closePhotoZoom()" class="absolute -top-12 -right-4 text-white hover:text-fmm-lime transition-colors">
+                <i data-lucide="x" class="w-8 h-8"></i>
+            </button>
+            <img id="enlargedPhoto" src="" class="max-w-[90vw] max-h-[80vh] rounded-[40px] shadow-2xl border-4 border-white/10 object-contain">
+            <div id="enlargedName" class="mt-4 text-center text-white font-bold text-lg tracking-tight"></div>
+        </div>
+    </div>
+
     <script>
-        
+        let allNeuroStudents = [];
+        let todasTurmas = [];
 
-        let currentUser = null;
+        function formatDriveUrl(url) {
+            if (!url || typeof url !== 'string') return null;
+            if (url.includes('drive.google.com')) {
+                const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+                const id = idMatch ? idMatch[1] : null;
+                if (id) return `https://drive.google.com/thumbnail?id=${id}&sz=w500`;
+            }
+            return url;
+        }
 
-        async function initProfile() {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (!user) return window.location.href = '../index.html'; 
+        async function init() {
+            if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
             
-            currentUser = user;
-            // Inicializa a sidebar
-            if (window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            // 1. Verificar Perfil e Cargo
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if (user) {
+                const { data: profile } = await window.supabaseClient.from('perfis').select('cargo').eq('id', user.id).single();
+                
+                // 2. Aplicar Manutenção se for Professor
+                if (profile && profile.cargo === 'professor') {
+                    showMaintenance();
+                    return;
+                }
+            }
+
+            lucide.createIcons();
+            await fetchData();
+        }
+
+        function showMaintenance() {
+            document.getElementById('main-content').style.display = 'none';
+            const maintenance = document.getElementById('maintenance-view');
+            maintenance.classList.remove('hidden');
+            maintenance.classList.add('flex');
+            lucide.createIcons();
+        }
+
+        async function fetchData() {
+            const loading = document.getElementById('loadingState');
+            loading.classList.remove('hidden');
+
+            try {
+                const { data: alunos, error: errorAlunos } = await window.supabaseClient
+                    .from('alunos')
+                    .select('ra, nome_completo, url_foto, laudo, status, turmas(id, nome, serie, nivel)')
+                    .not('laudo', 'is', null)
+                    .neq('laudo', '')
+                    .ilike('status', 'Cursando') 
+                    .order('nome_completo');
+
+                if (errorAlunos) throw errorAlunos;
+                allNeuroStudents = alunos || [];
+
+                const { data: turmas, error: errorTurmas } = await window.supabaseClient
+                    .from('turmas')
+                    .select('id, nome')
+                    .order('nome');
+
+                if (errorTurmas) throw errorTurmas;
+                todasTurmas = turmas || [];
+
+                const selectT = document.getElementById('filterTurma');
+                selectT.innerHTML = '<option value="all">Todas as Turmas</option>';
+                todasTurmas.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.nome;
+                    opt.innerText = t.nome;
+                    selectT.appendChild(opt);
+                });
+
+                renderTable(allNeuroStudents);
+
+            } catch (err) {
+                console.error("Erro ao carregar dados:", err);
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        function renderTable(students) {
+            const body = document.getElementById('studentsListBody');
+            const empty = document.getElementById('emptyState');
+            const counter = document.getElementById('counter');
+
+            body.innerHTML = '';
             
-            await fetchProfileData();
+            if (students.length === 0) {
+                empty.classList.remove('hidden');
+                counter.innerText = '0 Alunos Ativos';
+                return;
+            }
+
+            empty.classList.add('hidden');
+            counter.innerText = `${students.length} Alunos Ativos`;
+
+            students.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.className = 'tr-hover border-b border-slate-50 last:border-0';
+                
+                const urlFoto = formatDriveUrl(s.url_foto);
+                const avatarImg = urlFoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=003c5b&color=fff`;
+
+                tr.innerHTML = `
+                    <td class="px-6 py-4">
+                        <img src="${avatarImg}" class="avatar-clickable mx-auto" onclick="openPhotoZoom('${avatarImg}', '${s.nome_completo}')" 
+                             onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=003c5b&color=fff'">
+                    </td>
+                    <td class="px-6 py-4 font-mono text-[11px] text-slate-400 font-bold">${s.ra}</td>
+                    <td class="px-6 py-4">
+                        <span class="text-fmm-dark font-black uppercase text-xs tracking-tight">${s.nome_completo}</span>
+                    </td>
+                    <td class="px-6 py-4 text-left">
+                        <div class="flex flex-col">
+                            <span class="text-[11px] font-black text-fmm-blue uppercase leading-none">${s.turmas?.nome || 'S/T'}</span>
+                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mt-1">${s.turmas?.serie || '---'}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-left">
+                        <p class="text-xs text-slate-500 font-medium leading-relaxed max-w-xl whitespace-pre-line line-clamp-3 hover:line-clamp-none transition-all">
+                            ${s.laudo}
+                        </p>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <a href="individual_professor.html?ra=${s.ra}" class="p-2.5 bg-slate-50 text-slate-400 hover:text-fmm-blue hover:bg-blue-50 rounded-xl transition-all inline-flex items-center justify-center shadow-sm" title="Ficha Individual">
+                            <i data-lucide="user-search" class="w-4 h-4"></i>
+                        </a>
+                    </td>
+                `;
+                body.appendChild(tr);
+            });
             lucide.createIcons();
         }
 
-        async function fetchProfileData() {
-            // Buscar perfil básico
-            const { data: perfil, error } = await supabaseClient
-                .from('perfis')
-                .select('*')
-                .eq('id', currentUser.id)
-                .single();
+        function filterResults() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const turma = document.getElementById('filterTurma').value;
+            const etapa = document.getElementById('filterEtapa').value;
 
-            if (error) {
-                console.error(error);
-                return showStatus("Erro ao carregar dados do perfil", "error");
-            }
+            const filtered = allNeuroStudents.filter(s => {
+                const matchText = s.nome_completo.toLowerCase().includes(search) || s.ra.toString().includes(search);
+                const matchTurma = turma === 'all' || s.turmas?.nome === turma;
+                
+                let matchEtapa = true;
+                if (etapa === 'Médio') {
+                    matchEtapa = s.turmas?.nivel?.startsWith('EMT');
+                } else if (etapa === 'Fundamental') {
+                    matchEtapa = s.turmas?.nivel?.startsWith('EF');
+                }
 
-            document.getElementById('profNome').value = perfil.nome_completo;
-            document.getElementById('profEmail').value = perfil.email;
-            document.getElementById('profPhone').value = perfil.telefone || '';
+                return matchText && matchTurma && matchEtapa;
+            });
 
-            // Buscar disciplinas vinculadas
-            const { data: vinculos } = await supabaseClient
-                .from('professor_disciplinas')
-                .select('disciplinas(nome, sigla, cor)')
-                .eq('id_professor', currentUser.id);
-
-            const subjectsList = document.getElementById('subjectsList');
-            if (vinculos && vinculos.length > 0) {
-                subjectsList.innerHTML = vinculos.map(v => `
-                    <div class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-100 rounded-xl shadow-sm">
-                        <div class="w-2 h-2 rounded-full" style="background-color: ${v.disciplinas.cor || '#00638f'}"></div>
-                        <span class="text-xs font-black text-fmm-dark uppercase">${v.disciplinas.sigla}</span>
-                        <span class="text-[10px] font-bold text-slate-400">| ${v.disciplinas.nome}</span>
-                    </div>
-                `).join('');
-            } else {
-                subjectsList.innerHTML = '<span class="text-xs text-slate-400 italic">Nenhuma disciplina vinculada ainda.</span>';
-            }
+            renderTable(filtered);
         }
 
-        async function updateProfile() {
-            const nome = document.getElementById('profNome').value;
-            const phone = document.getElementById('profPhone').value;
-            const btn = document.getElementById('btnUpdateProfile');
-
-            if (!nome) return showStatus("O nome não pode estar vazio", "error");
-
-            btn.disabled = true;
-            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Salvando...';
-            lucide.createIcons();
-
-            const { error } = await supabaseClient
-                .from('perfis')
-                .update({ 
-                    nome_completo: nome,
-                    telefone: phone
-                })
-                .eq('id', currentUser.id);
-
-            if (error) {
-                showStatus("Erro ao atualizar perfil: " + error.message, "error");
-            } else {
-                showStatus("Perfil atualizado com sucesso!", "success");
-            }
-
-            btn.disabled = false;
-            btn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Salvar Alterações';
-            lucide.createIcons();
+        function openPhotoZoom(url, name) {
+            const modal = document.getElementById('photoZoomModal');
+            document.getElementById('enlargedPhoto').src = url;
+            document.getElementById('enlargedName').innerText = name;
+            modal.classList.remove('hidden');
         }
 
-        async function updatePassword() {
-            const pass = document.getElementById('newPass').value;
-            const confirm = document.getElementById('confirmPass').value;
-            const btn = document.getElementById('btnUpdatePass');
-
-            if (!pass) return showStatus("Digite a nova senha", "error");
-            if (pass.length < 6) return showStatus("A senha deve ter pelo menos 6 caracteres", "error");
-            if (pass !== confirm) return showStatus("As senhas não coincidem", "error");
-
-            btn.disabled = true;
-            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Atualizando...';
-            lucide.createIcons();
-
-            const { error } = await supabaseClient.auth.updateUser({ password: pass });
-
-            if (error) {
-                showStatus("Erro ao atualizar senha: " + error.message, "error");
-            } else {
-                showStatus("Senha alterada com sucesso!", "success");
-                document.getElementById('newPass').value = '';
-                document.getElementById('confirmPass').value = '';
-            }
-
-            btn.disabled = false;
-            btn.innerHTML = '<i data-lucide="key" class="w-4 h-4"></i> Atualizar Senha';
-            lucide.createIcons();
+        function closePhotoZoom() {
+            document.getElementById('photoZoomModal').classList.add('hidden');
         }
 
-        function showStatus(msg, type) {
-            const el = document.getElementById('statusMessage');
-            el.innerText = msg;
-            el.classList.remove('hidden', 'bg-green-100', 'text-green-600', 'bg-red-100', 'text-red-600');
-            
-            if (type === 'success') {
-                el.classList.add('bg-green-100', 'text-green-600');
-            } else {
-                el.classList.add('bg-red-100', 'text-red-600');
-            }
-            
-            el.classList.remove('hidden');
-            setTimeout(() => el.classList.add('hidden'), 5000);
-        }
-
-        // --- SIDEBAR HELPERS ---
-        function toggleSidebar() { if(window.SidebarComponent) SidebarComponent.toggleSidebar(); }
-        function toggleCategory(id) { if(window.SidebarComponent) SidebarComponent.toggleCategory(id); }
-        async function handleLogout() { if(window.SidebarComponent) SidebarComponent.logout(); }
-
-        window.onload = initProfile;
+        window.onload = init;
     </script>
 </body>
 </html>

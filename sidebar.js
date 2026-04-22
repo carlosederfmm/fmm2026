@@ -150,6 +150,7 @@ const SidebarComponent = {
         provas: [
             { label: 'Gabaritos', icon: 'check-square', link: 'coordenador/provas/gabaritos_coordenador.html', roles: ['coordenador', 'diretor'] },
             { label: 'Requerimentos', icon: 'inbox', link: 'coordenador/provas/requerimentos.html', roles: ['coordenador', 'diretor'] },
+                        { label: 'Recuperação', icon: 'file-warning', link: 'coordenador/provas/recuperacao.html', roles: ['coordenador'] },
             { label: 'Listas de Assinatura', icon: 'printer', link: 'coordenador/provas/listas_coordenador.html', roles: ['coordenador', 'diretor'] }
         ],
         secretaria: [
