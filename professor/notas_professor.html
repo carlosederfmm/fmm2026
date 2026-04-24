@@ -1,16 +1,17 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-pt">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema em Manutenção</title>
+    <title>Notas | SME FMM</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Assets SME -->
+    <!-- TASK 3.2.1: Importação do Cliente Global Supabase -->
     <script src="../assets/js/supabase_client.js"></script>
+    <!-- TASK 2.3.1: Importação do Componente de Sidebar -->
     <script src="../sidebar.js"></script>
 
     <script>
@@ -23,7 +24,7 @@
                             blue: '#00638f',
                             green: '#80a51b',
                             lime: '#c8d400',
-                            bg: '#f8fafc'
+                            bg: '#f1f5f9'
                         }
                     }
                 }
@@ -32,130 +33,126 @@
     </script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; overflow: hidden; }
         .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .table-container { background: white; border-radius: 24px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); overflow: hidden; }
-        .tr-hover { transition: background-color 0.2s; }
-        .tr-hover:hover { background-color: #f8fafc; }
+        .sidebar-collapsed .sidebar-text, .sidebar-collapsed .sidebar-category-header, .sidebar-collapsed .chevron-icon, .sidebar-collapsed .sidebar-category-title { display: none; }
+        .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
+        .sidebar-collapsed .logo-full { display: none; }
+        .sidebar-collapsed .logo-short { display: block; }
+        .logo-short { display: none; }
+        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.05); }
+        .category-content.open { max-height: 1000px; }
+        .rotate-180 { transform: rotate(180deg); }
 
-        .avatar-clickable {
-            width: 40px; height: 40px; border-radius: 10px; object-fit: cover;
-            cursor: pointer; transition: transform 0.2s;
-            border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        .grade-input { 
+            width: 54px; text-align: center; border-radius: 10px; border: 2px solid #e2e8f0; 
+            padding: 6px 2px; font-weight: 800; font-size: 13px; transition: all 0.2s; background: white;
         }
-        .avatar-clickable:hover { transform: scale(1.1); }
+        .grade-input:focus { border-color: #00638f; outline: none; background: #fff; transform: scale(1.05); z-index: 10; box-shadow: 0 0 0 3px rgba(0, 99, 143, 0.1); }
+        .grade-input:disabled { background: #f8fafc; color: #cbd5e1; cursor: not-allowed; border-color: #f1f5f9; border-style: dashed; }
+        .grade-low { color: #ef4444; border-color: #fecaca; background: #fef2f2; }
+        .grade-ok { color: #00638f; border-color: #e2e8f0; }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
+        .sticky-header { position: sticky; top: 0; z-index: 30; background: #0f172a; }
+        .sticky-col { position: sticky; left: 0; background: white; z-index: 20; border-right: 2px solid #cbd5e1; }
+        .sticky-intersect { position: sticky; top: 0; left: 0; z-index: 40; background: #0f172a; border-right: 2px solid rgba(255,255,255,0.1); }
+        .group:hover .sticky-col { background: #f8fafc; }
 
-        /* Estilo Manutenção */
-        .maintenance-card { background: white; border-radius: 32px; box-shadow: 0 20px 50px rgba(0, 60, 91, 0.1); }
+        .tab-btn { padding: 8px 16px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; border-radius: 12px; transition: all 0.2s; display: flex; align-items: center; gap: 6px; color: #64748b; white-space: nowrap; }
+        .tab-btn.active { background: #003c5b; color: white; box-shadow: 0 4px 10px rgba(0, 60, 91, 0.15); }
+
+        .custom-scrollbar::-webkit-scrollbar { height: 10px; width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; border: 3px solid #f1f5f9; }
+
+        .student-photo { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; cursor: pointer; transition: transform 0.2s; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .student-photo:hover { transform: scale(1.1); }
+
+        .top-bar-select { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; color: #003c5b; outline: none; transition: all 0.2s; min-width: 140px; }
+        .top-bar-select:focus { border-color: #00638f; background: white; box-shadow: 0 0 0 4px rgba(0, 99, 143, 0.05); }
+
+        .intervention-wrapper { position: relative; display: inline-block; }
+        .intervention-badge { 
+            position: absolute; top: -6px; right: -6px; background: #003c5b; color: #c8d400; border-radius: 5px; 
+            padding: 2.5px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 25; border: 1.5px solid white;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        .animate-slide { animation: slideInRight 0.4s ease-out forwards; }
     </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden text-left">
 
     <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
 
-    <main id="main-content" class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden relative">
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
         
-        <!-- Header -->
-        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0">
-            <div class="flex items-center gap-4">
-                <div class="w-10 h-10 bg-fmm-blue/10 rounded-xl flex items-center justify-center text-fmm-blue">
-                    <i data-lucide="brain" class="w-5 h-5"></i>
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-30 shadow-sm flex-shrink-0">
+            <div class="flex items-center gap-6">
+                <div class="flex flex-col text-left">
+                    <h1 class="text-base font-black text-fmm-dark tracking-tight flex items-center gap-2 leading-none">
+                        <span class="w-1.5 h-4 bg-fmm-lime rounded-full"></span>
+                        Diário Acadêmico
+                    </h1>
                 </div>
-                <div class="text-left">
-                    <h1 class="text-lg font-black text-fmm-dark uppercase tracking-tight leading-none">Alunos Neurodivergentes</h1>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Consulta de orientações pedagógicas</p>
+
+                <div class="h-8 w-px bg-slate-100 hidden md:block"></div>
+
+                <div class="flex items-center gap-3">
+                    <select id="selectTurma" onchange="handleTurmaChange()" class="top-bar-select">
+                        <option value="">Turma...</option>
+                    </select>
+                    <select id="selectDisc" onchange="loadGradeTable()" class="top-bar-select w-48">
+                        <option value="">Disciplina...</option>
+                    </select>
                 </div>
             </div>
-            
-            <div class="flex items-center gap-4">
-                <div class="relative w-64 group">
-                    <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
-                    <input type="text" id="searchInput" onkeyup="filterResults()" placeholder="Nome ou RA..." 
-                           class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue transition-all">
-                </div>
-                
-                <select id="filterEtapa" onchange="filterResults()" class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-fmm-blue cursor-pointer">
-                    <option value="all">Todas as Etapas</option>
-                    <option value="Médio">Médio</option>
-                    <option value="Fundamental">Fundamental</option>
-                </select>
 
-                <select id="filterTurma" onchange="filterResults()" class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-fmm-blue cursor-pointer">
-                    <option value="all">Todas as Turmas</option>
-                </select>
+            <!-- Abas renderizadas dinamicamente via JS -->
+            <div id="period-tabs" class="hidden lg:flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200">
+                <!-- Botões injetados dinamicamente -->
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div id="sync-status" class="hidden items-center gap-2 px-3 py-1.5 bg-fmm-blue/5 rounded-full border border-fmm-blue/10 animate-pulse">
+                    <i data-lucide="refresh-ccw" class="w-3.5 h-3.5 text-fmm-blue"></i>
+                    <span class="text-[9px] font-black text-fmm-blue uppercase">Sinc...</span>
+                </div>
+
+                <div class="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
+                    <i data-lucide="users" class="w-4 h-4 text-slate-400"></i>
+                    <span id="student-count" class="text-sm font-black text-fmm-dark">00</span>
+                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Alunos</span>
+                </div>
             </div>
         </header>
 
-        <!-- Listagem em Tabela -->
-        <div class="flex-1 overflow-auto p-8 custom-scrollbar relative bg-slate-50">
-            
-            <div id="loadingState" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-50/50 z-20">
-                <i data-lucide="loader-2" class="w-10 h-10 animate-spin text-fmm-blue mb-2"></i>
-                <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Sincronizando laudos...</p>
+        <div class="flex-1 overflow-auto custom-scrollbar bg-slate-50" id="table-scroll-container">
+            <div id="loading-overlay" class="hidden h-full flex flex-col items-center justify-center text-slate-300 gap-4">
+                <i data-lucide="loader-2" class="w-12 h-12 animate-spin text-fmm-blue"></i>
+                <p class="text-sm font-bold uppercase tracking-widest">A carregar matriz...</p>
             </div>
-
-            <div class="table-container animate-fade">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-white border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                            <th class="px-6 py-5 w-20 text-center">Foto</th>
-                            <th class="px-6 py-5">RA</th>
-                            <th class="px-6 py-5">Estudante</th>
-                            <th class="px-6 py-5">Turma / Série</th>
-                            <th class="px-6 py-5">Laudo e Orientações</th>
-                            <th class="px-6 py-5 text-center">Ação</th>
-                        </tr>
-                    </thead>
-                    <tbody id="studentsListBody" class="divide-y divide-slate-50 text-sm font-medium text-slate-600"></tbody>
-                </table>
-
-                <div id="emptyState" class="hidden flex flex-col items-center justify-center py-20 text-slate-300">
-                    <i data-lucide="user-x" class="w-12 h-12 mb-4 opacity-20"></i>
-                    <p class="text-xs font-black uppercase tracking-[0.2em] opacity-40">Nenhum aluno localizado</p>
+            <div id="empty-view" class="h-full flex flex-col items-center justify-center p-20 text-center">
+                <div class="w-20 h-20 bg-white rounded-full shadow-xl flex items-center justify-center mb-6 border border-slate-100">
+                    <i data-lucide="layers" class="w-10 h-10 text-slate-200"></i>
                 </div>
+                <h3 class="text-lg font-bold text-slate-400 uppercase tracking-tight">Selecione os filtros</h3>
+                <p class="text-sm text-slate-300 italic font-medium">O diário de notas será exibido aqui.</p>
+            </div>
+            <div id="table-wrapper" class="hidden inline-block align-middle min-w-full">
+                <table class="min-w-full border-separate border-spacing-0 text-left" id="notasTable">
+                    <thead id="tableHeader"></thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-100 bg-white"></tbody>
+                </table>
             </div>
         </div>
-
-        <footer class="h-10 bg-white border-t border-slate-100 px-8 flex items-center justify-between shrink-0">
-            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-2">
-                <span class="w-1.5 h-1.5 rounded-full bg-fmm-blue"></span>
-                Dados confidenciais para uso pedagógico exclusivo.
-            </p>
-            <span id="counter" class="text-[9px] font-black text-fmm-blue uppercase">0 Alunos Ativos</span>
-        </footer>
     </main>
 
-    <!-- Overlay de Manutenção (Injetado via JS se necessário) -->
-    <div id="maintenance-view" class="hidden flex-1 flex flex-col items-center justify-center bg-slate-50 p-6 text-center animate-fade">
-        <div class="maintenance-card p-12 max-w-lg w-full flex flex-col items-center gap-6">
-            <div class="w-24 h-24 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-500 shadow-inner">
-                <i data-lucide="construction" class="w-12 h-12"></i>
-            </div>
-            <div>
-                <h2 class="text-2xl font-black text-fmm-dark uppercase tracking-tight">Sistema em Manutenção</h2>
-                <p class="text-sm text-slate-500 font-medium mt-3 leading-relaxed">
-                    Olá, Professor. Estamos realizando atualizações importantes nos prontuários e orientações pedagógicas para garantir maior segurança e precisão nos dados.
-                </p>
-            </div>
-            <div class="w-full h-px bg-slate-100 my-2"></div>
-            <div class="flex flex-col gap-2 w-full">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Previsão de retorno</p>
-                <div class="bg-fmm-dark text-white py-3 rounded-2xl font-bold text-sm">Hoje, às 18:30h</div>
-            </div>
-            <p class="text-[10px] text-slate-400 italic">Agradecemos a compreensão. Equipe de Tecnologia FMM.</p>
-        </div>
-    </div>
-
-    <!-- MODAL DE ZOOM DA FOTO -->
-    <div id="photoZoomModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onclick="closePhotoZoom()">
-        <div class="relative animate-fade" onclick="event.stopPropagation()">
-            <button onclick="closePhotoZoom()" class="absolute -top-12 -right-4 text-white hover:text-fmm-lime transition-colors">
+    <!-- MODAL FOTO -->
+    <div id="photoModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onclick="closePhotoModal()">
+        <div class="relative animate-fade-in-up" onclick="event.stopPropagation()">
+            <button onclick="closePhotoModal()" class="absolute -top-12 -right-4 text-white hover:text-fmm-lime transition-colors">
                 <i data-lucide="x" class="w-8 h-8"></i>
             </button>
             <img id="enlargedPhoto" src="" class="max-w-[90vw] max-h-[80vh] rounded-[40px] shadow-2xl border-4 border-white/10 object-contain">
@@ -163,176 +160,537 @@
         </div>
     </div>
 
+    <!-- TOAST -->
+    <div id="toast" class="fixed bottom-8 right-8 z-50 translate-y-20 opacity-0 transition-all duration-500">
+        <div class="bg-slate-900 text-white px-8 py-5 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/5">
+            <div class="w-8 h-8 bg-fmm-lime/20 rounded-full flex items-center justify-center" id="toast-icon-container">
+                <i data-lucide="check" class="w-4 h-4 text-fmm-lime" id="toast-icon"></i>
+            </div>
+            <span class="text-xs font-bold tracking-tight" id="toast-msg">Sincronizado</span>
+        </div>
+    </div>
+
     <script>
-        let allNeuroStudents = [];
-        let todasTurmas = [];
+        let currentUser = null;
+        let saveTimers = {};
+        let currentView = 'anual'; 
+        let globalMatriculas = [];
+        let globalNotas = [];
+        let globalAnual = [];
+        let globalGrade = [];
+        let currentDiscType = 'BCC';
+        let currentDiscSigla = '';
+        let teachesProjetoDeVida = false; 
+        
+        let currentMatriz = 'BASICA';
 
         function formatDriveUrl(url) {
-            if (!url || typeof url !== 'string') return null;
-            if (url.includes('drive.google.com')) {
-                const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
-                const id = idMatch ? idMatch[1] : null;
-                if (id) return `https://drive.google.com/thumbnail?id=${id}&sz=w500`;
+            if (!url) return null;
+            if (url.includes('drive.google.com') && url.includes('/file/d/')) {
+                const idMatch = url.match(/\/d\/(.*?)\//);
+                if (idMatch && idMatch[1]) return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
             }
             return url;
         }
 
         async function init() {
-            if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
-            
-            // 1. Verificar Perfil e Cargo
+            if(window.SidebarComponent) await window.SidebarComponent.render('sidebar-container');
             const { data: { user } } = await window.supabaseClient.auth.getUser();
-            if (user) {
-                const { data: profile } = await window.supabaseClient.from('perfis').select('cargo').eq('id', user.id).single();
+            if (!user) return window.location.href = '../index.html';
+            const { data: profile } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).single();
+            currentUser = profile;
+            await populateSelectors();
+            lucide.createIcons();
+        }
+
+        async function populateSelectors() {
+            const selectT = document.getElementById('selectTurma');
+            const selectD = document.getElementById('selectDisc');
+            let turmas = [], disciplinas = [];
+
+            if (currentUser.cargo === 'coordenador' || currentUser.cargo === 'diretor') {
+                const { data: t } = await window.supabaseClient.from('turmas').select('*').order('nome');
+                const { data: d } = await window.supabaseClient.from('disciplinas').select('*').order('nome');
+                turmas = t || []; disciplinas = d || [];
                 
-                // 2. Aplicar Manutenção se for Professor
-                if (profile && profile.cargo === 'professor') {
-                    showMaintenance();
-                    return;
+                selectT.innerHTML = '<option value="">Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
+                selectD.innerHTML = '<option value="">Disciplina...</option>' + disciplinas.map(d => `<option value="${d.sigla}" data-tipo="${d.tipo}">${d.nome} (${d.sigla})</option>`).join('');
+            } else {
+                const { data: pvidaCheck } = await window.supabaseClient.from('professor_disciplinas')
+                    .select('sigla_disciplina')
+                    .eq('id_professor', currentUser.id)
+                    .eq('sigla_disciplina', 'P.VIDA')
+                    .maybeSingle();
+                
+                teachesProjetoDeVida = !!pvidaCheck;
+
+                const { data: grade } = await window.supabaseClient.from('grade_horaria')
+                    .select('id_turma, turmas(*), disciplinas(*)')
+                    .eq('id_professor', currentUser.id);
+                
+                globalGrade = grade || [];
+
+                if (teachesProjetoDeVida) {
+                    const { data: allAllowedTurmas } = await window.supabaseClient.from('turmas')
+                        .select('*')
+                        .in('nivel', currentUser.niveis_acesso || [])
+                        .order('nome');
+                    turmas = allAllowedTurmas || [];
+                } else {
+                    turmas = Array.from(new Map(globalGrade.map(g => [g.id_turma, g.turmas])).values())
+                                 .filter(t => t !== null);
+                }
+
+                turmas.sort((a, b) => a.nome.localeCompare(b.nome, undefined, { numeric: true, sensitivity: 'base' }));
+
+                selectT.innerHTML = '<option value="">Turma...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie})</option>`).join('');
+                selectD.innerHTML = '<option value="">Disciplina...</option>'; 
+            }
+        }
+
+        function handleTurmaChange() {
+            const turmaId = document.getElementById('selectTurma').value;
+            const selectD = document.getElementById('selectDisc');
+
+            if (currentUser.cargo !== 'coordenador' && currentUser.cargo !== 'diretor') {
+                if (!turmaId) {
+                    selectD.innerHTML = '<option value="">Disciplina...</option>';
+                } else {
+                    const discFromGrade = globalGrade
+                        .filter(g => g.id_turma === turmaId && g.disciplinas !== null)
+                        .map(g => g.disciplinas);
+                    
+                    const uniqueDiscMap = new Map(discFromGrade.map(d => [d.sigla, d]));
+
+                    if (teachesProjetoDeVida) {
+                        uniqueDiscMap.set('P.VIDA', { sigla: 'P.VIDA', nome: 'PROJETO DE VIDA', tipo: 'BCC' });
+                    }
+
+                    const sortedDisc = Array.from(uniqueDiscMap.values()).sort((a, b) => a.nome.localeCompare(b.nome));
+                    
+                    selectD.innerHTML = '<option value="">Disciplina...</option>' + sortedDisc.map(d => `<option value="${d.sigla}" data-tipo="${d.tipo}">${d.nome} (${d.sigla})</option>`).join('');
                 }
             }
-
-            lucide.createIcons();
-            await fetchData();
-        }
-
-        function showMaintenance() {
-            document.getElementById('main-content').style.display = 'none';
-            const maintenance = document.getElementById('maintenance-view');
-            maintenance.classList.remove('hidden');
-            maintenance.classList.add('flex');
-            lucide.createIcons();
-        }
-
-        async function fetchData() {
-            const loading = document.getElementById('loadingState');
-            loading.classList.remove('hidden');
-
-            try {
-                const { data: alunos, error: errorAlunos } = await window.supabaseClient
-                    .from('alunos')
-                    .select('ra, nome_completo, url_foto, laudo, status, turmas(id, nome, serie, nivel)')
-                    .not('laudo', 'is', null)
-                    .neq('laudo', '')
-                    .ilike('status', 'Cursando') 
-                    .order('nome_completo');
-
-                if (errorAlunos) throw errorAlunos;
-                allNeuroStudents = alunos || [];
-
-                const { data: turmas, error: errorTurmas } = await window.supabaseClient
-                    .from('turmas')
-                    .select('id, nome')
-                    .order('nome');
-
-                if (errorTurmas) throw errorTurmas;
-                todasTurmas = turmas || [];
-
-                const selectT = document.getElementById('filterTurma');
-                selectT.innerHTML = '<option value="all">Todas as Turmas</option>';
-                todasTurmas.forEach(t => {
-                    const opt = document.createElement('option');
-                    opt.value = t.nome;
-                    opt.innerText = t.nome;
-                    selectT.appendChild(opt);
-                });
-
-                renderTable(allNeuroStudents);
-
-            } catch (err) {
-                console.error("Erro ao carregar dados:", err);
-            } finally {
-                loading.classList.add('hidden');
-            }
-        }
-
-        function renderTable(students) {
-            const body = document.getElementById('studentsListBody');
-            const empty = document.getElementById('emptyState');
-            const counter = document.getElementById('counter');
-
-            body.innerHTML = '';
             
-            if (students.length === 0) {
-                empty.classList.remove('hidden');
-                counter.innerText = '0 Alunos Ativos';
+            loadGradeTable();
+        }
+
+        function switchView(view) {
+            currentView = view;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            const tab = document.getElementById(`tab-${view}`);
+            if(tab) tab.classList.add('active');
+            renderTable();
+        }
+
+        async function loadGradeTable() {
+            const turmaId = document.getElementById('selectTurma').value;
+            const discSelect = document.getElementById('selectDisc');
+            currentDiscSigla = discSelect.value;
+            currentDiscType = discSelect.options[discSelect.selectedIndex]?.dataset.tipo;
+
+            if (!turmaId || !currentDiscSigla) {
+                document.getElementById('table-wrapper').classList.add('hidden');
+                document.getElementById('empty-view').classList.remove('hidden');
+                document.getElementById('period-tabs').classList.add('hidden');
                 return;
             }
 
-            empty.classList.add('hidden');
-            counter.innerText = `${students.length} Alunos Ativos`;
+            document.getElementById('empty-view').classList.add('hidden');
+            document.getElementById('loading-overlay').classList.remove('hidden');
+            document.getElementById('table-wrapper').classList.add('hidden');
+            
+            try {
+                const { data: discInfo } = await window.supabaseClient.from('disciplinas').select('nome').eq('sigla', currentDiscSigla).maybeSingle();
+                const isIngles = currentDiscSigla === 'L.ING' || discInfo?.nome?.toUpperCase().includes('INGLÊS');
 
-            students.forEach(s => {
-                const tr = document.createElement('tr');
-                tr.className = 'tr-hover border-b border-slate-50 last:border-0';
-                
-                const urlFoto = formatDriveUrl(s.url_foto);
-                const avatarImg = urlFoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=003c5b&color=fff`;
+                const { data: turmaInfo } = await window.supabaseClient.from('turmas').select('nivel').eq('id', turmaId).maybeSingle();
+                const isEF = turmaInfo?.nivel?.startsWith('EF');
+                const isEMT = turmaInfo?.nivel === 'EMT';
+                currentMatriz = isEF ? 'FUNDAMENTAL' : (currentDiscType === 'BCC' ? 'BASICA' : 'TECNICA');
 
-                tr.innerHTML = `
-                    <td class="px-6 py-4">
-                        <img src="${avatarImg}" class="avatar-clickable mx-auto" onclick="openPhotoZoom('${avatarImg}', '${s.nome_completo}')" 
-                             onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(s.nome_completo)}&background=003c5b&color=fff'">
-                    </td>
-                    <td class="px-6 py-4 font-mono text-[11px] text-slate-400 font-bold">${s.ra}</td>
-                    <td class="px-6 py-4">
-                        <span class="text-fmm-dark font-black uppercase text-xs tracking-tight">${s.nome_completo}</span>
-                    </td>
-                    <td class="px-6 py-4 text-left">
-                        <div class="flex flex-col">
-                            <span class="text-[11px] font-black text-fmm-blue uppercase leading-none">${s.turmas?.nome || 'S/T'}</span>
-                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mt-1">${s.turmas?.serie || '---'}</span>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-left">
-                        <p class="text-xs text-slate-500 font-medium leading-relaxed max-w-xl whitespace-pre-line line-clamp-3 hover:line-clamp-none transition-all">
-                            ${s.laudo}
-                        </p>
-                    </td>
-                    <td class="px-6 py-4 text-center">
-                        <a href="individual_professor.html?ra=${s.ra}" class="p-2.5 bg-slate-50 text-slate-400 hover:text-fmm-blue hover:bg-blue-50 rounded-xl transition-all inline-flex items-center justify-center shadow-sm" title="Ficha Individual">
-                            <i data-lucide="user-search" class="w-4 h-4"></i>
-                        </a>
-                    </td>
-                `;
-                body.appendChild(tr);
-            });
-            lucide.createIcons();
-        }
-
-        function filterResults() {
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            const turma = document.getElementById('filterTurma').value;
-            const etapa = document.getElementById('filterEtapa').value;
-
-            const filtered = allNeuroStudents.filter(s => {
-                const matchText = s.nome_completo.toLowerCase().includes(search) || s.ra.toString().includes(search);
-                const matchTurma = turma === 'all' || s.turmas?.nome === turma;
-                
-                let matchEtapa = true;
-                if (etapa === 'Médio') {
-                    matchEtapa = s.turmas?.nivel?.startsWith('EMT');
-                } else if (etapa === 'Fundamental') {
-                    matchEtapa = s.turmas?.nivel?.startsWith('EF');
+                const tabsContainer = document.getElementById('period-tabs');
+                if (currentMatriz === 'FUNDAMENTAL') {
+                    if (currentView.includes('TRIMESTRE')) currentView = 'anual';
+                    tabsContainer.innerHTML = `
+                        <button onclick="switchView('anual')" class="tab-btn ${currentView==='anual'?'active':''}" id="tab-anual">Anual</button>
+                        <button onclick="switchView('1_BIMESTRE')" class="tab-btn ${currentView==='1_BIMESTRE'?'active':''}" id="tab-1_BIMESTRE">1º Bim</button>
+                        <button onclick="switchView('2_BIMESTRE')" class="tab-btn ${currentView==='2_BIMESTRE'?'active':''}" id="tab-2_BIMESTRE">2º Bim</button>
+                        <button onclick="switchView('3_BIMESTRE')" class="tab-btn ${currentView==='3_BIMESTRE'?'active':''}" id="tab-3_BIMESTRE">3º Bim</button>
+                        <button onclick="switchView('4_BIMESTRE')" class="tab-btn ${currentView==='4_BIMESTRE'?'active':''}" id="tab-4_BIMESTRE">4º Bim</button>
+                    `;
+                    tabsContainer.classList.remove('hidden');
+                } else if (currentMatriz === 'BASICA') {
+                    if (currentView.includes('BIMESTRE')) currentView = 'anual';
+                    tabsContainer.innerHTML = `
+                        <button onclick="switchView('anual')" class="tab-btn ${currentView==='anual'?'active':''}" id="tab-anual">Anual</button>
+                        <button onclick="switchView('1_TRIMESTRE')" class="tab-btn ${currentView==='1_TRIMESTRE'?'active':''}" id="tab-1_TRIMESTRE">1º Trim</button>
+                        <button onclick="switchView('2_TRIMESTRE')" class="tab-btn ${currentView==='2_TRIMESTRE'?'active':''}" id="tab-2_TRIMESTRE">2º Trim</button>
+                        <button onclick="switchView('3_TRIMESTRE')" class="tab-btn ${currentView==='3_TRIMESTRE'?'active':''}" id="tab-3_TRIMESTRE">3º Trim</button>
+                    `;
+                    tabsContainer.classList.remove('hidden');
+                } else {
+                    tabsContainer.classList.add('hidden'); 
                 }
 
-                return matchText && matchTurma && matchEtapa;
-            });
+                let matriculasQuery = window.supabaseClient.from('matriculas')
+                    .select('id, ra_aluno, status, alunos!inner(nome_completo, url_foto, id_subturma_ingles, status)')
+                    .eq('id_turma', turmaId)
+                    .eq('ano_letivo', 2026);
 
-            renderTable(filtered);
+                let subturmaId = null;
+
+                if (isIngles && currentUser.cargo === 'professor') {
+                    const { data: subturma } = await window.supabaseClient.from('subturmas')
+                        .select('id')
+                        .eq('id_turma_origem', turmaId)
+                        .eq('id_professor', currentUser.id)
+                        .maybeSingle();
+
+                    if (subturma) {
+                        subturmaId = subturma.id;
+                        matriculasQuery = matriculasQuery.eq('alunos.id_subturma_ingles', subturmaId);
+                    } else {
+                        globalMatriculas = [];
+                        renderTable();
+                        document.getElementById('table-wrapper').classList.remove('hidden');
+                        document.getElementById('loading-overlay').classList.add('hidden');
+                        return;
+                    }
+                }
+
+                let { data: matriculas, error: matErr } = await matriculasQuery;
+
+                // TASK: Fallback de Segurança - Se 'matriculas' vazio, busca direto na tabela alunos
+                if (matErr || !matriculas || matriculas.length === 0) {
+                    let fallbackQuery = window.supabaseClient.from('alunos')
+                        .select('ra, nome_completo, url_foto, id_subturma_ingles, status')
+                        .eq('id_turma', turmaId);
+                    
+                    if (subturmaId) fallbackQuery = fallbackQuery.eq('id_subturma_ingles', subturmaId);
+
+                    const { data: fallbackAlunos } = await fallbackQuery;
+
+                    if (fallbackAlunos && fallbackAlunos.length > 0) {
+                        matriculas = fallbackAlunos.map(a => ({
+                            id: null, // IMPORTANTE: Passamos NULL para não quebrar a consulta UUID nas tabelas de notas
+                            ra_aluno: a.ra,
+                            status: a.status,
+                            alunos: {
+                                nome_completo: a.nome_completo,
+                                url_foto: a.url_foto,
+                                id_subturma_ingles: a.id_subturma_ingles,
+                                status: a.status
+                            }
+                        }));
+                    }
+                }
+
+                globalMatriculas = (matriculas || []).filter(m => {
+                    const st = (m.status || m.alunos?.status || 'CURSANDO').toUpperCase();
+                    return st === 'CURSANDO' || st === 'ATIVO';
+                });
+                
+                if (globalMatriculas.length > 0) {
+                    // Filtra apenas UUIDs válidos para evitar erro 400 Bad Request
+                    const idList = globalMatriculas.map(m => m.id).filter(id => id !== null && id !== undefined);
+
+                    if (idList.length > 0) {
+                        if (currentMatriz === 'FUNDAMENTAL') {
+                            const { data: nf } = await window.supabaseClient.from('notas_fundamental').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList);
+                            const { data: af } = await window.supabaseClient.from('anual_fundamental').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList);
+                            globalNotas = nf || []; globalAnual = af || [];
+                        } else if (currentMatriz === 'BASICA') {
+                            const { data: nb } = await window.supabaseClient.from('notas_basica').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList);
+                            const { data: ab } = await window.supabaseClient.from('anual_basica').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList);
+                            globalNotas = nb || []; globalAnual = ab || [];
+                        } else {
+                            const { data: nt } = await window.supabaseClient.from('notas_tecnica').select('*').eq('sigla_disciplina', currentDiscSigla).in('id_matricula', idList);
+                            globalNotas = nt || [];
+                        }
+                    } else {
+                        globalNotas = []; globalAnual = [];
+                    }
+                } else {
+                    globalNotas = []; globalAnual = [];
+                }
+
+                globalMatriculas.sort((a, b) => {
+                    const nomeA = a.alunos?.nome_completo || "";
+                    const nomeB = b.alunos?.nome_completo || "";
+                    return nomeA.localeCompare(nomeB);
+                });
+
+                const countEl = document.getElementById('student-count');
+                if(countEl) countEl.innerText = globalMatriculas.length.toString().padStart(2, '0');
+
+                renderTable();
+                document.getElementById('table-wrapper').classList.remove('hidden');
+            } catch (err) { console.error(err); } finally { document.getElementById('loading-overlay').classList.add('hidden'); lucide.createIcons(); }
         }
 
-        function openPhotoZoom(url, name) {
-            const modal = document.getElementById('photoZoomModal');
-            document.getElementById('enlargedPhoto').src = url;
-            document.getElementById('enlargedName').innerText = name;
-            modal.classList.remove('hidden');
+        function renderTable() {
+            const header = document.getElementById('tableHeader');
+            const body = document.getElementById('tableBody');
+            if (!header || !body) return;
+            
+            if (currentMatriz === 'FUNDAMENTAL') renderFundamental(header, body);
+            else if (currentMatriz === 'BASICA') renderBCC(header, body);
+            else renderTecnica(header, body);
+            
+            lucide.createIcons(); 
         }
 
-        function closePhotoZoom() {
-            document.getElementById('photoZoomModal').classList.add('hidden');
+        function renderInterventionIndicator(isChanged) {
+            if (!isChanged) return '';
+            return `<div class="intervention-badge" title="Nota alterada administrativamente pela Coordenação"><i data-lucide="shield-check" class="w-3 h-3"></i></div>`;
         }
 
+        function renderFundamental(header, body) {
+            let headHTML = `<tr><th class="px-8 py-6 sticky-intersect border-r border-white/5 min-w-[300px] text-white text-[10px] font-black uppercase tracking-widest">Aluno</th>`;
+            if (currentView === 'anual') {
+                headHTML += `<th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">1º Bim</th>
+                             <th class="text-center py-6 sticky-header bg-slate-700 text-white text-[10px] font-black uppercase">2º Bim</th>
+                             <th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">3º Bim</th>
+                             <th class="text-center py-6 sticky-header bg-slate-700 text-white text-[10px] font-black uppercase">4º Bim</th>
+                             <th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase">M. Anual</th>
+                             <th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase">R. Final</th>
+                             <th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase border-r border-white/10">Conselho</th>
+                             <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">M. Final</th></tr>`;
+            } else {
+                headHTML += `<th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 1 (P1)</th>
+                             <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 2 (P2)</th>
+                             <th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">M. Parcial</th>
+                             <th class="text-center py-6 sticky-header bg-orange-600 text-white text-[10px] font-black uppercase">Recup (RB)</th>
+                             <th class="text-center py-6 sticky-header bg-fmm-lime text-fmm-dark text-[10px] font-black uppercase tracking-widest">Bimestral</th></tr>`;
+            }
+            header.innerHTML = headHTML;
+
+            if (globalMatriculas.length === 0) {
+                body.innerHTML = `<tr><td colspan="${currentView === 'anual' ? 9 : 6}" class="px-8 py-20 text-center text-slate-300 italic font-medium">Nenhum aluno encontrado neste grupo.</td></tr>`;
+                return;
+            }
+
+            body.innerHTML = globalMatriculas.map(m => {
+                const n = globalNotas.find(x => x.id_matricula === m.id && x.periodo === currentView) || { p1: 0, p2: 0, rb: 0, nb: 0, alterado_pela_coordenacao: false };
+                const a = globalAnual.find(x => x.id_matricula === m.id) || { media_anual: 0, recup_final: 0, conselho_classe: 0, media_final: 0, alterado_pela_coordenacao: false };
+                const n1 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '1_BIMESTRE')?.nb || 0;
+                const n2 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '2_BIMESTRE')?.nb || 0;
+                const n3 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '3_BIMESTRE')?.nb || 0;
+                const n4 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '4_BIMESTRE')?.nb || 0;
+
+                const urlFoto = formatDriveUrl(m.alunos?.url_foto);
+                const avatar = urlFoto 
+                    ? `<img src="${urlFoto}" class="student-photo" onclick="openPhotoModal('${urlFoto}', '${m.alunos?.nome_completo}')" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(m.alunos?.nome_completo)}&background=random&color=fff'">`
+                    : `<div class="student-photo flex items-center justify-center bg-slate-100 text-slate-400 font-bold text-xs border-2 border-white shadow-sm">${m.alunos?.nome_completo.charAt(0)}</div>`;
+
+                let rows = `<tr class="group transition-colors hover:bg-slate-50/50 text-left"><td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100"><div class="flex items-center gap-4 text-left">${avatar}<div class="flex flex-col text-left"><span class="text-sm font-extrabold truncate max-w-[180px]">${m.alunos?.nome_completo || 'N/A'}</span><span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span></div></div></td>`;
+
+                if (currentView === 'anual') {
+                    rows += `<td class="px-4 text-center font-bold ${n1 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n1).toFixed(1)}</td>
+                             <td class="px-4 text-center font-bold ${n2 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n2).toFixed(1)}</td>
+                             <td class="px-4 text-center font-bold ${n3 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n3).toFixed(1)}</td>
+                             <td class="px-4 text-center font-bold ${n4 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n4).toFixed(1)}</td>
+                             <td class="px-4 text-center font-black text-fmm-blue bg-blue-50/30" id="media-anual-display-${m.id}">${Number(a.media_anual).toFixed(1)}</td>
+                             <td class="px-4 text-center">${renderAnualInput(m.id, 'recup_final', a.recup_final, a.media_anual >= 6, a.alterado_pela_coordenacao, 'ANUAL_FUND')}</td>
+                             <td class="px-4 text-center border-r border-slate-100">${renderAnualInput(m.id, 'conselho_classe', a.conselho_classe, false, a.alterado_pela_coordenacao, 'ANUAL_FUND')}</td>
+                             <td class="px-6 text-center"><span id="media-final-display-${m.id}" class="font-black text-base ${a.media_final < 6 ? 'text-red-600' : 'text-fmm-green'}">${Number(a.media_final).toFixed(1)}</span></td>`;
+                } else {
+                    const mp = (Number(n.p1 || 0) + Number(n.p2 || 0)) / 2;
+                    rows += `<td class="px-4 text-center">${renderInput(m.id, currentView, 'p1', n.p1, false, n.alterado_pela_coordenacao, 'FUND')}</td>
+                             <td class="px-4 text-center">${renderInput(m.id, currentView, 'p2', n.p2, false, n.alterado_pela_coordenacao, 'FUND')}</td>
+                             <td class="px-4 text-center font-bold bg-slate-50 text-slate-400" id="mp-display-${m.id}-${currentView}">${mp.toFixed(1)}</td>
+                             <td class="px-4 text-center">${renderInput(m.id, currentView, 'rb', n.rb, mp >= 6, n.alterado_pela_coordenacao, 'FUND')}</td>
+                             <td class="px-6 text-center"><span id="nt-display-${m.id}-${currentView}" class="font-black text-base ${n.nb < 6 ? 'text-red-600' : 'text-fmm-blue'}">${Number(n.nb || 0).toFixed(1)}</span></td>`;
+                }
+                return rows + '</tr>';
+            }).join('');
+        }
+
+        function renderBCC(header, body) {
+            let headHTML = `<tr><th class="px-8 py-6 sticky-intersect border-r border-white/5 min-w-[300px] text-white text-[10px] font-black uppercase tracking-widest">Aluno</th>`;
+            if (currentView === 'anual') {
+                headHTML += `<th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">1º Trim</th>
+                             <th class="text-center py-6 sticky-header bg-slate-700 text-white text-[10px] font-black uppercase">2º Trim</th>
+                             <th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">3º Trim</th>
+                             <th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase">M. Anual</th>
+                             <th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase">R. Final</th>
+                             <th class="text-center py-6 sticky-header bg-fmm-blue text-white text-[10px] font-black uppercase border-r border-white/10">Conselho</th>
+                             <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">M. Final</th></tr>`;
+            } else {
+                headHTML += `<th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 1 (P1)</th>
+                             <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 2 (P2)</th>
+                             <th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">M. Parcial</th>
+                             <th class="text-center py-6 sticky-header bg-orange-600 text-white text-[10px] font-black uppercase">Recup (RT)</th>
+                             <th class="text-center py-6 sticky-header bg-fmm-lime text-fmm-dark text-[10px] font-black uppercase tracking-widest">Trimestral</th></tr>`;
+            }
+            header.innerHTML = headHTML;
+
+            if (globalMatriculas.length === 0) {
+                body.innerHTML = `<tr><td colspan="${currentView === 'anual' ? 8 : 6}" class="px-8 py-20 text-center text-slate-300 italic font-medium">Nenhum aluno encontrado neste grupo.</td></tr>`;
+                return;
+            }
+
+            body.innerHTML = globalMatriculas.map(m => {
+                const n = globalNotas.find(x => x.id_matricula === m.id && x.periodo === currentView) || { p1: 0, p2: 0, rt: 0, nt: 0, alterado_pela_coordenacao: false };
+                const a = globalAnual.find(x => x.id_matricula === m.id) || { media_anual: 0, recup_final: 0, conselho_classe: 0, media_final: 0, alterado_pela_coordenacao: false };
+                const n1 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '1_TRIMESTRE')?.nt || 0;
+                const n2 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '2_TRIMESTRE')?.nt || 0;
+                const n3 = globalNotas.find(x => x.id_matricula === m.id && x.periodo === '3_TRIMESTRE')?.nt || 0;
+
+                const urlFoto = formatDriveUrl(m.alunos?.url_foto);
+                const avatar = urlFoto 
+                    ? `<img src="${urlFoto}" class="student-photo" onclick="openPhotoModal('${urlFoto}', '${m.alunos?.nome_completo}')" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(m.alunos?.nome_completo)}&background=random&color=fff'">`
+                    : `<div class="student-photo flex items-center justify-center bg-slate-100 text-slate-400 font-bold text-xs border-2 border-white shadow-sm">${m.alunos?.nome_completo.charAt(0)}</div>`;
+
+                let rows = `<tr class="group transition-colors hover:bg-slate-50/50 text-left"><td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100"><div class="flex items-center gap-4 text-left">${avatar}<div class="flex flex-col text-left"><span class="text-sm font-extrabold truncate max-w-[180px]">${m.alunos?.nome_completo || 'N/A'}</span><span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span></div></div></td>`;
+
+                if (currentView === 'anual') {
+                    rows += `<td class="px-4 text-center font-bold ${n1 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n1).toFixed(1)}</td>
+                             <td class="px-4 text-center font-bold ${n2 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n2).toFixed(1)}</td>
+                             <td class="px-4 text-center font-bold ${n3 < 6 ? 'text-red-500' : 'text-slate-600'}">${Number(n3).toFixed(1)}</td>
+                             <td class="px-4 text-center font-black text-fmm-blue bg-blue-50/30" id="media-anual-display-${m.id}">${Number(a.media_anual).toFixed(1)}</td>
+                             <td class="px-4 text-center">${renderAnualInput(m.id, 'recup_final', a.recup_final, a.media_anual >= 6, a.alterado_pela_coordenacao, 'ANUAL_BCC')}</td>
+                             <td class="px-4 text-center border-r border-slate-100">${renderAnualInput(m.id, 'conselho_classe', a.conselho_classe, false, a.alterado_pela_coordenacao, 'ANUAL_BCC')}</td>
+                             <td class="px-6 text-center"><span id="media-final-display-${m.id}" class="font-black text-base ${a.media_final < 6 ? 'text-red-600' : 'text-fmm-green'}">${Number(a.media_final).toFixed(1)}</span></td>`;
+                } else {
+                    const mp = (Number(n.p1 || 0) + Number(n.p2 || 0)) / 2;
+                    rows += `<td class="px-4 text-center">${renderInput(m.id, currentView, 'p1', n.p1, false, n.alterado_pela_coordenacao, 'BCC')}</td>
+                             <td class="px-4 text-center">${renderInput(m.id, currentView, 'p2', n.p2, false, n.alterado_pela_coordenacao, 'BCC')}</td>
+                             <td class="px-4 text-center font-bold bg-slate-50 text-slate-400" id="mp-display-${m.id}-${currentView}">${mp.toFixed(1)}</td>
+                             <td class="px-4 text-center">${renderInput(m.id, currentView, 'rt', n.rt, mp >= 6, n.alterado_pela_coordenacao, 'BCC')}</td>
+                             <td class="px-6 text-center"><span id="nt-display-${m.id}-${currentView}" class="font-black text-base ${n.nt < 6 ? 'text-red-600' : 'text-fmm-blue'}">${Number(n.nt || 0).toFixed(1)}</span></td>`;
+                }
+                return rows + '</tr>';
+            }).join('');
+        }
+
+        function renderTecnica(header, body) {
+            header.innerHTML = `<tr><th class="px-8 py-6 sticky-intersect border-r border-white/5 min-w-[300px] text-white text-[10px] font-black uppercase tracking-widest">Aluno</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">P1</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">P2</th><th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">M1</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Rec. P.</th><th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">Cons.</th><th class="text-center py-6 sticky-header bg-slate-700 text-white text-[10px] font-black uppercase">M2</th><th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Rec. F.</th><th class="text-center py-6 sticky-header bg-fmm-green text-white text-[10px] font-black uppercase tracking-widest">N.F.P</th></tr>`;
+            
+            if (globalMatriculas.length === 0) {
+                body.innerHTML = `<tr><td colspan="9" class="px-8 py-20 text-center text-slate-300 italic font-medium">Nenhum aluno encontrado neste grupo.</td></tr>`;
+                return;
+            }
+
+            body.innerHTML = globalMatriculas.map(m => {
+                const n = globalNotas.find(x => x.id_matricula === m.id) || { p1: 0, p2: 0, media_1: 0, recup_parcial: 0, conselho_semestral: 0, media_2: 0, recup_final_semestral: 0, nota_final_periodo: 0, alterado_pela_coordenacao: false };
+                const formattedUrl = formatDriveUrl(m.alunos?.url_foto);
+                const avatar = m.alunos?.url_foto ? `<img src="${formattedUrl}" class="student-photo" onclick="openPhotoModal('${formattedUrl}', '${m.alunos?.nome_completo}')" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(m.alunos?.nome_completo)}&background=random&color=fff'">` : `<div class="student-photo flex items-center justify-center bg-slate-100 text-slate-400 font-bold text-xs border-2 border-white shadow-sm">${m.alunos?.nome_completo.charAt(0)}</div>`;
+                return `<tr class="group transition-colors hover:bg-slate-50/50 text-left"><td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100"><div class="flex items-center gap-4 text-left">${avatar}<div class="flex flex-col text-left"><span class="text-sm font-extrabold truncate max-w-[180px]">${m.alunos?.nome_completo || 'N/A'}</span><span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span></div></div></td><td class="px-2 text-center">${renderTecInput(m.id, 'p1', n.p1, false, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'p2', n.p2, false, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center font-bold bg-slate-50 text-slate-400" id="m1-display-${m.id}">${Number(n.media_1).toFixed(1)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'recup_parcial', n.recup_parcial, n.media_1 >= 6, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'conselho_semestral', n.conselho_semestral, false, n.alterado_pela_coordenacao)}</td><td class="px-2 text-center font-bold bg-slate-50 text-slate-400" id="m2-display-${m.id}">${Number(n.media_2).toFixed(1)}</td><td class="px-2 text-center">${renderTecInput(m.id, 'recup_final_semestral', n.recup_final_semestral, n.media_2 >= 6, n.alterado_pela_coordenacao)}</td><td class="px-4 text-center"><span id="nfp-display-${m.id}" class="font-black text-base text-fmm-green">${Number(n.nota_final_periodo).toFixed(1)}</span></td></tr>`;
+            }).join('');
+        }
+
+        function renderInput(matId, periodo, field, val, disabled = false, isChanged = false, specificType = 'BCC') {
+            const isLow = val < 6 && val !== '' && val !== 0;
+            const inputId = `in-${matId}-${field}-${periodo}`;
+            return `
+                <div class="intervention-wrapper">
+                    ${renderInterventionIndicator(isChanged)}
+                    <input type="text" id="${inputId}" name="${inputId}" value="${val === 0 ? '0' : (val || '')}" ${disabled ? 'disabled' : ''} oninput="handleInput(this, '${specificType}', '${matId}', '${currentDiscSigla}', '${periodo}', '${field}')" class="grade-input ${isLow ? 'grade-low' : 'grade-ok'}" placeholder="-">
+                </div>`;
+        }
+
+        function renderAnualInput(matId, field, val, disabled = false, isChanged = false, specificType = 'ANUAL_BCC') {
+            const inputId = `in-${matId}-${field}-anual`;
+            return `
+                <div class="intervention-wrapper">
+                    ${renderInterventionIndicator(isChanged)}
+                    <input type="text" id="${inputId}" name="${inputId}" value="${val === 0 ? '0' : (val || '')}" ${disabled ? 'disabled' : ''} oninput="handleInput(this, '${specificType}', '${matId}', '${currentDiscSigla}', null, '${field}')" class="grade-input bg-blue-50/40" placeholder="-">
+                </div>`;
+        }
+
+        function renderTecInput(matId, field, val, disabled = false, isChanged = false) {
+            const isLow = val < 6 && val !== '' && val !== 0;
+            const inputId = `in-${matId}-${field}-tec`;
+            return `
+                <div class="intervention-wrapper">
+                    ${renderInterventionIndicator(isChanged)}
+                    <input type="text" id="${inputId}" name="${inputId}" value="${val === 0 ? '0' : (val || '')}" ${disabled ? 'disabled' : ''} oninput="handleInput(this, 'TEC', '${matId}', '${currentDiscSigla}', '1_SEMESTRE', '${field}')" class="grade-input ${isLow ? 'grade-low' : 'grade-ok'}" placeholder="-">
+                </div>`;
+        }
+
+        function handleInput(el, type, matId, sigla, periodo, field) {
+            const valStr = el.value.replace(',', '.');
+            if (valStr !== '' && (isNaN(valStr) || valStr < 0 || valStr > 10)) { el.classList.add('ring-2', 'ring-red-500'); return; }
+            el.classList.remove('ring-2', 'ring-red-500');
+            const val = valStr === '' ? 0 : parseFloat(valStr);
+            const timerKey = `${matId}-${field}-${periodo}`;
+            if (saveTimers[timerKey]) clearTimeout(saveTimers[timerKey]);
+            const syncStatus = document.getElementById('sync-status');
+            if(syncStatus) syncStatus.classList.remove('hidden');
+            
+            saveTimers[timerKey] = setTimeout(() => { saveData(type, matId, sigla, periodo, field, val); }, 700);
+        }
+
+        async function saveData(type, matId, sigla, periodo, field, val) {
+            try {
+                // TASK: Proteção contra RLS Fail (ID Nulo = Aluno sem Matrícula)
+                if (!matId || matId === 'null') {
+                    throw new Error("Aluno sem matrícula ativa no ano letivo (Impossível guardar notas).");
+                }
+
+                let error, data;
+                let table, conflict;
+                
+                if (type === 'BCC') { table = 'notas_basica'; conflict = 'id_matricula,sigla_disciplina,periodo'; }
+                else if (type === 'FUND') { table = 'notas_fundamental'; conflict = 'id_matricula,sigla_disciplina,periodo'; }
+                else if (type === 'TEC') { table = 'notas_tecnica'; conflict = 'id_matricula,sigla_disciplina,periodo'; }
+                else if (type === 'ANUAL_BCC') { table = 'anual_basica'; conflict = 'id_matricula,sigla_disciplina'; }
+                else if (type === 'ANUAL_FUND') { table = 'anual_fundamental'; conflict = 'id_matricula,sigla_disciplina'; }
+
+                const payload = { id_matricula: matId, sigla_disciplina: sigla, [field]: val };
+                if (periodo && !type.startsWith('ANUAL')) payload.periodo = periodo;
+
+                ({ data, error } = await window.supabaseClient.from(table).upsert(payload, { onConflict: conflict }).select().single());
+                if (error) throw error;
+
+                if (type === 'BCC') {
+                    const ntDisplay = document.getElementById(`nt-display-${matId}-${periodo}`);
+                    if (ntDisplay && data.nt !== undefined) {
+                        ntDisplay.innerText = Number(data.nt).toFixed(1);
+                        ntDisplay.className = `font-black text-base ${data.nt < 6 ? 'text-red-600' : 'text-fmm-blue'}`;
+                    }
+                } else if (type === 'FUND') {
+                    const nbDisplay = document.getElementById(`nt-display-${matId}-${periodo}`);
+                    if (nbDisplay && data.nb !== undefined) {
+                        nbDisplay.innerText = Number(data.nb).toFixed(1);
+                        nbDisplay.className = `font-black text-base ${data.nb < 6 ? 'text-red-600' : 'text-fmm-blue'}`;
+                    }
+                } else if (type === 'ANUAL_BCC' || type === 'ANUAL_FUND') {
+                    const mfDisplay = document.getElementById(`media-final-display-${matId}`);
+                    if (mfDisplay && data.media_final !== undefined) {
+                        mfDisplay.innerText = Number(data.media_final).toFixed(1);
+                        mfDisplay.className = `font-black text-base ${data.media_final < 6 ? 'text-red-600' : 'text-fmm-green'}`;
+                    }
+                    const maDisplay = document.getElementById(`media-anual-display-${matId}`);
+                    if(maDisplay && data.media_anual !== undefined) maDisplay.innerText = Number(data.media_anual).toFixed(1);
+                } else if (type === 'TEC') {
+                    const m1Display = document.getElementById(`m1-display-${matId}`);
+                    if(m1Display && data.media_1 !== undefined) m1Display.innerText = Number(data.media_1).toFixed(1);
+                    const m2Display = document.getElementById(`m2-display-${matId}`);
+                    if(m2Display && data.media_2 !== undefined) m2Display.innerText = Number(data.media_2).toFixed(1);
+                    const nfpDisplay = document.getElementById(`nfp-display-${matId}`);
+                    if (nfpDisplay && data.nota_final_periodo !== undefined) {
+                        nfpDisplay.innerText = Number(data.nota_final_periodo).toFixed(1);
+                        nfpDisplay.className = `font-black text-base ${data.nota_final_periodo < 6 ? 'text-red-600' : 'text-fmm-green'}`;
+                    }
+                }
+                showToast("Sincronizado");
+            } catch (err) { 
+                console.error(err);
+                alert(err.message); 
+            } finally { 
+                const syncStatus = document.getElementById('sync-status'); 
+                if(syncStatus) syncStatus.classList.add('hidden'); 
+            }
+        }
+
+        function showToast(msg) { const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = msg; t.classList.replace('opacity-0', 'opacity-100'); t.classList.replace('translate-y-20', 'translate-y-0'); setTimeout(() => { t.classList.replace('opacity-100', 'opacity-0'); t.classList.replace('translate-y-0', 'translate-y-20'); }, 2500); }
+        function openPhotoModal(url, name) { const modal = document.getElementById('photoModal'); document.getElementById('enlargedPhoto').src = url; document.getElementById('enlargedName').innerText = name; modal.classList.remove('hidden'); }
+        function closePhotoModal() { document.getElementById('photoModal').classList.add('hidden'); }
+        async function logout() { if(confirm("Deseja sair?")) { await window.supabaseClient.auth.signOut(); window.location.href = "../index.html"; } }
+        
         window.onload = init;
     </script>
 </body>
