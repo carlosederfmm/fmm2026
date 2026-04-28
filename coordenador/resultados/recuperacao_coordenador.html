@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Recuperação | SME FMM</title>
+    
+    <!-- Scripts Base -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../assets/js/supabase_client.js"></script>
+    <script src="../../sidebar.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: { dark: '#003c5b', blue: '#00638f', green: '#80a51b', lime: '#c8d400', bg: '#f8fafc' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        .turma-card { background: white; border-radius: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); transition: all 0.2s ease; }
+        
+        .status-badge { font-size: 8px; font-weight: 800; padding: 2px 8px; border-radius: 99px; text-transform: uppercase; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 3px; }
+        .status-complete { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+        .status-pending { background: #fffbeb; color: #b45309; border: 1px solid #fef3c7; }
+
+        .header-select { background-color: #f8fafc; border: 1px solid #e2e8f0; font-size: 11px; font-weight: 700; padding: 8px 12px; border-radius: 12px; outline: none; color: #475569; }
+
+        /* Modal Overlay */
+        .modal-overlay { background: rgba(0, 60, 91, 0.7); backdrop-filter: blur(4px); }
+        .modal-content { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* =========================================================================
+           ESTILOS DE IMPRESSÃO (PADRÃO LISTAS COORDENADOR)
+           ========================================================================= */
+        :root {
+            --borda: #000000;
+            --amarelo: #c8d400;
+            --texto: #000000;
+        }
+
+        #printArea { display: none; }
+
+        @media print {
+            @page { size: A4 portrait; margin: 8mm; }
+            
+            body, html { padding: 0 !important; margin: 0 !important; background: #fff !important; overflow: visible !important; }
+            body > *:not(main) { display: none !important; }
+            main > *:not(#printArea) { display: none !important; }
+            main { margin: 0 !important; padding: 0 !important; width: 100% !important; overflow: visible !important; }
+            
+            #printArea { display: block !important; width: 100%; color: #000; font-family: Arial, Helvetica, sans-serif; }
+
+            .sheet { width: 100% !important; background: #fff; page-break-after: always; }
+            .sheet:last-child { page-break-after: auto; }
+
+            table.layout { width: 100%; border-collapse: collapse; border: 2px solid var(--borda); table-layout: fixed; }
+            
+            .s0 { border: 1px solid var(--borda); border-bottom: 2px solid var(--borda); background-color: #ffffff; text-align: center; vertical-align: middle; }
+            .s1 { border: 1px solid var(--borda); border-bottom: 2px solid var(--borda); background-color: #ffffff; text-align: center; font-weight: bold; font-size: 11pt; vertical-align: middle; text-transform: uppercase; padding: 2px; }
+            .s2 { border: 1px solid var(--borda); border-bottom: 2px solid var(--borda); background-color: var(--amarelo); text-align: center; font-weight: bold; font-size: 7.5pt; vertical-align: middle; text-transform: uppercase; padding: 4px 2px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            
+            .s3 { border: 1px solid var(--borda); background-color: #ffffff; text-align: center; font-size: 7.5pt; vertical-align: middle; font-weight: bold; padding: 1px 2px; height: 18px; }
+            .s4 { border: 1px solid var(--borda); background-color: #ffffff; text-align: left; font-size: 7.5pt; vertical-align: middle; text-transform: uppercase; padding: 1px 4px; height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .s-empty { border: 1px solid var(--borda); background-color: #ffffff; vertical-align: middle; height: 18px; }
+
+            .logo-cell img { width: 90%; max-height: 55px; object-fit: contain; display: block; margin: 0 auto; padding: 2px; }
+            
+            .r1, .r2, .r3, .r4 { height: 17px; }
+            .r5 { height: 22px; }
+            .data-row { height: 18px; }
+            
+            .repro-table th { background-color: #f1f5f9 !important; border: 1px solid #000; font-size: 9pt; padding: 8px; text-transform: uppercase; }
+            .repro-table td { border: 1px solid #000; font-size: 9pt; padding: 8px; text-align: center; font-weight: bold; }
+            .repro-table td.disc-name { text-align: left; font-weight: 900; background: #f8fafc; }
+        }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden text-left">
+
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20 print:hidden"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden relative text-left print:block print:h-auto print:overflow-visible print:bg-white">
+        
+        <header class="bg-white h-20 border-b border-slate-200 flex items-center justify-between px-8 z-30 shadow-sm shrink-0 text-left print:hidden">
+            <div class="flex items-center gap-4">
+                <div class="text-left">
+                    <h1 class="text-base font-black text-fmm-dark uppercase tracking-tight leading-none">Gestão de Recuperação</h1>
+                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Auditoria de Notas e Fechamento</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div class="flex flex-col text-left">
+                    <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1">Matriz de Ensino</label>
+                    <select id="selectMatriz" onchange="handleMatrizChange()" class="header-select w-44">
+                        <option value="fundamental">Fundamental (Bimestral)</option>
+                        <option value="basica" selected>Médio - Básica (Trimestral)</option>
+                        <option value="tecnica">Médio - Técnica (Semestral)</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col text-left">
+                    <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1">Período Avaliativo</label>
+                    <select id="selectPeriodo" class="header-select w-36"></select>
+                </div>
+
+                <div class="flex items-end h-full pb-0.5 gap-2 text-left">
+                    <button id="btnAnalisar" onclick="runAnalysis()" class="bg-fmm-blue hover:bg-fmm-dark text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-md active:scale-95 flex items-center gap-2">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Analisar
+                    </button>
+                    <button id="btnReprografia" onclick="printReprographyReport()" disabled class="bg-white border-2 border-fmm-blue text-fmm-blue hover:bg-fmm-blue hover:text-white px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-sm active:scale-95 flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed">
+                        <i data-lucide="copy" class="w-3.5 h-3.5"></i> Reprografia
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto custom-scrollbar p-6 print:hidden">
+            <div id="turmasGrid" class="grid grid-cols-1 xl:grid-cols-2 gap-6 hidden text-left"></div>
+
+            <div id="emptyState" class="h-full flex flex-col items-center justify-center text-slate-300">
+                <i data-lucide="monitor-dot" class="w-12 h-12 mb-4 opacity-20"></i>
+                <p class="text-[10px] font-black uppercase tracking-widest opacity-40 text-center">Selecione a matriz e o período para visualizar os cards das turmas</p>
+            </div>
+
+            <div id="loadingOverlay" class="hidden h-64 flex flex-col items-center justify-center text-slate-300">
+                <div class="w-10 h-10 border-4 border-fmm-blue/20 border-t-fmm-blue rounded-full animate-spin mb-4"></div>
+                <p class="text-[10px] font-black uppercase tracking-widest">Processando diários e matrículas...</p>
+                <p id="loadingCounter" class="text-[9px] font-bold text-slate-400 mt-2 uppercase tracking-tight"></p>
+            </div>
+        </div>
+
+        <div id="printArea" class="hidden print:block w-full bg-white"></div>
+    </main>
+
+    <!-- MODAL DE DETALHAMENTO DE NOTAS DA DISCIPLINA -->
+    <div id="modalDetalhe" class="hidden fixed inset-0 z-[100] modal-overlay flex items-center justify-center p-4 print:hidden text-left">
+        <div class="bg-white w-full max-w-4xl max-h-[85vh] rounded-[32px] shadow-2xl overflow-hidden flex flex-col modal-content text-left">
+            <div class="p-6 border-b border-slate-100 flex items-center justify-between bg-white shrink-0 text-left">
+                <div class="flex items-center gap-4 text-left">
+                    <div class="w-12 h-12 bg-fmm-blue/5 text-fmm-blue rounded-2xl flex items-center justify-center text-left">
+                        <i data-lucide="clipboard-list" class="w-6 h-6"></i>
+                    </div>
+                    <div class="text-left">
+                        <h2 id="modalDiscNome" class="text-lg font-black text-fmm-dark uppercase tracking-tight leading-none text-left">Disciplina</h2>
+                        <p id="modalTurmaNome" class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 text-left">Turma • Período</p>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors text-right"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto custom-scrollbar px-6 bg-slate-50/30 text-left">
+                <table class="w-full text-left border-collapse">
+                    <thead class="sticky top-0 z-20">
+                        <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            <th class="p-4 bg-white border-b border-slate-100">Aluno</th>
+                            <th class="p-4 text-center bg-white border-b border-slate-100">P1</th>
+                            <th class="p-4 text-center bg-white border-b border-slate-100">P2</th>
+                            <th class="p-4 text-center bg-white border-b border-slate-100">Média</th>
+                            <th class="p-4 text-right bg-white border-b border-slate-100">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modalTableBody" class="divide-y divide-slate-50 bg-white"></tbody>
+                </table>
+            </div>
+
+            <div class="p-6 border-t border-slate-100 bg-white flex justify-between items-center shrink-0">
+                <div class="flex gap-4">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Abaixo da Média</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Nota Faltante</span>
+                    </div>
+                </div>
+                <button id="btnModalPrint" onclick="triggerOfficialPrint()" class="bg-fmm-dark hover:bg-fmm-blue text-white px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg active:scale-95 flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed">
+                    <i data-lucide="printer" class="w-4 h-4"></i> Gerar Lista Oficial
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let turmas = [];
+        let disciplinas = [];
+        let currentGrades = [];
+        let currentMatriculas = [];
+        let activeMatriz = '';
+        let activePeriodo = '';
+        let activeDiscData = null;
+
+        const chunkArray = (arr, size) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) => arr.slice(i * size, i * size + size));
+
+        async function init() {
+            if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if (!user) return window.location.href = '../../index.html';
+
+            lucide.createIcons();
+            handleMatrizChange(); 
+            await fetchInitialData();
+        }
+
+        async function fetchInitialData() {
+            try {
+                const { data: turmasData } = await window.supabaseClient.from('turmas').select('*').order('nome');
+                turmas = turmasData || [];
+                const { data: discData } = await window.supabaseClient.from('disciplinas').select('*');
+                disciplinas = discData || [];
+            } catch (err) { console.error(err); }
+        }
+
+        function handleMatrizChange() {
+            const matriz = document.getElementById('selectMatriz').value;
+            const pSelect = document.getElementById('selectPeriodo');
+            pSelect.innerHTML = '';
+            const opts = {
+                fundamental: [{v:'1_BIMESTRE',t:'1º Bimestre'}, {v:'2_BIMESTRE',t:'2º Bimestre'}, {v:'3_BIMESTRE',t:'3º Bimestre'}, {v:'4_BIMESTRE',t:'4º Bimestre'}],
+                basica: [{v:'1_TRIMESTRE',t:'1º Trimestre'}, {v:'2_TRIMESTRE',t:'2º Trimestre'}, {v:'3_TRIMESTRE',t:'3º Trimestre'}],
+                tecnica: [{v:'1_SEMESTRE',t:'1º Semestre'}, {v:'2_SEMESTRE',t:'2º Semestre'}]
+            };
+            opts[matriz].forEach(o => {
+                const el = document.createElement('option'); el.value = o.v; el.innerText = o.t; pSelect.appendChild(el);
+            });
+        }
+
+        async function fetchAllPages(queryBuilder) {
+            let results = [], from = 0, step = 1000, hasMore = true;
+            while (hasMore) {
+                const { data, error } = await queryBuilder.range(from, from + step - 1);
+                if (error) throw error;
+                if (data && data.length > 0) {
+                    results = [...results, ...data];
+                    from += step;
+                    if (data.length < step) hasMore = false;
+                } else hasMore = false;
+            }
+            return results;
+        }
+
+        /**
+         * FUNÇÃO DE VALIDAÇÃO REALISTA (Check de Lançamento)
+         * Evita considerar alunos sem nota como recuperação.
+         */
+        function isGradeLaunched(notaObj) {
+            if (!notaObj) return false;
+            const p1 = notaObj.p1;
+            const p2 = notaObj.p2;
+            // Verifica se P1 e P2 não são nulos, undefined ou string vazia
+            const p1Valid = p1 !== null && p1 !== undefined && p1 !== "";
+            const p2Valid = p2 !== null && p2 !== undefined && p2 !== "";
+            return p1Valid && p2Valid;
+        }
+
+        async function runAnalysis() {
+            activePeriodo = document.getElementById('selectPeriodo').value;
+            activeMatriz = document.getElementById('selectMatriz').value;
+            
+            document.getElementById('turmasGrid').classList.add('hidden');
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            document.getElementById('btnReprografia').disabled = true;
+
+            try {
+                const nivelFilter = activeMatriz === 'fundamental' ? 'EF' : 'EMT';
+                const turmasFiltradas = turmas.filter(t => t.nivel && t.nivel.toUpperCase().includes(nivelFilter));
+                const turmaIds = turmasFiltradas.map(t => t.id);
+
+                let allMat = [];
+                const tChunks = chunkArray(turmaIds, 40);
+                for (const c of tChunks) {
+                    const query = window.supabaseClient.from('matriculas').select('id, ra_aluno, id_turma, alunos!inner(nome_completo, status)').in('id_turma', c).eq('ano_letivo', 2026).eq('alunos.status', 'Cursando');
+                    const mats = await fetchAllPages(query);
+                    allMat = [...allMat, ...mats];
+                }
+                currentMatriculas = allMat;
+
+                let allNts = [];
+                const tableName = activeMatriz === 'fundamental' ? 'notas_fundamental' : (activeMatriz === 'tecnica' ? 'notas_tecnica' : 'notas_basica');
+                const mIds = allMat.map(m => m.id);
+                const mChunks = chunkArray(mIds, 100);
+                for (const c of mChunks) {
+                    const query = window.supabaseClient.from(tableName).select('*').in('id_matricula', c).eq('periodo', activePeriodo);
+                    const nts = await fetchAllPages(query);
+                    allNts = [...allNts, ...nts];
+                }
+                currentGrades = allNts;
+
+                renderGrid(turmasFiltradas);
+                document.getElementById('btnReprografia').disabled = false;
+            } catch (err) {
+                console.error(err);
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                document.getElementById('emptyState').classList.remove('hidden');
+            }
+        }
+
+        function renderGrid(turmasList) {
+            const grid = document.getElementById('turmasGrid');
+            grid.innerHTML = '';
+            
+            const gradeMap = {};
+            currentGrades.forEach(g => {
+                if(!gradeMap[g.id_matricula]) gradeMap[g.id_matricula] = {};
+                gradeMap[g.id_matricula][g.sigla_disciplina.trim().toUpperCase()] = g;
+            });
+
+            turmasList.sort((a,b) => a.nome.localeCompare(b.nome)).forEach(t => {
+                const tMatriculas = currentMatriculas.filter(m => m.id_turma === t.id);
+                if (tMatriculas.length === 0) return;
+
+                const tDiscs = disciplinas.filter(d => {
+                    const matchSerie = d.series && d.series.some(s => s.trim().toUpperCase() === t.serie.trim().toUpperCase());
+                    let matchM = activeMatriz === 'fundamental' ? d.tipo !== 'Técnica' : (activeMatriz === 'tecnica' ? d.tipo === 'Técnica' : d.tipo === 'BCC');
+                    return matchSerie && matchM;
+                }).sort((a,b) => a.nome.localeCompare(b.nome));
+
+                const card = document.createElement('div');
+                card.className = "turma-card flex flex-col overflow-hidden text-left";
+                
+                let rowsHtml = '';
+                tDiscs.forEach(d => {
+                    let count = 0, rec = 0;
+                    tMatriculas.forEach(m => {
+                        const n = gradeMap[m.id]?.[d.sigla.trim().toUpperCase()];
+                        // TASK: Contagem Realista - Só incrementa se a nota estiver lançada (P1 e P2)
+                        if (isGradeLaunched(n)) {
+                            count++;
+                            const p1 = parseFloat(n.p1) || 0;
+                            const p2 = parseFloat(n.p2) || 0;
+                            if (((p1 + p2)/2) < 6.0) rec++;
+                        }
+                    });
+
+                    const complete = count === tMatriculas.length && tMatriculas.length > 0;
+                    
+                    rowsHtml += `
+                        <div onclick="openAuditModal('${t.id}', '${d.sigla}')" class="flex items-center justify-between py-3 px-5 border-b border-slate-50 last:border-0 hover:bg-slate-50 cursor-pointer transition-colors text-left">
+                            <div class="flex flex-col text-left">
+                                <h4 class="text-[11px] font-black text-fmm-dark uppercase truncate max-w-[220px] text-left">${d.nome}</h4>
+                                <div class="mt-1 text-left">
+                                    <span class="status-badge ${complete ? 'status-complete' : 'status-pending'} text-left">
+                                        <i data-lucide="${complete ? 'check' : 'clock'}" class="w-2.5 h-2.5"></i> ${complete ? 'Completo' : `${count}/${tMatriculas.length}`}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="px-2 py-0.5 ${count > 0 && rec > 0 ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-300'} rounded-md text-[9px] font-black uppercase text-right">
+                                    ${rec} Alunos
+                                </span>
+                            </div>
+                        </div>`;
+                });
+
+                card.innerHTML = `
+                    <div class="p-4 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between text-left">
+                        <div class="text-left"><h3 class="text-sm font-black text-fmm-dark uppercase text-left">${t.nome}</h3><p class="text-[9px] font-bold text-slate-400 uppercase mt-0.5 text-left">${t.serie}</p></div>
+                        <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-slate-300 border border-slate-200"><i data-lucide="users" class="w-4 h-4"></i></div>
+                    </div>
+                    <div class="bg-white divide-y divide-slate-50 text-left">${rowsHtml}</div>`;
+                grid.appendChild(card);
+            });
+
+            document.getElementById('loadingOverlay').classList.add('hidden');
+            grid.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function openAuditModal(turmaId, discSigla) {
+            const t = turmas.find(x => x.id === turmaId);
+            const d = disciplinas.find(x => x.sigla === discSigla);
+            const tMatriculas = currentMatriculas.filter(m => m.id_turma === turmaId).sort((a,b) => a.alunos.nome_completo.localeCompare(b.alunos.nome_completo));
+            
+            activeDiscData = { turma: t, disc: d, matriculas: tMatriculas };
+
+            document.getElementById('modalDiscNome').innerText = d.nome;
+            document.getElementById('modalTurmaNome').innerText = `${t.nome} • ${document.getElementById('selectPeriodo').options[document.getElementById('selectPeriodo').selectedIndex].text}`;
+            
+            const body = document.getElementById('modalTableBody');
+            body.innerHTML = '';
+
+            let allLaunched = true;
+
+            tMatriculas.forEach(m => {
+                const n = currentGrades.find(g => g.id_matricula === m.id && g.sigla_disciplina.trim().toUpperCase() === discSigla.trim().toUpperCase());
+                
+                const launched = isGradeLaunched(n);
+                const p1 = launched ? parseFloat(n.p1) : null;
+                const p2 = launched ? parseFloat(n.p2) : null;
+                const media = launched ? (p1 + p2) / 2 : null;
+                
+                const isFailing = media !== null && media < 6.0;
+                const isMissing = !launched;
+
+                if (isMissing) allLaunched = false;
+
+                body.innerHTML += `
+                    <tr class="hover:bg-slate-50/80 transition-colors text-left">
+                        <td class="p-4 text-left">
+                            <div class="flex flex-col text-left">
+                                <span class="text-[11px] font-black text-fmm-dark uppercase text-left">${m.alunos.nome_completo}</span>
+                                <span class="text-[9px] text-slate-400 font-bold uppercase tracking-widest text-left">RA: ${m.ra_aluno}</span>
+                            </div>
+                        </td>
+                        <td class="p-4 text-center font-mono text-xs ${n && (n.p1===null||n.p1==="") ? 'bg-amber-50 text-amber-600 font-black' : ''}">${n && n.p1!==null ? parseFloat(n.p1).toFixed(1) : 'FALTA'}</td>
+                        <td class="p-4 text-center font-mono text-xs ${n && (n.p2===null||n.p2==="") ? 'bg-amber-50 text-amber-600 font-black' : ''}">${n && n.p2!==null ? parseFloat(n.p2).toFixed(1) : 'FALTA'}</td>
+                        <td class="p-4 text-center font-black text-xs ${isFailing ? 'text-rose-500' : 'text-slate-400'}">${media !== null ? media.toFixed(1) : '-'}</td>
+                        <td class="p-4 text-right">
+                            ${isFailing ? '<span class="status-badge bg-rose-500 text-white border-none text-right">Recuperação</span>' : ''}
+                            ${isMissing ? '<span class="status-badge bg-amber-400 text-white border-none text-right">Pendente</span>' : ''}
+                            ${!isFailing && !isMissing ? '<span class="status-badge status-complete text-right">Aprovado Parcial</span>' : ''}
+                        </td>
+                    </tr>`;
+            });
+
+            document.getElementById('btnModalPrint').disabled = !allLaunched;
+            document.getElementById('modalDetalhe').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeModal() { document.getElementById('modalDetalhe').classList.add('hidden'); }
+
+        function triggerOfficialPrint() {
+            if (!activeDiscData) return;
+            const { turma, disc, matriculas } = activeDiscData;
+            const periodTxt = document.getElementById('selectPeriodo').options[document.getElementById('selectPeriodo').selectedIndex].text;
+            
+            const deferidos = matriculas.filter(m => {
+                const n = currentGrades.find(g => g.id_matricula === m.id && g.sigla_disciplina.trim().toUpperCase() === disc.sigla.trim().toUpperCase());
+                if (isGradeLaunched(n)) {
+                    return ((parseFloat(n.p1) + parseFloat(n.p2))/2) < 6.0;
+                }
+                return false;
+            }).sort((a, b) => a.alunos.nome_completo.localeCompare(b.alunos.nome_completo));
+
+            if (deferidos.length === 0) return alert("Não há alunos em recuperação nesta disciplina para gerar lista.");
+
+            const area = document.getElementById('printArea');
+            area.innerHTML = '';
+            const tituloDoc = `PROVA DE RECUPERAÇÃO | ${periodTxt.toUpperCase()}`;
+            const sheet = document.createElement('div');
+            sheet.className = 'sheet';
+
+            let tableHtml = `
+                <table class="layout">
+                    <colgroup><col style="width: 4%;"/><col style="width: 8%;"/><col style="width: 32%;"/><col style="width: 6%;"/><col style="width: 25%;"/><col style="width: 25%;"/></colgroup>
+                    <thead>
+                        <tr class="r1">
+                            <td class="logo-cell s0" rowspan="4" colspan="3"><img src="../../assets/logo-fmm-color.png" onerror="this.src='https://ui-avatars.com/api/?name=FMM&background=003c5b&color=fff&size=128'"/></td>
+                            <td class="s1" rowspan="2" colspan="3">${tituloDoc}</td>
+                        </tr>
+                        <tr class="r2"></tr>
+                        <tr class="r3"><td class="s1" rowspan="2" colspan="2">${disc.nome.toUpperCase()}</td><td class="s1" rowspan="2">${turma.nome}</td></tr>
+                        <tr class="r4"></tr>
+                        <tr class="header-row r5"><th class="s2">Nº</th><th class="s2">RA</th><th class="s2">ESTUDANTE (EM RECUPERAÇÃO)</th><th class="s2">TURMA</th><th class="s2">ASSINATURA INICIAL</th><th class="s2">ASSINATURA FINAL</th></tr>
+                    </thead>
+                    <tbody>`;
+
+            const totalLinhas = Math.max(50, deferidos.length);
+            for (let i = 0; i < totalLinhas; i++) {
+                const alu = deferidos[i];
+                tableHtml += `<tr class="data-row"><td class="s3">${alu ? (i + 1) : ''}</td><td class="s3">${alu ? alu.ra_aluno : ''}</td><td class="s4">${alu ? alu.alunos.nome_completo.toUpperCase() : ''}</td><td class="s3">${alu ? turma.nome : ''}</td><td class="s-empty"></td><td class="s-empty"></td></tr>`;
+            }
+            tableHtml += `</tbody></table>`;
+            sheet.innerHTML = tableHtml;
+            area.appendChild(sheet);
+            setTimeout(() => window.print(), 300);
+        }
+
+        /**
+         * RELATÓRIO DE REPROGRAFIA REALISTA
+         * Filtra quem realmente reprovou com notas lançadas.
+         */
+        function printReprographyReport() {
+            if (currentGrades.length === 0) return alert("Analise uma matriz primeiro!");
+
+            const area = document.getElementById('printArea');
+            area.innerHTML = '';
+            const periodTxt = document.getElementById('selectPeriodo').options[document.getElementById('selectPeriodo').selectedIndex].text;
+            const matrizTxt = document.getElementById('selectMatriz').options[document.getElementById('selectMatriz').selectedIndex].text;
+            let seriesCol = activeMatriz === 'fundamental' ? ['5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano'] : ['1ª Série', '2ª Série', '3ª Série'];
+            
+            const counts = {};
+            const allDiscs = disciplinas.filter(d => {
+                if (activeMatriz === 'fundamental') return d.tipo !== 'Técnica';
+                if (activeMatriz === 'tecnica') return d.tipo === 'Técnica';
+                return d.tipo === 'BCC';
+            }).sort((a,b) => a.nome.localeCompare(b.nome));
+
+            allDiscs.forEach(d => { counts[d.nome] = {}; seriesCol.forEach(s => counts[d.nome][s] = 0); });
+
+            const gradeMap = {};
+            currentGrades.forEach(g => {
+                if(!gradeMap[g.id_matricula]) gradeMap[g.id_matricula] = {};
+                gradeMap[g.id_matricula][g.sigla_disciplina.trim().toUpperCase()] = g;
+            });
+
+            currentMatriculas.forEach(mat => {
+                const t = turmas.find(x => x.id === mat.id_turma);
+                if (!t) return;
+                
+                // TASK: Considera apenas as disciplinas que o aluno realmente cursa (filtro por série)
+                const studentDiscs = allDiscs.filter(d => d.series && d.series.some(s => s.trim().toUpperCase() === t.serie.trim().toUpperCase()));
+
+                studentDiscs.forEach(d => {
+                    const n = gradeMap[mat.id]?.[d.sigla.trim().toUpperCase()];
+                    
+                    // REGRA REALISTA: Só conta se P1 e P2 estiverem efetivamente preenchidos
+                    if (isGradeLaunched(n)) {
+                        const media = (parseFloat(n.p1) + parseFloat(n.p2)) / 2;
+                        if (media < 6.0) {
+                            if (counts[d.nome] && counts[d.nome][t.serie] !== undefined) {
+                                counts[d.nome][t.serie]++;
+                            }
+                        }
+                    }
+                });
+            });
+
+            const sheet = document.createElement('div');
+            sheet.className = 'sheet';
+            let tableHtml = `<div style="padding: 10px;"><div class="print-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;"><img src="../../assets/logo-fmm-color.png" style="height: 50px;"/><div style="text-align: right;"><h1 style="font-size: 16pt; margin: 0; font-weight: 900; text-transform: uppercase;">Relatório de Reprografia</h1><p style="font-size: 10pt; margin: 0; font-weight: 700; color: #444;">RECUPERAÇÃO • ${matrizTxt.toUpperCase()} • ${periodTxt.toUpperCase()}</p></div></div><table class="layout repro-table" style="width: 100%; border-collapse: collapse; border: 2px solid #000;"><thead><tr><th style="width: 40%; text-align: left;">Componente Curricular</th>${seriesCol.map(s => `<th style="text-align: center;">${s}</th>`).join('')}<th style="text-align: center; background: #e2e8f0 !important;">Total</th></tr></thead><tbody>`;
+
+            let grandTotal = 0;
+            allDiscs.forEach(d => {
+                let rowTotal = 0;
+                seriesCol.forEach(s => rowTotal += counts[d.nome][s]);
+                if (rowTotal > 0) {
+                    grandTotal += rowTotal;
+                    tableHtml += `<tr><td class="disc-name">${d.nome}</td>${seriesCol.map(s => `<td>${counts[d.nome][s] > 0 ? counts[d.nome][s] : '-'}</td>`).join('')}<td style="background: #f8fafc;">${rowTotal}</td></tr>`;
+                }
+            });
+
+            tableHtml += `</tbody><tfoot><tr style="background: #f1f5f9;"><td colspan="${seriesCol.length + 1}" style="text-align: right; padding: 10px; font-weight: 900; border: 2px solid #000;">TOTAL GERAL DE IMPRESSÕES:</td><td style="text-align: center; font-size: 12pt; font-weight: 900; border: 2px solid #000; color: #003c5b;">${grandTotal}</td></tr></tfoot></table><div style="margin-top: 40px; border: 1px dashed #ccc; padding: 15px; font-size: 9pt; color: #666;"><p><strong>Nota:</strong> Este quantitativo é <strong>REALISTA</strong>. Considera apenas alunos com status 'Cursando' que tiveram suas notas P1 e P2 lançadas no sistema e obtiveram média inferior a 6.0. Alunos pendentes de lançamento não foram incluídos. Gerado em: ${new Date().toLocaleString('pt-BR')}</p></div></div>`;
+            sheet.innerHTML = tableHtml;
+            area.appendChild(sheet);
+            setTimeout(() => window.print(), 300);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

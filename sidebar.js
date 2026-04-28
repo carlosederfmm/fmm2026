@@ -150,7 +150,6 @@ const SidebarComponent = {
         provas: [
             { label: 'Gabaritos', icon: 'check-square', link: 'coordenador/provas/gabaritos_coordenador.html', roles: ['coordenador', 'diretor'] },
             { label: 'Requerimentos', icon: 'inbox', link: 'coordenador/provas/requerimentos.html', roles: ['coordenador', 'diretor'] },
-                        { label: 'Recuperação', icon: 'file-warning', link: 'coordenador/provas/recuperacao.html', roles: ['coordenador'] },
             { label: 'Listas de Assinatura', icon: 'printer', link: 'coordenador/provas/listas_coordenador.html', roles: ['coordenador', 'diretor'] }
         ],
         secretaria: [
@@ -169,7 +168,8 @@ const SidebarComponent = {
         ],
         resultados: [
             { label: 'Mapa de Notas', icon: 'grid', link: 'coordenador/resultados/mapa_coordenador.html', roles: ['diretor', 'coordenador', 'orientador'] },
-            { label: 'Boletim Individual', icon: 'user', link: 'coordenador/resultados/boletim_coordenador.html', roles: ['diretor', 'coordenador'] }
+            { label: 'Boletim Individual', icon: 'user', link: 'coordenador/resultados/boletim_coordenador.html', roles: ['diretor', 'coordenador'] }, 
+            { label: 'Recuperação', icon: 'file-warning', link: 'coordenador/resultados/recuperacao_coordenador.html', roles: ['coordenador'] }
         ],
         sistema: [
             { label: 'Grade Horária', icon: 'calendar-range', link: 'coordenador/sistema/grade_coordenador.html', roles: ['diretor', 'coordenador'] },
