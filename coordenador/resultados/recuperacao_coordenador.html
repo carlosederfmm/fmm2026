@@ -208,6 +208,39 @@
 
         const chunkArray = (arr, size) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) => arr.slice(i * size, i * size + size));
 
+        /**
+         * MOTOR DE CÁLCULO E ARREDONDAMENTO FMM (SISTEMA DE PRECISÃO)
+         * Resolve o erro de ponto flutuante do JavaScript estabilizando os centésimos.
+         * Regra Institucional: Centésimos >= 5 arredondam para cima na primeira casa decimal.
+         * Ex: 5,95 (ou 5,94999...) vira 6,0.
+         */
+        function calculateFMMMedia(p1, p2) {
+            if (p1 === null || p2 === null || p1 === "" || p2 === "") return null;
+            
+            const n1 = parseFloat(p1);
+            const n2 = parseFloat(p2);
+            
+            // 1. Cálculo da média aritmética bruta
+            const rawMedia = (n1 + n2) / 2;
+            
+            // 2. TÉCNICA DE ESTABILIZAÇÃO DE CENTÉSIMOS
+            // Forçamos a média a ter apenas 2 casas decimais via string (toFixed(2)) 
+            // antes de realizar o arredondamento matemático. Isso mata o erro do 5,949999999.
+            const stabilizedMedia = parseFloat(rawMedia.toFixed(2));
+            
+            // 3. Arredondamento institucional (0.5 pra cima)
+            const result = Math.round(stabilizedMedia * 10) / 10;
+            
+            return result;
+        }
+
+        function isGradeLaunched(notaObj) {
+            if (!notaObj) return false;
+            const p1Valid = notaObj.p1 !== null && notaObj.p1 !== undefined && notaObj.p1 !== "";
+            const p2Valid = notaObj.p2 !== null && notaObj.p2 !== undefined && notaObj.p2 !== "";
+            return p1Valid && p2Valid;
+        }
+
         async function init() {
             if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
             const { data: { user } } = await window.supabaseClient.auth.getUser();
@@ -253,20 +286,6 @@
                 } else hasMore = false;
             }
             return results;
-        }
-
-        /**
-         * FUNÇÃO DE VALIDAÇÃO REALISTA (Check de Lançamento)
-         * Evita considerar alunos sem nota como recuperação.
-         */
-        function isGradeLaunched(notaObj) {
-            if (!notaObj) return false;
-            const p1 = notaObj.p1;
-            const p2 = notaObj.p2;
-            // Verifica se P1 e P2 não são nulos, undefined ou string vazia
-            const p1Valid = p1 !== null && p1 !== undefined && p1 !== "";
-            const p2Valid = p2 !== null && p2 !== undefined && p2 !== "";
-            return p1Valid && p2Valid;
         }
 
         async function runAnalysis() {
@@ -340,12 +359,10 @@
                     let count = 0, rec = 0;
                     tMatriculas.forEach(m => {
                         const n = gradeMap[m.id]?.[d.sigla.trim().toUpperCase()];
-                        // TASK: Contagem Realista - Só incrementa se a nota estiver lançada (P1 e P2)
                         if (isGradeLaunched(n)) {
                             count++;
-                            const p1 = parseFloat(n.p1) || 0;
-                            const p2 = parseFloat(n.p2) || 0;
-                            if (((p1 + p2)/2) < 6.0) rec++;
+                            const mediaArredondada = calculateFMMMedia(n.p1, n.p2);
+                            if (mediaArredondada !== null && mediaArredondada < 6.0) rec++;
                         }
                     });
 
@@ -402,9 +419,7 @@
                 const n = currentGrades.find(g => g.id_matricula === m.id && g.sigla_disciplina.trim().toUpperCase() === discSigla.trim().toUpperCase());
                 
                 const launched = isGradeLaunched(n);
-                const p1 = launched ? parseFloat(n.p1) : null;
-                const p2 = launched ? parseFloat(n.p2) : null;
-                const media = launched ? (p1 + p2) / 2 : null;
+                const media = calculateFMMMedia(n?.p1, n?.p2);
                 
                 const isFailing = media !== null && media < 6.0;
                 const isMissing = !launched;
@@ -444,10 +459,8 @@
             
             const deferidos = matriculas.filter(m => {
                 const n = currentGrades.find(g => g.id_matricula === m.id && g.sigla_disciplina.trim().toUpperCase() === disc.sigla.trim().toUpperCase());
-                if (isGradeLaunched(n)) {
-                    return ((parseFloat(n.p1) + parseFloat(n.p2))/2) < 6.0;
-                }
-                return false;
+                const mediaArredondada = calculateFMMMedia(n?.p1, n?.p2);
+                return mediaArredondada !== null && mediaArredondada < 6.0;
             }).sort((a, b) => a.alunos.nome_completo.localeCompare(b.alunos.nome_completo));
 
             if (deferidos.length === 0) return alert("Não há alunos em recuperação nesta disciplina para gerar lista.");
@@ -476,7 +489,17 @@
             const totalLinhas = Math.max(50, deferidos.length);
             for (let i = 0; i < totalLinhas; i++) {
                 const alu = deferidos[i];
-                tableHtml += `<tr class="data-row"><td class="s3">${alu ? (i + 1) : ''}</td><td class="s3">${alu ? alu.ra_aluno : ''}</td><td class="s4">${alu ? alu.alunos.nome_completo.toUpperCase() : ''}</td><td class="s3">${alu ? turma.nome : ''}</td><td class="s-empty"></td><td class="s-empty"></td></tr>`;
+                const n = currentGrades.find(g => g.id_matricula === alu?.id && g.sigla_disciplina.trim().toUpperCase() === disc.sigla.trim().toUpperCase());
+                const mediaArredondada = calculateFMMMedia(n?.p1, n?.p2);
+                
+                tableHtml += `<tr class="data-row">
+                    <td class="s3">${alu ? (i + 1) : ''}</td>
+                    <td class="s3">${alu ? alu.ra_aluno : ''}</td>
+                    <td class="s4">${alu ? alu.alunos.nome_completo.toUpperCase() : ''}</td>
+                    <td class="s3">${alu ? turma.nome : ''}</td>
+                    <td class="s-empty"></td>
+                    <td class="s-empty"></td>
+                </tr>`;
             }
             tableHtml += `</tbody></table>`;
             sheet.innerHTML = tableHtml;
@@ -484,10 +507,6 @@
             setTimeout(() => window.print(), 300);
         }
 
-        /**
-         * RELATÓRIO DE REPROGRAFIA REALISTA
-         * Filtra quem realmente reprovou com notas lançadas.
-         */
         function printReprographyReport() {
             if (currentGrades.length === 0) return alert("Analise uma matriz primeiro!");
 
@@ -516,16 +535,13 @@
                 const t = turmas.find(x => x.id === mat.id_turma);
                 if (!t) return;
                 
-                // TASK: Considera apenas as disciplinas que o aluno realmente cursa (filtro por série)
                 const studentDiscs = allDiscs.filter(d => d.series && d.series.some(s => s.trim().toUpperCase() === t.serie.trim().toUpperCase()));
 
                 studentDiscs.forEach(d => {
                     const n = gradeMap[mat.id]?.[d.sigla.trim().toUpperCase()];
-                    
-                    // REGRA REALISTA: Só conta se P1 e P2 estiverem efetivamente preenchidos
                     if (isGradeLaunched(n)) {
-                        const media = (parseFloat(n.p1) + parseFloat(n.p2)) / 2;
-                        if (media < 6.0) {
+                        const mediaArredondada = calculateFMMMedia(n.p1, n.p2);
+                        if (mediaArredondada !== null && mediaArredondada < 6.0) {
                             if (counts[d.nome] && counts[d.nome][t.serie] !== undefined) {
                                 counts[d.nome][t.serie]++;
                             }
@@ -548,7 +564,7 @@
                 }
             });
 
-            tableHtml += `</tbody><tfoot><tr style="background: #f1f5f9;"><td colspan="${seriesCol.length + 1}" style="text-align: right; padding: 10px; font-weight: 900; border: 2px solid #000;">TOTAL GERAL DE IMPRESSÕES:</td><td style="text-align: center; font-size: 12pt; font-weight: 900; border: 2px solid #000; color: #003c5b;">${grandTotal}</td></tr></tfoot></table><div style="margin-top: 40px; border: 1px dashed #ccc; padding: 15px; font-size: 9pt; color: #666;"><p><strong>Nota:</strong> Este quantitativo é <strong>REALISTA</strong>. Considera apenas alunos com status 'Cursando' que tiveram suas notas P1 e P2 lançadas no sistema e obtiveram média inferior a 6.0. Alunos pendentes de lançamento não foram incluídos. Gerado em: ${new Date().toLocaleString('pt-BR')}</p></div></div>`;
+            tableHtml += `</tbody><tfoot><tr style="background: #f1f5f9;"><td colspan="${seriesCol.length + 1}" style="text-align: right; padding: 10px; font-weight: 900; border: 2px solid #000;">TOTAL GERAL DE IMPRESSÕES:</td><td style="text-align: center; font-size: 12pt; font-weight: 900; border: 2px solid #000; color: #003c5b;">${grandTotal}</td></tr></tfoot></table><div style="margin-top: 40px; border: 1px dashed #ccc; padding: 15px; font-size: 9pt; color: #666;"><p><strong>Nota:</strong> Este quantitativo utiliza a regra de arredondamento institucional da FMM (0,05 para cima). Alunos com média aritmética parcial calculada de 5,95 a 5,99 são arredondados para 6,0 e não constam nesta lista de recuperação. Gerado em: ${new Date().toLocaleString('pt-BR')}</p></div></div>`;
             sheet.innerHTML = tableHtml;
             area.appendChild(sheet);
             setTimeout(() => window.print(), 300);
