@@ -418,7 +418,7 @@
         const num = parseFloat(val);
         const formatted = val !== undefined && val !== null && val !== 0 ? Number(val).toFixed(1) : '';
         let style = 'border: 1px solid #000; padding: 4px 2px; text-align: center; vertical-align: middle;';
-        if (!isNaN(num) && num > 0 && num < 6.0) style += ' background-color: #f4cccc !important; color: #ff0000;';
+        if (!isNaN(num) && num > 0 && num < 6.0) style += ' background-color: #f4cccc !important; color: #ff0000; -webkit-print-color-adjust: exact;';
         else if (isBgLight) style += ' background-color: #f9f9f9;';
         if (isBold) style += ' font-weight: bold;';
         return `<td style="${style}">${formatted}</td>`;
@@ -428,11 +428,9 @@
         let text = (val || '').toString().toUpperCase();
         if (text === 'APROVADO') text = 'AP';
         if (text === 'REPROVADO') text = 'CR';
-
         let style = 'border: 1px solid #000; padding: 4px 2px; text-align: center; vertical-align: middle; font-size: 8px; font-weight: bold;';
-        if (text.includes('CR')) style += ' background-color: #f4cccc; color: #ff0000;';
-        else if (text.includes('AP')) style += ' background-color: #b6d7a8; color: #38761d;';
-
+        if (text.includes('CR')) style += ' background-color: #f4cccc !important; color: #ff0000;';
+        else if (text.includes('AP')) style += ' background-color: #b6d7a8 !important; color: #38761d;';
         return `<td style="${style}">${text}</td>`;
     };
 
@@ -443,9 +441,8 @@
         const ma = d.anual.media;
         const situacao = d.anual.status_final || (ma >= 6.0 ? 'AP' : 'CR');
 
-        let html = `
-        <tr>
-            <td class="text-start fw-bold disciplina" title="${d.nome}">
+        let html = `<tr>
+            <td class="text-start fw-bold" style="border:1px solid #000; padding-left:5px; white-space:nowrap;">
                 ${d.nome.toUpperCase()}
             </td>`;
 
@@ -454,137 +451,110 @@
             html += `${renderGradeCell(n.p1)}${renderGradeCell(n.p2)}${renderGradeCell(n.rt || n.rb)}${renderGradeCell(n.nt || n.nb, true, true)}`;
         });
 
-        html += `
-            ${renderGradeCell(ma, false, true)}
-            <td></td>
-            ${renderGradeCell(d.anual.media_final, true, true)}
-            ${renderSituationCell(situacao)}
-        </tr>`;
-
+        html += `${renderGradeCell(ma, false, true)}
+                 <td></td>
+                 ${renderGradeCell(d.anual.media_final, true, true)}
+                 ${renderSituationCell(situacao)}</tr>`;
         return html;
-    }).join('');
-
-    const rowsTech = (academicDataForPrint.tech || []).map(d => {
-        const s1 = d.periodos[1] || {};
-        const s2 = d.periodos[2] || {};
-
-        let situacaoStr = (d.ma >= 6 ? 'AP' : (d.ma === null ? '-' : 'CR'));
-
-        return `
-        <tr>
-            <td class="text-start fw-bold disciplina" title="${d.nome}">
-                ${d.nome.toUpperCase()}
-            </td>
-            ${renderGradeCell(s1.p1)} ${renderGradeCell(s1.p2)} ${renderGradeCell(s1.rp)} ${renderGradeCell(s1.rf)} ${renderGradeCell(s1.nt, true, true)}
-            ${renderGradeCell(s2.p1)} ${renderGradeCell(s2.p2)} ${renderGradeCell(s2.rp)} ${renderGradeCell(s2.rf)} ${renderGradeCell(s2.nt, true, true)}
-            <td style="border:1px solid #000; font-size: 8px;">${d.sigla || ''}</td>
-            <td style="border:1px solid #000; font-size: 8px;">-</td>
-            ${renderSituationCell(situacaoStr)}
-        </tr>`;
     }).join('');
 
     const printWindow = window.open('', '_blank');
 
     printWindow.document.write(`
-    <html>
-    <head>
-        <title>Boletim - ${studentName}</title>
-        <style>
-            body { margin:0; padding:0; font-family: Arial; }
-            .page-container {
-                width: 210mm;
-                height: 296mm;
-                padding: 8mm;
-                box-sizing: border-box;
-                overflow: hidden;
-            }
-
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                table-layout: fixed;
-                font-size: 9px;
-            }
-
-            th, td {
-                border: 1px solid #000;
-                padding: 4px 2px;
-                text-align: center;
-            }
-
-            th {
-                background: #e0e0e0;
-            }
-
-            th:first-child,
-            td:first-child {
-                width: 180px;
-                max-width: 180px;
-            }
-
-            td.text-start {
-                text-align: left;
-                white-space: nowrap;
-                overflow: hidden;
-            }
-
-            .disciplina {
-                font-weight: bold;
-            }
-        </style>
-    </head>
-
-    <body>
-        <div class="page-container">
-
-            <table>
-                <thead>
-                    <tr>
-                        <th rowspan="2">DISCIPLINA</th>
-                        ${periodosList.map(p => `<th colspan="4">${p}º ${pLabel}</th>`).join('')}
-                        <th colspan="4">FINAL</th>
-                    </tr>
-                    <tr>
-                        ${periodosList.map(() => '<th>P1</th><th>P2</th><th>R</th><th>N</th>').join('')}
-                        <th>MA</th><th>RF</th><th>MF</th><th>SIT</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    ${rowsBCC}
-                </tbody>
-            </table>
-
-            ${rowsTech ? `
-            <table style="margin-top:8px;">
-                <tbody>${rowsTech}</tbody>
-            </table>` : ''}
-
-        </div>
-
-        <script>
-        function ajustarDisciplinas() {
-            const cells = document.querySelectorAll('.disciplina');
-
-            cells.forEach(cell => {
-                let size = 10;
-                cell.style.fontSize = size + 'px';
-
-                while (cell.scrollWidth > cell.clientWidth && size > 6) {
-                    size--;
-                    cell.style.fontSize = size + 'px';
+        <html>
+        <head>
+            <title>Boletim - ${studentName}</title>
+            <style>
+                body {
+                    background-color: #525659;
+                    margin: 0;
+                    padding: 20px;
+                    display: flex;
+                    justify-content: center;
+                    font-family: Arial, sans-serif;
                 }
-            });
-        }
 
-        window.onload = function() {
-            ajustarDisciplinas();
-            window.print();
-            window.close();
-        }
-        <\/script>
-    </body>
-    </html>
+                .page-container {
+                    width: 210mm;
+                    height: 296mm;
+                    background: white;
+                    padding: 10mm;
+                    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+                    overflow: hidden;
+                    position: relative;
+                }
+
+                .scale-wrapper {
+                    transform-origin: top left;
+                }
+
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 9px;
+                }
+
+                th, td {
+                    border: 1px solid #000;
+                    padding: 4px 2px;
+                    text-align: center;
+                }
+
+                th {
+                    background: #e0e0e0;
+                    font-weight: bold;
+                }
+
+                .text-start { text-align: left; }
+
+                @media print {
+                    body { background: white; padding: 0; }
+                    .page-container { box-shadow: none; }
+                }
+            </style>
+        </head>
+
+        <body>
+            <div class="page-container">
+                <div id="scaleWrapper" class="scale-wrapper">
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th rowspan="2" style="width:20%">DISCIPLINA</th>
+                                ${periodosList.map(p => `<th colspan="4">${p}º ${pLabel}</th>`).join('')}
+                                <th colspan="4">FINAL</th>
+                            </tr>
+                            <tr>
+                                ${periodosList.map(() => '<th>P1</th><th>P2</th><th>R</th><th>N</th>').join('')}
+                                <th>MA</th><th>RF</th><th>MF</th><th>SIT</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsBCC}</tbody>
+                    </table>
+
+                </div>
+            </div>
+
+            <script>
+                window.onload = function() {
+                    const wrapper = document.getElementById('scaleWrapper');
+                    const page = document.querySelector('.page-container');
+
+                    const contentHeight = wrapper.scrollHeight;
+                    const pageHeight = page.clientHeight;
+
+                    if (contentHeight > pageHeight) {
+                        const scale = pageHeight / contentHeight;
+                        wrapper.style.transform = 'scale(' + scale + ')';
+                    }
+
+                    window.print();
+                    window.close();
+                };
+            <\/script>
+        </body>
+        </html>
     `);
 
     printWindow.document.close();
