@@ -7,7 +7,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"><!-- Infraestrutura SME -->
+<script src="../../assets/js/supabase_client.js"></script>
+<script src="../../sidebar.js"></script>
 <script>
     tailwind.config = {
         theme: {
@@ -57,10 +59,11 @@
         background-color: #f8fafc;
         font-weight: 600;
         text-align: left;
+        /* Ajuste para nomes grandes na tela */
+        max-width: 250px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 200px;
     }
     
     .grade-low-bg {
@@ -196,6 +199,39 @@
                         </table>
                     </div>
                 </div>
+                <div class="bg-slate-50 rounded-3xl border border-slate-200 p-6 space-y-4 text-left">
+                    <h3 class="text-sm font-black text-fmm-dark uppercase tracking-wider flex items-center gap-2 text-left">
+                        <i data-lucide="info" class="w-4 h-4 text-left"></i>
+                        Cálculo das Notas
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-600 leading-relaxed text-left">
+                        <div class="text-left">
+                            <p class="font-bold text-fmm-blue text-left">Fórmulas:</p>
+                            <ul class="list-disc list-inside space-y-1 mt-1 text-left">
+                                <li><span class="font-mono">NP</span> = (P1 + P2) / 2</li>
+                                <li><span class="font-mono">NT</span> = (NP + RT)/2 se RT > NP, senão NT = NP</li>
+                                <li><span class="font-mono">NS</span> = (NP + RF)/2 se RF > NP, senão NS = NP</li>
+                                <li><span class="font-mono">MA</span> = (NT1 + NT2 + NT3) / 3 ou (NS1 + NS2) / 2</li>
+                                <li><span class="font-mono">MF</span> = (MA + RF) / 2, se MA ≥ 6.0 então MF = MA</li>
+                            </ul>
+                        </div>
+                        <div class="text-left">
+                            <p class="font-bold text-fmm-blue text-left">Legenda:</p>
+                            <ul class="grid grid-cols-2 gap-x-4 gap-y-1 mt-1 text-left">
+                                <li class="text-left"><span class="font-mono">P1/P2</span> – Avaliações Parciais</li>
+                                <li class="text-left"><span class="font-mono">RT/RP</span> – Recuperação Trimestral/Parcial</li>
+                                <li class="text-left"><span class="font-mono">NT/NS</span> – Nota Trimestral/Semestral</li>
+                                <li class="text-left"><span class="font-mono">RF</span> – Recuperação Final</li>
+                                <li class="text-left"><span class="font-mono">MA</span> – Média Anual</li>
+                                <li class="text-left"><span class="font-mono">MF</span> – Média Final</li>
+                                <li class="text-left"><span class="text-fmm-green font-bold">AP</span> – Aprovado</li>
+                                <li class="text-left"><span class="text-fmm-level3 font-bold">CR</span> – Cursando</li>
+                                <li class="text-left"><span class="text-fmm-level4 font-bold">RP</span> – Reprovado</li>
+                            </ul>
+                            <p class="mt-2 text-[10px] text-slate-500 text-left">Se MF < 6,0, o aluno será encaminhado ao Conselho de Classe.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -204,19 +240,21 @@
     const urlParams = new URLSearchParams(window.location.search);
     const raVal = urlParams.get('ra');
     const HIDDEN_SUBJECTS = ['ATUAL', 'BIO.APL', 'ENS.RELIG', 'FÍSICA.APL', 'GEO.APL', 'HIST.APL', 'P.DESP', 'QUIM.APL', 'SIM'];
-    
     function formatDriveUrl(url) {
         if (!url) return "";
         const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
         return idMatch ? "https://lh3.googleusercontent.com/d/" + idMatch[1] : url;
     }
-    
     const fmt = (val) => {
         if (val === null || val === undefined || val === '-' || val === "S.N" || val === 0) return "-";
         const n = parseFloat(val);
         return isNaN(n) ? "-" : n.toFixed(1).replace(".", ",");
     };
-
+    const getGradeClass = (val) => {
+        if (val === null || val === undefined || val === '-') return "";
+        const n = parseFloat(val);
+        return n < 6.0 && n > 0 ? "grade-low-bg" : "";
+    };
     const mapSit = (sit) => {
         if (!sit) return { t: "-", c: "" };
         const s = sit.toString().toUpperCase();
@@ -224,31 +262,83 @@
         if (s === "REPROVADO" || s === "RP") return { t: "RP", c: "situation-rp" };
         return { t: "CR", c: "situation-cr" };
     };
-
     async function init() {
-        if (!raVal) return;
+        if (window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+        if (!raVal) return window.location.href = 'boletim_coordenador.html';
         await loadData();
         lucide.createIcons();
     }
-
     let academicDataForPrint = { basic: [], tech: [], student: {}, totalAbsences: 0, globalAverage: '---' };
-
     async function loadData() {
-        // Simulação de carregamento (No ambiente real usaria Supabase)
-        // Mock de dados para demonstração do layout corrigido
-        academicDataForPrint.student = { nome_completo: "JOÃO PEDRO DA SILVA OLIVEIRA", ra: "2024001", turmas: { nome: "INFO3A", serie: "3ª SÉRIE", nivel: "EM" } };
-        document.getElementById('studentName').innerText = academicDataForPrint.student.nome_completo;
-        document.getElementById('studentRA').innerText = academicDataForPrint.student.ra;
-        document.getElementById('studentTurma').innerText = academicDataForPrint.student.turmas.nome;
-        
-        // Mock de disciplinas com nomes grandes
-        academicDataForPrint.basic = [
-            { nome: "Língua Portuguesa e Literatura Brasileira", sigla: "PORT", periodos: { 1: {p1: 8, p2: 7, rt: 0, nt: 7.5}, 2: {p1: 9, p2: 8, rt: 0, nt: 8.5}, 3: {p1: 7, p2: 7, rt: 0, nt: 7} }, anual: { media: 7.7, status_final: 'AP', media_final: 7.7, recup_final: 0 } },
-            { nome: "Matemática e Suas Tecnologias Aplicadas", sigla: "MAT", periodos: { 1: {p1: 6, p2: 5, rt: 7, nt: 6.5}, 2: {p1: 5, p2: 4, rt: 6, nt: 5.5}, 3: {p1: 6, p2: 6, rt: 0, nt: 6} }, anual: { media: 6.0, status_final: 'AP', media_final: 6.0, recup_final: 0 } }
-        ];
-
+        try {
+            const client = window.supabaseClient;
+            const { data: student, error: sErr } = await client.from('alunos').select('*, turmas(*)').eq('ra', raVal).maybeSingle();
+            if (sErr || !student) throw sErr || new Error("Aluno não encontrado");
+            
+            academicDataForPrint.student = student;
+            const nomeDisplay = student.nome_completo || student.nome || "Aluno FMM";
+            document.getElementById('studentName').innerText = nomeDisplay;
+            document.getElementById('studentRA').innerText = student.ra;
+            document.getElementById('studentPhoto').src = formatDriveUrl(student.url_foto || "");
+            if (student.turmas) document.getElementById('studentTurma').innerText = `${student.turmas.nome} | ${student.turmas.serie}`;
+            const { count: absences } = await client.from('frequencias').select('*', { count: 'exact', head: true }).eq('ra_aluno', raVal).eq('presente', false);
+            document.getElementById('totalAbsences').innerText = absences || 0;
+            academicDataForPrint.totalAbsences = absences || 0;
+            const { data: matricula } = await client.from('matriculas').select('id').eq('ra_aluno', raVal).eq('ano_letivo', 2026).maybeSingle();
+            if (matricula && student.turmas) {
+                academicDataForPrint.nivel = student.turmas.nivel;
+                const isEF = student.turmas.nivel.startsWith('EF');
+                if (isEF) await renderFundamentalArea(matricula.id, student.turmas.serie);
+                else { await renderBasicArea(matricula.id, student.turmas.serie); await renderTechnicalArea(matricula.id, student.turmas.serie); }
+                calculateGlobalAverage();
+            }
+        } catch (err) { console.error(err); }
+    }
+    async function renderFundamentalArea(mId, serieAluno) {
+        const client = window.supabaseClient;
+        const [notasRes, anuaisRes, discRes] = await Promise.all([
+            client.from('notas_fundamental').select('*').eq('id_matricula', mId),
+            client.from('anual_fundamental').select('*').eq('id_matricula', mId),
+            client.from('disciplinas').select('*')
+        ]);
+        const subjects = (discRes.data || []).filter(d => d.series && d.series.includes(serieAluno) && !HIDDEN_SUBJECTS.includes(d.sigla) && d.tipo !== 'Técnica').sort((a, b) => a.nome.localeCompare(b.nome));
+        if (subjects.length === 0) return;
         document.getElementById('basicAreaSection').classList.remove('hidden');
-        document.getElementById('basicAreaHead').innerHTML = "<tr><th rowspan='2'>Disciplina</th><th colspan='4'>1º Tri</th><th colspan='4'>2º Tri</th><th colspan='4'>3º Tri</th><th colspan='4'>Final</th></tr><tr><th>P1</th><th>P2</th><th>RT</th><th>NT</th><th>P1</th><th>P2</th><th>RT</th><th>NT</th><th>P1</th><th>P2</th><th>RT</th><th>NT</th><th>MA</th><th>RF</th><th>MF</th><th>SIT</th></tr>";
+        document.getElementById('basicAreaTitle').innerHTML = '<i data-lucide="book-open" class="w-5 h-5 text-fmm-blue"></i> Formação Geral Fundamental';
+        document.getElementById('basicAreaHead').innerHTML = "<tr><th rowspan='2'>Disciplina</th><th colspan='4'>1º Bimestre</th><th colspan='4'>2º Bimestre</th><th colspan='4'>3º Bimestre</th><th colspan='4'>4º Bimestre</th><th colspan='4'>Final</th></tr><tr><th>P1</th><th>P2</th><th>RB</th><th>NB</th><th>P1</th><th>P2</th><th>RB</th><th>NB</th><th>P1</th><th>P2</th><th>RB</th><th>NB</th><th>P1</th><th>P2</th><th>RB</th><th>NB</th><th>MA</th><th>RF</th><th>MF</th><th>SIT</th></tr>";
+        const grouped = {};
+        (notasRes.data || []).forEach(n => { if(!grouped[n.sigla_disciplina]) grouped[n.sigla_disciplina] = {}; grouped[n.sigla_disciplina][n.periodo] = n; });
+        academicDataForPrint.basic = subjects.map(d => {
+            const n = (p) => grouped[d.sigla]?.[p] || { p1: null, p2: null, rb: null, nb: null };
+            const anual = (anuaisRes.data || []).find(a => a.sigla_disciplina === d.sigla) || { media_anual: null, situacao: null, media_final: null, recup_final: null };
+            return { nome: d.nome, sigla: d.sigla, periodos: { 1: n('1_BIMESTRE'), 2: n('2_BIMESTRE'), 3: n('3_BIMESTRE'), 4: n('4_BIMESTRE') }, anual: { media: anual.media_anual, status_final: anual.situacao, media_final: anual.media_final, recup_final: anual.recup_final } };
+        });
+        document.getElementById('basicAreaBody').innerHTML = academicDataForPrint.basic.map(d => {
+            const sit = mapSit(d.anual.status_final);
+            let row = `<tr><td class="discipline-cell font-black uppercase text-left" title="${d.nome}">${d.nome}</td>`;
+            [1, 2, 3, 4].forEach(p => { const nota = d.periodos[p]; row += `<td>${fmt(nota.p1)}</td><td>${fmt(nota.p2)}</td><td>${fmt(nota.rb)}</td><td class="final-grade-bold">${fmt(nota.nb)}</td>`; });
+            row += `<td class="final-grade-bold">${fmt(d.anual.media)}</td><td>${fmt(d.anual.recup_final)}</td><td class="final-grade-bold">${fmt(d.anual.media_final)}</td><td class="${sit.c}">${sit.t}</td></tr>`;
+            return row;
+        }).join('');
+    }
+    async function renderBasicArea(mId, serieAluno) {
+        const client = window.supabaseClient;
+        const [notasRes, anuaisRes, discRes] = await Promise.all([
+            client.from('notas_basica').select('*').eq('id_matricula', mId),
+            client.from('anual_basica').select('*').eq('id_matricula', mId),
+            client.from('disciplinas').select('*').eq('tipo', 'BCC')
+        ]);
+        const subjects = (discRes.data || []).filter(d => d.series && d.series.includes(serieAluno) && !HIDDEN_SUBJECTS.includes(d.sigla)).sort((a, b) => a.nome.localeCompare(b.nome));
+        if (subjects.length === 0) return;
+        document.getElementById('basicAreaSection').classList.remove('hidden');
+        document.getElementById('basicAreaHead').innerHTML = "<tr><th rowspan='2'>Disciplina</th><th colspan='4'>1º Trimestre</th><th colspan='4'>2º Trimestre</th><th colspan='4'>3º Trimestre</th><th colspan='4'>Avaliação Final</th></tr><tr><th>P1</th><th>P2</th><th>RT</th><th>NT</th><th>P1</th><th>P2</th><th>RT</th><th>NT</th><th>P1</th><th>P2</th><th>RT</th><th>NT</th><th>MA</th><th>RF</th><th>MF</th><th>SIT</th></tr>";
+        const grouped = {};
+        (notasRes.data || []).forEach(n => { if(!grouped[n.sigla_disciplina]) grouped[n.sigla_disciplina] = {}; grouped[n.sigla_disciplina][n.periodo] = n; });
+        academicDataForPrint.basic = subjects.map(d => {
+            const n = (p) => grouped[d.sigla]?.[p] || { p1: null, p2: null, rt: null, nt: null };
+            const anual = (anuaisRes.data || []).find(a => a.sigla_disciplina === d.sigla) || { media_anual: null, situacao: null, media_final: null, recup_final: null };
+            return { nome: d.nome, sigla: d.sigla, periodos: { 1: n('1_TRIMESTRE'), 2: n('2_TRIMESTRE'), 3: n('3_TRIMESTRE') }, anual: { media: anual.media_anual, status_final: anual.situacao, media_final: anual.media_final, recup_final: anual.recup_final } };
+        });
         document.getElementById('basicAreaBody').innerHTML = academicDataForPrint.basic.map(d => {
             const sit = mapSit(d.anual.status_final);
             let row = `<tr><td class="discipline-cell font-black uppercase text-left" title="${d.nome}">${d.nome}</td>`;
@@ -256,21 +346,47 @@
             row += `<td class="final-grade-bold">${fmt(d.anual.media)}</td><td>${fmt(d.anual.recup_final)}</td><td class="final-grade-bold">${fmt(d.anual.media_final)}</td><td class="${sit.c}">${sit.t}</td></tr>`;
             return row;
         }).join('');
-        
-        calculateGlobalAverage();
     }
-
+    async function renderTechnicalArea(mId, serieAluno) {
+        const client = window.supabaseClient;
+        const [notasRes, discRes] = await Promise.all([client.from('notas_tecnica').select('*').eq('id_matricula', mId), client.from('disciplinas').select('*').eq('tipo', 'Técnica')]);
+        const techDiscs = (discRes.data || []).filter(d => d.series && d.series.includes(serieAluno) && !HIDDEN_SUBJECTS.includes(d.sigla)).sort((a, b) => a.nome.localeCompare(b.nome));
+        if (techDiscs.length === 0) return;
+        document.getElementById('technicalAreaSection').classList.remove('hidden');
+        const grouped = {};
+        (notasRes.data || []).forEach(n => { if(!grouped[n.sigla_disciplina]) grouped[n.sigla_disciplina] = {}; grouped[n.sigla_disciplina][n.periodo] = n; });
+        academicDataForPrint.tech = techDiscs.map(d => {
+            const s1 = grouped[d.sigla]?.['1_SEMESTRE'] || { p1: null, p2: null, recup_parcial: null, recup_final_semestral: null, nota_final_periodo: null };
+            const s2 = grouped[d.sigla]?.['2_SEMESTRE'] || { p1: null, p2: null, recup_parcial: null, recup_final_semestral: null, nota_final_periodo: null };
+            const hasG = s1.nota_final_periodo !== null || s2.nota_final_periodo !== null;
+            const ma = hasG ? (parseFloat(s1.nota_final_periodo || 0) + parseFloat(s2.nota_final_periodo || 0)) / ( (s1.nota_final_periodo !== null ? 1 : 0) + (s2.nota_final_periodo !== null ? 1 : 0) ) : null;
+            return { nome: d.nome, sigla: d.sigla, periodos: { 1: { p1: s1.p1, p2: s1.p2, rp: s1.recup_parcial, rf: s1.recup_final_semestral, nt: s1.nota_final_periodo }, 2: { p1: s2.p1, p2: s2.p2, rp: s2.recup_parcial, rf: s2.recup_final_semestral, nt: s2.nota_final_periodo } }, ma };
+        });
+        document.getElementById('technicalAreaBody').innerHTML = academicDataForPrint.tech.map(d => {
+            const sit = d.ma !== null ? (d.ma >= 6 ? 'AP' : 'CR') : '-';
+            return `<tr><td class="discipline-cell font-black uppercase text-left" title="${d.nome}">${d.nome}</td>${[1, 2].map(p => `<td>${fmt(d.periodos[p].p1)}</td><td>${fmt(d.periodos[p].p2)}</td><td>${fmt(d.periodos[p].rp)}</td><td>${fmt(d.periodos[p].rf)}</td><td class="final-grade-bold">${fmt(d.periodos[p].nt)}</td>`).join('')}<td class="final-grade-bold">${fmt(d.ma)}</td><td>-</td><td class="final-grade-bold">${fmt(d.ma)}</td><td class="${d.ma >= 6 ? 'situation-ap' : (d.ma === null ? '' : 'situation-cr')}">${sit}</td></tr>`;
+        }).join('');
+    }
     function calculateGlobalAverage() {
+        const allNotes = [];
+        document.querySelectorAll('.final-grade-bold').forEach(el => {
+            const val = parseFloat(el.innerText.replace(',', '.'));
+            if (!isNaN(val)) allNotes.push(val);
+        });
+        const avg = allNotes.length > 0 ? (allNotes.reduce((a, b) => a + b, 0) / allNotes.length).toFixed(1) : "---";
         const avgEl = document.getElementById('globalAverage');
-        avgEl.innerText = "7,2";
-        academicDataForPrint.globalAverage = "7,2";
+        avgEl.innerText = avg.replace('.', ',');
+        academicDataForPrint.globalAverage = avgEl.innerText;
+        avgEl.className = 'text-3xl font-black mt-1 ' + (parseFloat(avg) < 6 ? 'text-red-500' : 'text-fmm-green');
     }
-
+    /**
+     * MOTOR DE IMPRESSÃO OFICIAL FMM 2026
+     */
     function handleNativePrint() {
         const timestamp = new Date().toLocaleString('pt-BR');
         const isFund = academicDataForPrint.nivel && academicDataForPrint.nivel.startsWith('EF');
-        const studentName = (academicDataForPrint.student.nome_completo || "").toUpperCase();
-        const studentTurma = academicDataForPrint.student.turmas?.nome || "---";
+        const studentName = academicDataForPrint.student.nome_completo.toUpperCase();
+        const studentTurma = academicDataForPrint.student.turmas.nome;
         
         const renderGradeCell = (val, isBold = false, isBgLight = false) => {
             const num = parseFloat(val);
@@ -281,32 +397,29 @@
             if (isBold) style += ' font-weight: bold;';
             return `<td style="${style}">${formatted}</td>`;
         };
-
         const renderSituationCell = (val) => {
             let text = (val || '').toString().toUpperCase();
             if (text === 'APROVADO') text = 'AP';
-            if (text === 'REPROVADO') text = 'RP';
+            if (text === 'REPROVADO') text = 'CR';
             let style = 'border: 1px solid #000; padding: 2px 2px; text-align: center; vertical-align: middle; font-size: 8px; font-weight: bold; height: 16px;';
             if (text.includes('CR')) style += ' background-color: #f4cccc !important; color: #ff0000; -webkit-print-color-adjust: exact;';
             else if (text.includes('AP')) style += ' background-color: #b6d7a8 !important; color: #38761d; -webkit-print-color-adjust: exact;';
             return `<td style="${style}">${text}</td>`;
         };
-
         const periodosList = isFund ? [1, 2, 3, 4] : [1, 2, 3];
         const pLabel = isFund ? 'BIMESTRE' : 'TRIMESTRE';
-
         const rowsBCC = academicDataForPrint.basic.map(d => {
             const ma = d.anual.media;
             const situacao = d.anual.status_final || (ma >= 6.0 ? 'AP' : 'CR');
-            let html = `<tr><td class="text-start fw-bold" style="border:1px solid #000; padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;">${d.nome.toUpperCase()}</td>`;
+            // Ajuste na célula do nome para evitar quebra de linha na impressão
+            let html = `<tr><td class="text-start fw-bold" style="border:1px solid #000; padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;">${d.nome.toUpperCase()}</td>`;
             periodosList.forEach(pNum => {
                 const n = d.periodos[pNum] || {};
-                html += `${renderGradeCell(n.p1)}${renderGradeCell(n.p2)}${renderGradeCell(n.rt || n.rb)}${renderGradeCell(n.nt || n.nb, true, true)}`;
+                html += `${renderGradeCell(n.p1 || n.p1)}${renderGradeCell(n.p2)}${renderGradeCell(n.rt || n.rb)}${renderGradeCell(n.nt || n.nb, true, true)}`;
             });
             html += `${renderGradeCell(ma, false, true)} ${renderGradeCell(d.anual.recup_final)} ${renderGradeCell(d.anual.media_final, true, true)} ${renderSituationCell(situacao)}</tr>`;
             return html;
         }).join('');
-
         const rowsTech = (academicDataForPrint.tech || []).map(d => {
             const s1 = d.periodos[1] || {};
             const s2 = d.periodos[2] || {};
@@ -315,9 +428,9 @@
             let semestreStr = '-';
             if (hasS1 && hasS2) semestreStr = '1º/2º'; else if (hasS1) semestreStr = '1ºSEM'; else if (hasS2) semestreStr = '2ºSEM';
             let situacaoStr = (d.ma >= 6 ? 'AP' : (d.ma === null ? '-' : 'CR'));
-            return `<tr><td class="text-start fw-bold" style="border:1px solid #000; padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;">${d.nome.toUpperCase()}</td>${renderGradeCell(s1.p1)} ${renderGradeCell(s1.p2)} ${renderGradeCell(s1.rp)} ${renderGradeCell(s1.rf)} ${renderGradeCell(s1.nt, true, true)}${renderGradeCell(s2.p1)} ${renderGradeCell(s2.p2)} ${renderGradeCell(s2.rp)} ${renderGradeCell(s2.rf)} ${renderGradeCell(s2.nt, true, true)}<td style="border:1px solid #000; font-size: 8px; background:#f9f9f9;">${d.sigla || ''}</td><td style="border:1px solid #000; font-size: 8px;">${semestreStr}</td>${renderSituationCell(situacaoStr)}</tr>`;
+            // Ajuste na célula do nome para evitar quebra de linha na impressão
+            return `<tr><td class="text-start fw-bold" style="border:1px solid #000; padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;">${d.nome.toUpperCase()}</td>${renderGradeCell(s1.p1)} ${renderGradeCell(s1.p2)} ${renderGradeCell(s1.rp)} ${renderGradeCell(s1.rf)} ${renderGradeCell(s1.nt, true, true)}${renderGradeCell(s2.p1)} ${renderGradeCell(s2.p2)} ${renderGradeCell(s2.rp)} ${renderGradeCell(s2.rf)} ${renderGradeCell(s2.nt, true, true)}<td style="border:1px solid #000; font-size: 8px; background:#f9f9f9;">${d.sigla || ''}</td><td style="border:1px solid #000; font-size: 8px;">${semestreStr}</td>${renderSituationCell(situacaoStr)}</tr>`;
         }).join('');
-
         const printWindow = window.open('', '_blank');
         printWindow.document.write(`
             <html>
@@ -339,11 +452,11 @@
                     .main-table-header th { background-color: #e0e0e0 !important; font-weight: bold; -webkit-print-color-adjust: exact; text-transform: uppercase; font-size: 7.5px; border: 1px solid #000; }
                     .text-start { text-align: left; }
                     .fw-bold { font-weight: bold; }
-                    .disclaimer-table { margin-top: 6px; width: 100%; border: 1px solid #000; border-collapse: collapse; table-layout: auto; }
+                    .disclaimer-table { margin-top: 5px; width: 100%; border: 1px solid #000; border-collapse: collapse; table-layout: auto; }
                     .disclaimer-cell { padding: 5px; text-align: justify; font-size: 8.5px; line-height: 1.2; color: #000; }
                     .observations-table { margin-top: 0; width: 100%; border: 1px solid #000; border-collapse: collapse; border-top: 0; table-layout: auto; }
                     .observations-cell { padding: 5px; text-align: justify; font-size: 8.5px; line-height: 1.2; color: #000; }
-                    .legend-box { border: 1px solid #000; padding: 6px; font-size: 7.5px; display: flex; gap: 15px; color: black; margin-top: 6px; text-align: left; }
+                    .legend-box { border: 1px solid #000; padding: 6px; font-size: 7.5px; display: flex; gap: 15px; color: black; margin-top: 5px; text-align: left; }
                     .legend-col { flex: 1; }
                     .legend-title { font-weight: bold; margin-bottom: 2px; text-decoration: underline; }
                     @media print {
@@ -419,15 +532,11 @@
                     <div class="legend-box">
                         <div class="legend-col">
                             <div class="legend-title">Cálculo das notas:</div>
-                            <div>NP: (P1 + P2) / 2</div>
-                            <div>NT: Se (NP+RT)/2 > NP, NT = (NP+RT)/2. Senão NT = NP.</div>
-                            <div>MA: (NT1 + NT2 + NT3) / 3</div>
+                            <div>NP: (P1 + P2) / 2 | NT: Nota Tri. | MA: Méd. Anual</div>
                         </div>
                         <div class="legend-col">
                             <div class="legend-title">Legenda:</div>
-                            <div>P1/P2: Avaliações Parciais | RT/RP: Recup. Tri/Parcial</div>
-                            <div>NT/NS: Nota Tri/Semestral | RF: Recup. Final</div>
-                            <div>MA: Méd. Anual | MF: Méd. Final</div>
+                            <div>P1/P2: Aval. Parc. | RT/RP: Recup. Tri/Parc.</div>
                         </div>
                         <div class="legend-col">
                             <div class="legend-title">Situação:</div>
