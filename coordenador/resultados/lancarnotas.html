@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="pt-br" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lançamento de Notas (Master) | SME FMM</title>
+    
+    <!-- Meta Tags PWA -->
+    <meta name="theme-color" content="#f1f4f6">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="SME FMM">
+
+    <!-- Bibliotecas -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Infraestrutura Oficial SME FMM -->
+    <script src="../../assets/js/constants.js"></script>
+    <script src="../../assets/js/supabase_client.js"></script>
+    <script src="../../sidebar.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            teal: '#35b5a8',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f1f4f6'
+                        }
+                    },
+                    borderRadius: {
+                        '40': '2.5rem',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f4f6; -webkit-tap-highlight-color: transparent; overflow: hidden; }
+        
+        /* Animações UI */
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-up { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        /* Estilos do Sidebar da FMM */
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-collapsed .sidebar-text, .sidebar-collapsed .sidebar-category-header, .sidebar-collapsed .chevron-icon, .sidebar-collapsed .sidebar-category-title { display: none; }
+        .sidebar-collapsed .sidebar-item { justify-content: center; padding: 12px 0; }
+        .sidebar-collapsed .logo-full { display: none; }
+        .sidebar-collapsed .logo-short { display: block; }
+        .logo-short { display: none; }
+        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.05); }
+        .category-content.open { max-height: 1000px; }
+        .rotate-180 { transform: rotate(180deg); }
+
+        input:focus { border-color: #00638f !important; ring: 0 !important; }
+
+        /* -- ESTILOS DA TABELA DE NOTAS -- */
+        .grade-input { 
+            width: 54px; text-align: center; border-radius: 10px; border: 2px solid #e2e8f0; 
+            padding: 6px 2px; font-weight: 800; font-size: 13px; transition: all 0.2s; background: white;
+        }
+        .grade-input:focus { border-color: #35b5a8; outline: none; background: #fff; transform: scale(1.05); z-index: 10; box-shadow: 0 0 0 3px rgba(53, 181, 168, 0.2); }
+        .grade-input:disabled { background: #f8fafc; color: #cbd5e1; cursor: not-allowed; border-color: #f1f4f6; border-style: dashed; }
+        .grade-low { color: #ef4444; border-color: #fecaca; background: #fef2f2; }
+        .grade-ok { color: #003c5b; border-color: #e2e8f0; }
+
+        .sticky-header { position: sticky; top: 0; z-index: 30; background: #0f172a; }
+        .sticky-col { position: sticky; left: 0; background: white; z-index: 20; border-right: 2px solid #cbd5e1; }
+        .sticky-intersect { position: sticky; top: 0; left: 0; z-index: 40; background: #0f172a; border-right: 2px solid rgba(255,255,255,0.1); }
+        .group:hover .sticky-col { background: #f8fafc; }
+
+        .custom-scrollbar::-webkit-scrollbar { height: 10px; width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f4f6; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; border: 3px solid #f1f4f6; }
+
+        .top-bar-select { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; color: #003c5b; outline: none; transition: all 0.2s; min-width: 160px; }
+        .top-bar-select:focus { border-color: #35b5a8; background: white; box-shadow: 0 0 0 4px rgba(53, 181, 168, 0.1); }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden text-left bg-fmm-bg">
+
+    <!-- BARRA LATERAL (SIDEBAR OFICIAL) -->
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
+
+    <!-- TELA DO APLICATIVO MASTER (Notas) -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden relative" id="app-view">
+        
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-30 shadow-sm flex-shrink-0">
+            <div class="flex items-center gap-6">
+                <div class="flex flex-col text-left">
+                    <h1 class="text-base font-black text-fmm-dark tracking-tight flex items-center gap-2 leading-none">
+                        <span class="w-2 h-4 bg-fmm-teal rounded-full"></span>
+                        Master Lançamento
+                        <span class="ml-2 text-xs font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md uppercase tracking-wider">1º Bimestre</span>
+                    </h1>
+                </div>
+
+                <div class="h-8 w-px bg-slate-100 hidden md:block"></div>
+
+                <!-- SELETOR DE MODO -->
+                <div class="flex items-center bg-slate-100 p-1 rounded-xl">
+                    <button onclick="setMode('TURMA')" id="btn-mode-turma" class="px-4 py-1.5 text-xs font-bold rounded-lg bg-white shadow-sm text-fmm-dark transition-all">Por Turma</button>
+                    <button onclick="setMode('ALUNO')" id="btn-mode-aluno" class="px-4 py-1.5 text-xs font-bold rounded-lg text-slate-500 hover:text-fmm-dark transition-all">Por Aluno</button>
+                </div>
+
+                <!-- FILTROS: MODO TURMA -->
+                <div id="filters-turma" class="flex items-center gap-3 ml-2 transition-all">
+                    <select id="selectTurma" onchange="loadGradeTable()" class="top-bar-select">
+                        <option value="">Selecione a Turma (EF)...</option>
+                    </select>
+                    <select id="selectDisc" onchange="loadGradeTable()" class="top-bar-select w-56">
+                        <option value="">Selecione a Disciplina...</option>
+                    </select>
+                </div>
+
+                <!-- FILTROS: MODO ALUNO -->
+                <div id="filters-aluno" class="hidden relative items-center ml-2 transition-all">
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                        <input type="text" id="search-aluno" oninput="handleStudentSearch(this.value)" placeholder="Buscar aluno por nome..." class="top-bar-select w-80 pl-9 font-normal">
+                        
+                        <!-- Dropdown de Resultados -->
+                        <div id="search-results" class="hidden absolute top-full mt-2 w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-64 overflow-y-auto z-50 py-2">
+                            <!-- Resultados injetados aqui -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div id="sync-status" class="hidden items-center gap-2 px-3 py-1.5 bg-fmm-teal/10 rounded-full border border-fmm-teal/20 animate-pulse">
+                    <i data-lucide="refresh-ccw" class="w-3.5 h-3.5 text-fmm-teal"></i>
+                    <span class="text-[9px] font-black text-fmm-teal uppercase">Salvando...</span>
+                </div>
+
+                <div id="counter-badge" class="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
+                    <i data-lucide="users" id="counter-icon" class="w-4 h-4 text-slate-400"></i>
+                    <span id="student-count" class="text-sm font-black text-fmm-dark">00</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-auto custom-scrollbar bg-slate-50 relative" id="table-scroll-container">
+            <div id="loading-overlay" class="hidden absolute inset-0 flex flex-col items-center justify-center text-slate-300 gap-4 bg-slate-50 z-50">
+                <i data-lucide="loader-2" class="w-12 h-12 animate-spin text-fmm-teal"></i>
+                <p class="text-sm font-bold uppercase tracking-widest">Buscando dados...</p>
+            </div>
+            
+            <div id="empty-view" class="h-full flex flex-col items-center justify-center p-20 text-center">
+                <div class="w-20 h-20 bg-white rounded-full shadow-xl flex items-center justify-center mb-6 border border-slate-100">
+                    <i data-lucide="filter" class="w-10 h-10 text-fmm-teal opacity-50"></i>
+                </div>
+                <h3 id="empty-title" class="text-lg font-bold text-slate-400 uppercase tracking-tight">Selecione Turma e Disciplina</h3>
+                <p id="empty-subtitle" class="text-sm text-slate-300 italic font-medium">Os alunos do Ensino Fundamental aparecerão aqui.</p>
+            </div>
+            
+            <div id="table-wrapper" class="hidden inline-block align-middle min-w-full pb-20">
+                <!-- Cabeçalho do Aluno (Apenas no Modo Aluno) -->
+                <div id="student-header" class="hidden bg-white border-b border-slate-200 px-8 py-6 mb-4 flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div id="sh-avatar" class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-lg font-black text-slate-400 border-2 border-white shadow-sm"></div>
+                        <div class="flex flex-col">
+                            <span id="sh-name" class="text-lg font-extrabold text-fmm-dark">Nome do Aluno</span>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span id="sh-ra" class="text-xs font-bold text-slate-400 uppercase">RA: 000000</span>
+                                <span class="w-1 h-1 bg-slate-300 rounded-full"></span>
+                                <span id="sh-turma" class="text-xs font-bold text-fmm-teal uppercase tracking-wider">Turma</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <table class="min-w-full border-separate border-spacing-0 text-left" id="notasTable">
+                    <thead id="tableHeader"></thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-100 bg-white"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- TOAST NOTIFICATION UNIFICADO -->
+    <div id="toast" class="hidden fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] w-[calc(100%-48px)] max-w-md animate-slide-up pointer-events-none">
+        <div class="bg-[#0f172a] rounded-[28px] p-5 flex items-center gap-4 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+            <div id="toastIconContainer" class="p-3 rounded-2xl flex items-center justify-center bg-[#c8d400]/20 text-[#c8d400]">
+                <i id="toastIcon" data-lucide="check-circle-2" class="w-5 h-5"></i>
+            </div>
+            <div class="flex flex-col text-left">
+                <span id="toastTitle" class="text-[10px] font-black text-white/40 uppercase tracking-[2px] mb-0.5">Notificação</span>
+                <p id="toastText" class="text-[14px] font-bold text-white leading-tight">Nota salva com sucesso!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script>
+        // Estado Global
+        let currentMode = 'TURMA'; // 'TURMA' | 'ALUNO'
+        let globalMatriculas = [];
+        let globalNotas = [];
+        let allDisciplinas = [];
+        let currentDiscSigla = '';
+        let selectedMatricula = null;
+        let saveTimers = {};
+        let searchTimeout = null;
+        let currentUser = null;
+
+        // Utilitário de Toast
+        function showToastUnified(title, text, type = 'info') {
+            const toast = document.getElementById('toast');
+            const iconContainer = document.getElementById('toastIconContainer');
+            const toastTitle = document.getElementById('toastTitle');
+            const toastText = document.getElementById('toastText');
+            const toastIcon = document.getElementById('toastIcon');
+            
+            toastTitle.innerText = title;
+            toastText.innerText = text;
+            
+            if (type === 'error') {
+                iconContainer.className = "p-3 rounded-2xl flex items-center justify-center bg-red-500/20 text-red-500";
+                toastIcon.setAttribute('data-lucide', 'alert-circle');
+            } else if (type === 'success') {
+                iconContainer.className = "p-3 rounded-2xl flex items-center justify-center bg-[#c8d400]/20 text-[#c8d400]";
+                toastIcon.setAttribute('data-lucide', 'check-circle-2');
+            } else {
+                iconContainer.className = "p-3 rounded-2xl flex items-center justify-center bg-fmm-teal/20 text-fmm-teal";
+                toastIcon.setAttribute('data-lucide', 'info');
+            }
+            
+            toast.classList.remove('hidden');
+            toast.style.display = 'block';
+            lucide.createIcons();
+            
+            setTimeout(() => {
+                toast.classList.add('hidden');
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        // ------------------ INICIALIZAÇÃO DO PORTAL ------------------
+        async function init() {
+            lucide.createIcons();
+            
+            // Renderiza o Menu Lateral (Sidebar)
+            if(window.SidebarComponent) {
+                await window.SidebarComponent.render('sidebar-container');
+            }
+            
+            // Valida Sessão no Cliente Supabase Oficial (importado em supabase_client.js)
+            const { data: { session } } = await window.supabaseClient.auth.getSession();
+            if (!session) {
+                window.location.href = '../../index.html'; // Redireciona para o login raiz se não estiver logado
+                return;
+            }
+            
+            // (Opcional) Verifica perfil do usuário caso precise restringir acesso a coordenadores/diretores
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            const { data: profile } = await window.supabaseClient.from('perfis').select('*').eq('id', user.id).single();
+            currentUser = profile;
+
+            if (currentUser && currentUser.cargo !== 'coordenador' && currentUser.cargo !== 'diretor') {
+                // Bloqueio de Segurança para quem não é Coordenador/Diretor (Pode ajustar conforme necessário)
+                showToastUnified("Acesso Negado", "Apenas Coordenadores têm acesso ao lançamento Master.", "error");
+                setTimeout(() => { window.location.href = '../../dashboard.html'; }, 2000);
+                return;
+            }
+
+            await populateSelectors();
+        }
+
+        // ------------------ ALTERNAR MODO (TURMA / ALUNO) ------------------
+        function setMode(mode) {
+            currentMode = mode;
+            const btnTurma = document.getElementById('btn-mode-turma');
+            const btnAluno = document.getElementById('btn-mode-aluno');
+            const filtersTurma = document.getElementById('filters-turma');
+            const filtersAluno = document.getElementById('filters-aluno');
+            const counterIcon = document.getElementById('counter-icon');
+            const emptyTitle = document.getElementById('empty-title');
+            const emptySubtitle = document.getElementById('empty-subtitle');
+
+            document.getElementById('table-wrapper').classList.add('hidden');
+            document.getElementById('empty-view').classList.remove('hidden');
+            document.getElementById('student-header').classList.add('hidden');
+            globalNotas = [];
+            globalMatriculas = [];
+            selectedMatricula = null;
+            document.getElementById('student-count').innerText = "00";
+
+            if (mode === 'TURMA') {
+                btnTurma.className = "px-4 py-1.5 text-xs font-bold rounded-lg bg-white shadow-sm text-fmm-dark transition-all";
+                btnAluno.className = "px-4 py-1.5 text-xs font-bold rounded-lg text-slate-500 hover:text-fmm-dark transition-all";
+                filtersTurma.classList.remove('hidden');
+                filtersTurma.classList.add('flex');
+                filtersAluno.classList.add('hidden');
+                filtersAluno.classList.remove('flex');
+                
+                counterIcon.setAttribute('data-lucide', 'users');
+                emptyTitle.innerText = "Selecione Turma e Disciplina";
+                emptySubtitle.innerText = "Os alunos do Ensino Fundamental aparecerão aqui.";
+                
+                loadGradeTable();
+            } else {
+                btnAluno.className = "px-4 py-1.5 text-xs font-bold rounded-lg bg-white shadow-sm text-fmm-dark transition-all";
+                btnTurma.className = "px-4 py-1.5 text-xs font-bold rounded-lg text-slate-500 hover:text-fmm-dark transition-all";
+                filtersAluno.classList.remove('hidden');
+                filtersAluno.classList.add('flex');
+                filtersTurma.classList.add('hidden');
+                filtersTurma.classList.remove('flex');
+                
+                counterIcon.setAttribute('data-lucide', 'book-open');
+                emptyTitle.innerText = "Busque um Aluno";
+                emptySubtitle.innerText = "Digite o nome na barra superior para ver o boletim.";
+                document.getElementById('search-aluno').value = '';
+                document.getElementById('search-results').classList.add('hidden');
+            }
+            lucide.createIcons();
+        }
+
+        // ------------------ SISTEMA MASTER (FILTROS GLOBAIS) ------------------
+        async function populateSelectors() {
+            const selectT = document.getElementById('selectTurma');
+            const selectD = document.getElementById('selectDisc');
+
+            const { data: turmas } = await window.supabaseClient.from('turmas').select('id, nome, serie').like('nivel', 'EF%').order('nome');
+            const { data: disciplinas } = await window.supabaseClient.from('disciplinas').select('sigla, nome').order('nome');
+
+            if (turmas) {
+                selectT.innerHTML = '<option value="">Selecione a Turma (EF)...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie || ''})</option>`).join('');
+            }
+            if (disciplinas) {
+                // Remove acentos e padroniza para maiúsculo para garantir o match perfeito
+                const normalizeString = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+                
+                const allowedNames = [
+                    'ARTE', 'CIENCIAS', 'EDUCACAO FISICA', 'FILOSOFIA',
+                    'GEOGRAFIA', 'HISTORIA', 'LINGUA INGLESA',
+                    'LINGUA PORTUGUESA', 'MATEMATICA'
+                ];
+
+                // Filtra as disciplinas vindas do banco
+                const disciplinasEF = disciplinas.filter(d => allowedNames.includes(normalizeString(d.nome)));
+
+                allDisciplinas = disciplinasEF;
+                selectD.innerHTML = '<option value="">Selecione a Disciplina...</option>' + disciplinasEF.map(d => `<option value="${d.sigla}">${d.nome} (${d.sigla})</option>`).join('');
+            }
+        }
+
+        // ------------------ LÓGICA MODO ALUNO (PESQUISA INDIVIDUAL) ------------------
+        function handleStudentSearch(term) {
+            const resultsContainer = document.getElementById('search-results');
+            
+            if (searchTimeout) clearTimeout(searchTimeout);
+            
+            if (!term || term.trim().length < 3) {
+                resultsContainer.classList.add('hidden');
+                return;
+            }
+
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const { data, error } = await window.supabaseClient
+                        .from('matriculas')
+                        .select('id, ra_aluno, turmas!inner(nome, nivel), alunos!inner(nome_completo)')
+                        .ilike('turmas.nivel', 'EF%')
+                        .ilike('alunos.nome_completo', `%${term}%`)
+                        .eq('ano_letivo', 2026)
+                        .limit(8);
+
+                    if (error) throw error;
+
+                    if (data && data.length > 0) {
+                        resultsContainer.innerHTML = data.map(m => `
+                            <div onclick="selectStudent('${m.id}', '${m.alunos.nome_completo}', '${m.ra_aluno}', '${m.turmas.nome}')" class="px-4 py-3 hover:bg-slate-50 cursor-pointer flex flex-col transition-colors border-b border-slate-50 last:border-0">
+                                <span class="text-sm font-bold text-fmm-dark truncate">${m.alunos.nome_completo}</span>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase">RA: ${m.ra_aluno}</span>
+                                    <span class="w-1 h-1 bg-slate-300 rounded-full"></span>
+                                    <span class="text-[10px] font-bold text-fmm-teal uppercase">${m.turmas.nome}</span>
+                                </div>
+                            </div>
+                        `).join('');
+                        resultsContainer.classList.remove('hidden');
+                    } else {
+                        resultsContainer.innerHTML = `<div class="px-4 py-4 text-center text-xs font-bold text-slate-400 uppercase">Nenhum aluno encontrado</div>`;
+                        resultsContainer.classList.remove('hidden');
+                    }
+                } catch(err) {
+                    console.error("Erro na busca:", err);
+                }
+            }, 500);
+        }
+
+        async function selectStudent(matId, nome, ra, turma) {
+            document.getElementById('search-results').classList.add('hidden');
+            document.getElementById('search-aluno').value = nome;
+            document.getElementById('empty-view').classList.add('hidden');
+            document.getElementById('loading-overlay').classList.remove('hidden');
+            document.getElementById('table-wrapper').classList.add('hidden');
+
+            document.getElementById('sh-avatar').innerText = nome.charAt(0);
+            document.getElementById('sh-name').innerText = nome;
+            document.getElementById('sh-ra').innerText = `RA: ${ra}`;
+            document.getElementById('sh-turma').innerText = turma;
+            
+            selectedMatricula = { id: matId, nome, ra, turma };
+
+            try {
+                const { data: notas } = await window.supabaseClient
+                    .from('notas_fundamental')
+                    .select('*')
+                    .eq('id_matricula', matId)
+                    .eq('periodo', '1_BIMESTRE');
+
+                globalNotas = notas || [];
+                document.getElementById('student-count').innerText = allDisciplinas.length.toString().padStart(2, '0');
+
+                renderStudentTable();
+                document.getElementById('student-header').classList.remove('hidden');
+                document.getElementById('table-wrapper').classList.remove('hidden');
+            } catch (err) {
+                console.error(err);
+                showToastUnified("Erro", "Falha ao carregar boletim do aluno.", "error");
+            } finally {
+                document.getElementById('loading-overlay').classList.add('hidden');
+            }
+        }
+
+        function renderStudentTable() {
+            const header = document.getElementById('tableHeader');
+            const body = document.getElementById('tableBody');
+
+            header.innerHTML = `
+                <tr>
+                    <th class="px-8 py-6 sticky-intersect border-r border-white/5 min-w-[300px] text-white text-[10px] font-black uppercase tracking-widest">Disciplina</th>
+                    <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 1 (P1)</th>
+                    <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 2 (P2)</th>
+                    <th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">M. Parcial</th>
+                    <th class="text-center py-6 sticky-header bg-orange-600 text-white text-[10px] font-black uppercase">Recup (RB)</th>
+                    <th class="text-center py-6 sticky-header bg-fmm-teal text-white text-[10px] font-black uppercase tracking-widest">Bimestral</th>
+                </tr>
+            `;
+
+            if (allDisciplinas.length === 0) {
+                body.innerHTML = `<tr><td colspan="6" class="px-8 py-20 text-center text-slate-300 italic font-medium">Nenhuma disciplina cadastrada no sistema.</td></tr>`;
+                return;
+            }
+
+            body.innerHTML = allDisciplinas.map(disc => {
+                const n = globalNotas.find(x => x.sigla_disciplina === disc.sigla) || { p1: 0, p2: 0, rb: 0, nb: 0 };
+                const mp = (Number(n.p1 || 0) + Number(n.p2 || 0)) / 2;
+                const matId = selectedMatricula.id;
+
+                return `
+                <tr class="group transition-colors hover:bg-slate-50/50 text-left">
+                    <td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100">
+                        <div class="flex flex-col text-left">
+                            <span class="text-sm font-extrabold text-fmm-dark truncate">${disc.nome}</span>
+                            <span class="text-[10px] text-slate-400 font-bold uppercase">${disc.sigla}</span>
+                        </div>
+                    </td>
+                    <td class="px-4 text-center">${renderInput(matId, disc.sigla, 'p1', n.p1)}</td>
+                    <td class="px-4 text-center">${renderInput(matId, disc.sigla, 'p2', n.p2)}</td>
+                    <td class="px-4 text-center font-bold bg-slate-50 text-slate-400" id="mp-display-${matId}-${disc.sigla}">${mp.toFixed(1)}</td>
+                    <td class="px-4 text-center">${renderInput(matId, disc.sigla, 'rb', n.rb, mp >= 6)}</td>
+                    <td class="px-6 text-center">
+                        <span id="nb-display-${matId}-${disc.sigla}" class="font-black text-base ${n.nb < 6 ? 'text-red-600' : 'text-fmm-teal'}">
+                            ${Number(n.nb || 0).toFixed(1)}
+                        </span>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        // ------------------ LÓGICA MODO TURMA (ORIGINAL) ------------------
+        async function loadGradeTable() {
+            if (currentMode !== 'TURMA') return;
+
+            const turmaId = document.getElementById('selectTurma').value;
+            currentDiscSigla = document.getElementById('selectDisc').value;
+
+            if (!turmaId || !currentDiscSigla) {
+                document.getElementById('table-wrapper').classList.add('hidden');
+                document.getElementById('empty-view').classList.remove('hidden');
+                return;
+            }
+
+            document.getElementById('empty-view').classList.add('hidden');
+            document.getElementById('loading-overlay').classList.remove('hidden');
+            document.getElementById('table-wrapper').classList.add('hidden');
+
+            try {
+                let { data: matriculas, error: matErr } = await window.supabaseClient.from('matriculas')
+                    .select('id, ra_aluno, alunos!inner(nome_completo, status)')
+                    .eq('id_turma', turmaId)
+                    .eq('ano_letivo', 2026);
+
+                if (matErr || !matriculas || matriculas.length === 0) {
+                    const { data: fallbackAlunos } = await window.supabaseClient.from('alunos')
+                        .select('ra, nome_completo, status')
+                        .eq('id_turma', turmaId)
+                        .in('status', ['ATIVO', 'CURSANDO']);
+
+                    if (fallbackAlunos && fallbackAlunos.length > 0) {
+                        matriculas = fallbackAlunos.map(a => ({ id: null, ra_aluno: a.ra, alunos: { nome_completo: a.nome_completo, status: a.status } }));
+                    } else {
+                        matriculas = [];
+                    }
+                } else {
+                    matriculas = matriculas.filter(m => (m.alunos?.status || '').toUpperCase() === 'CURSANDO' || (m.alunos?.status || '').toUpperCase() === 'ATIVO');
+                }
+
+                globalMatriculas = matriculas.sort((a, b) => a.alunos.nome_completo.localeCompare(b.alunos.nome_completo));
+                document.getElementById('student-count').innerText = globalMatriculas.length.toString().padStart(2, '0');
+
+                const idList = globalMatriculas.map(m => m.id).filter(id => id !== null);
+                if (idList.length > 0) {
+                    const { data: notas } = await window.supabaseClient.from('notas_fundamental')
+                        .select('*')
+                        .eq('sigla_disciplina', currentDiscSigla)
+                        .eq('periodo', '1_BIMESTRE')
+                        .in('id_matricula', idList);
+                    globalNotas = notas || [];
+                } else {
+                    globalNotas = [];
+                }
+
+                renderTurmaTable();
+                document.getElementById('table-wrapper').classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Erro ao carregar matriz:", error);
+                showToastUnified("Erro Crítico", "Falha ao buscar os alunos desta turma.", "error");
+            } finally {
+                document.getElementById('loading-overlay').classList.add('hidden');
+                lucide.createIcons();
+            }
+        }
+
+        function renderTurmaTable() {
+            const header = document.getElementById('tableHeader');
+            const body = document.getElementById('tableBody');
+
+            header.innerHTML = `
+                <tr>
+                    <th class="px-8 py-6 sticky-intersect border-r border-white/5 min-w-[300px] text-white text-[10px] font-black uppercase tracking-widest">Aluno</th>
+                    <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 1 (P1)</th>
+                    <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 2 (P2)</th>
+                    <th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">M. Parcial</th>
+                    <th class="text-center py-6 sticky-header bg-orange-600 text-white text-[10px] font-black uppercase">Recup (RB)</th>
+                    <th class="text-center py-6 sticky-header bg-fmm-teal text-white text-[10px] font-black uppercase tracking-widest">Bimestral</th>
+                </tr>
+            `;
+
+            if (globalMatriculas.length === 0) {
+                body.innerHTML = `<tr><td colspan="6" class="px-8 py-20 text-center text-slate-300 italic font-medium">Nenhum aluno ativo encontrado nesta turma.</td></tr>`;
+                return;
+            }
+
+            body.innerHTML = globalMatriculas.map(m => {
+                const n = globalNotas.find(x => x.id_matricula === m.id) || { p1: 0, p2: 0, rb: 0, nb: 0 };
+                const mp = (Number(n.p1 || 0) + Number(n.p2 || 0)) / 2;
+
+                return `
+                <tr class="group transition-colors hover:bg-slate-50/50 text-left">
+                    <td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100">
+                        <div class="flex items-center gap-4 text-left">
+                            <div class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-400 border-2 border-white shadow-sm flex-shrink-0">
+                                ${m.alunos.nome_completo.charAt(0)}
+                            </div>
+                            <div class="flex flex-col text-left">
+                                <span class="text-sm font-extrabold truncate max-w-[220px]">${m.alunos.nome_completo}</span>
+                                <span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-4 text-center">${renderInput(m.id, currentDiscSigla, 'p1', n.p1)}</td>
+                    <td class="px-4 text-center">${renderInput(m.id, currentDiscSigla, 'p2', n.p2)}</td>
+                    <td class="px-4 text-center font-bold bg-slate-50 text-slate-400" id="mp-display-${m.id}-${currentDiscSigla}">${mp.toFixed(1)}</td>
+                    <td class="px-4 text-center">${renderInput(m.id, currentDiscSigla, 'rb', n.rb, mp >= 6)}</td>
+                    <td class="px-6 text-center">
+                        <span id="nb-display-${m.id}-${currentDiscSigla}" class="font-black text-base ${n.nb < 6 ? 'text-red-600' : 'text-fmm-teal'}">
+                            ${Number(n.nb || 0).toFixed(1)}
+                        </span>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        // ------------------ COMPONENTES COMPARTILHADOS (INPUT & SAVE) ------------------
+        function renderInput(matId, sigla, field, val, disabled = false) {
+            const isLow = val < 6 && val !== '' && val !== 0;
+            const inputId = `in-${matId}-${sigla}-${field}`;
+            return `
+                <input type="text" 
+                       id="${inputId}"
+                       value="${val === 0 ? '0' : (val || '')}" 
+                       ${disabled ? 'disabled' : ''} 
+                       oninput="handleInput(this, '${matId}', '${sigla}', '${field}')" 
+                       class="grade-input ${isLow ? 'grade-low' : 'grade-ok'}" 
+                       placeholder="-">
+            `;
+        }
+
+        function handleInput(el, matId, sigla, field) {
+            const valStr = el.value.replace(',', '.');
+            
+            if (valStr !== '' && (isNaN(valStr) || valStr < 0 || valStr > 10)) { 
+                el.classList.add('ring-2', 'ring-red-500'); 
+                return; 
+            }
+            el.classList.remove('ring-2', 'ring-red-500');
+            
+            const val = valStr === '' ? 0 : parseFloat(valStr);
+            const timerKey = `${matId}-${sigla}-${field}`;
+            
+            if (saveTimers[timerKey]) clearTimeout(saveTimers[timerKey]);
+            
+            document.getElementById('sync-status').classList.remove('hidden');
+            
+            saveTimers[timerKey] = setTimeout(() => { saveData(matId, sigla, field, val); }, 700);
+        }
+
+        async function saveData(matId, sigla, field, val) {
+            if (!matId || matId === 'null') {
+                showToastUnified("Erro de Integridade", "Aluno sem Matrícula Válida. Impossível salvar.", "error");
+                document.getElementById('sync-status').classList.add('hidden');
+                return;
+            }
+
+            try {
+                // Como não somos o app isolado, devemos confiar na conexão global
+                // Para contornar eventuais problemas de row-level security (RLS), o portal FMM 
+                // usa o role/privilegio de auth definido no login original.
+                const payload = { 
+                    id_matricula: matId, 
+                    sigla_disciplina: sigla, 
+                    periodo: '1_BIMESTRE',
+                    [field]: val 
+                };
+
+                const { data, error } = await window.supabaseClient
+                    .from('notas_fundamental')
+                    .upsert(payload, { onConflict: 'id_matricula,sigla_disciplina,periodo' })
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                // Atualizar Display da Bimestral (nb)
+                const nbDisplay = document.getElementById(`nb-display-${matId}-${sigla}`);
+                if (nbDisplay && data.nb !== undefined) {
+                    nbDisplay.innerText = Number(data.nb).toFixed(1);
+                    nbDisplay.className = `font-black text-base ${data.nb < 6 ? 'text-red-600' : 'text-fmm-teal'}`;
+                }
+
+                // Cálculo Front-end da Parcial
+                if (field === 'p1' || field === 'p2') {
+                    const p1Input = document.getElementById(`in-${matId}-${sigla}-p1`).value;
+                    const p2Input = document.getElementById(`in-${matId}-${sigla}-p2`).value;
+                    
+                    const mp = (Number(p1Input.replace(',','.')||0) + Number(p2Input.replace(',','.')||0)) / 2;
+                    document.getElementById(`mp-display-${matId}-${sigla}`).innerText = mp.toFixed(1);
+                    
+                    const rbInput = document.getElementById(`in-${matId}-${sigla}-rb`);
+                    if (rbInput) {
+                        if (mp >= 6) {
+                            rbInput.disabled = true;
+                            rbInput.value = '';
+                            rbInput.classList.remove('grade-low');
+                            rbInput.classList.add('grade-ok');
+                        } else {
+                            rbInput.disabled = false;
+                        }
+                    }
+                }
+
+                showToastUnified("Sincronizado", "Nota guardada na nuvem com sucesso.", "success");
+
+            } catch (err) {
+                console.error("Erro no Upsert SQL:", err);
+                showToastUnified("Falha de Sincronização", "Ocorreu um erro ao gravar a nota.", "error");
+            } finally {
+                document.getElementById('sync-status').classList.add('hidden');
+            }
+        }
+
+        // Fechar dropdown de pesquisa ao clicar fora
+        document.addEventListener('click', (e) => {
+            const filtersAluno = document.getElementById('filters-aluno');
+            const searchResults = document.getElementById('search-results');
+            if (filtersAluno && !filtersAluno.contains(e.target)) {
+                searchResults?.classList.add('hidden');
+            }
+        });
+
+        window.onload = init;
+    </script>
+</body>
+</html>
