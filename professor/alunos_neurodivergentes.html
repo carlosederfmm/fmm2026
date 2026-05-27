@@ -186,10 +186,10 @@
                 const { data: profile } = await window.supabaseClient.from('perfis').select('cargo').eq('id', user.id).single();
                 
                 // 2. Aplicar Manutenção se for Professor
-                if (profile && profile.cargo === 'professor') {
-                    showMaintenance();
-                    return;
-                }
+                // if (profile && profile.cargo === 'professor') {
+                //     showMaintenance();
+                //     return;
+                // }
             }
 
             lucide.createIcons();
