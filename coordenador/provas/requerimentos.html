@@ -687,7 +687,7 @@
             
             const tbody = document.getElementById('examDetailTableBody');
             const statusClasses = { 'Pendente': 'status-pending', 'Deferido': 'status-approved', 'Indeferido': 'status-rejected' };
-
+        
             tbody.innerHTML = exam.requests.map(r => `
                 <tr class="hover:bg-slate-50 transition-colors border-b border-slate-50 text-left">
                     <td class="p-5 text-left">
@@ -706,7 +706,7 @@
                         </div>
                     </td>
                 </tr>`).join('');
-
+        
             modal.classList.remove('hidden');
             lucide.createIcons();
         }
@@ -854,45 +854,50 @@
 
         async function updateExamStatus(reqId, examIndex, newStatus) {
             const req = allRequests.find(r => r.id === reqId);
-            if(!req) return;
-            
+            if (!req) return;
+        
+            // 1. Atualização local imediata na memória (Interface responde na hora)
             const provas = [...req.provas_solicitadas];
             provas[examIndex].status = newStatus;
             
             let finalStatus = 'Pendente';
             if (provas.every(p => p.status === 'Deferido')) finalStatus = 'Deferido';
             if (provas.some(p => p.status === 'Indeferido')) finalStatus = 'Indeferido';
-            
-            await window.supabaseClient
-                .from('justificativas_ausencia')
-                .update({ status: finalStatus, provas_solicitadas: provas })
-                .eq('id', reqId);
-            
-            await loadRequests();
-
-            if(currentExamOpen){
-                const requestsForExam = [];
-                allRequests.forEach(r=>{
-                    r.provas_solicitadas.forEach((p,idx)=>{
-                        if(p.id_calendario === currentExamOpen.id){
-                            RequestsForExam.push({
-                               ...p,
-                                reqId: r.id,
-                                aluno: r.alunos,
-                                ra: r.aluno_ra,
-                                anexo: r.anexo_url,
-                                examIndex: idx
+        
+            req.provas_solicitadas = provas;
+            req.status = finalStatus;
+        
+            // 2. Se o modal da prova estiver aberto, atualiza a tabela imediatamente
+            if (currentExamOpen) {
+                const updatedRequests = [];
+                allRequests.forEach(r => {
+                    r.provas_solicitadas.forEach((p, idx) => {
+                        // Converte ambos para String para garantir a comparação exata do ID da prova
+                        if (String(p.id_calendario) === String(currentExamOpen.id)) {
+                            updatedRequests.push({ 
+                                ...p, 
+                                reqId: r.id, 
+                                aluno: r.alunos, 
+                                ra: r.aluno_ra, 
+                                anexo: r.anexo_url, 
+                                examIndex: idx 
                             });
                         }
                     });
                 });
-                const updatedExam = {
-                    ...currentExamOpen,
-                    requests: requestsForExam
-                };
-                
-                openExamDetailModal(updatedExam);
+        
+                currentExamOpen.requests = updatedRequests;
+                openExamDetailModal(currentExamOpen);
             }
+        
+            // 3. Persiste no Banco de Dados em segundo plano
+            await window.supabaseClient
+                .from('justificativas_ausencia')
+                .update({ status: finalStatus, provas_solicitadas: provas })
+                .eq('id', reqId);
+        
+            // 4. Sincroniza a base global e os cards de fundo
+            await loadRequests();
         }
 
         function switchView(view) {
