@@ -701,8 +701,8 @@
                     <td class="p-5 text-center"><span class="status-badge ${statusClasses[r.status]} text-center">${r.status}</span></td>
                     <td class="p-5 text-right">
                         <div class="flex justify-end gap-2 text-right">
-                            <button onclick="updateExamStatus('${r.reqId}', ${r.examIndex}, 'Indeferido'); closeExamDetailModal();" class="w-9 h-9 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all flex items-center justify-center shadow-sm"><i data-lucide="x" class="w-4 h-4"></i></button>
-                            <button onclick="updateExamStatus('${r.reqId}', ${r.examIndex}, 'Deferido'); closeExamDetailModal();" class="w-9 h-9 bg-green-50 hover:bg-fmm-green text-fmm-green hover:text-white rounded-xl transition-all flex items-center justify-center shadow-sm"><i data-lucide="check" class="w-4 h-4"></i></button>
+                            <button onclick="updateExamStatus('${r.reqId}', ${r.examIndex}, 'Indeferido')" class="w-9 h-9 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all flex items-center justify-center shadow-sm"><i data-lucide="x" class="w-4 h-4"></i></button>
+                            <button onclick="updateExamStatus('${r.reqId}', ${r.examIndex}, 'Deferido')" class="w-9 h-9 bg-green-50 hover:bg-fmm-green text-fmm-green hover:text-white rounded-xl transition-all flex items-center justify-center shadow-sm"><i data-lucide="check" class="w-4 h-4"></i></button>
                         </div>
                     </td>
                 </tr>`).join('');
@@ -854,13 +854,45 @@
 
         async function updateExamStatus(reqId, examIndex, newStatus) {
             const req = allRequests.find(r => r.id === reqId);
+            if(!req) return;
+            
             const provas = [...req.provas_solicitadas];
             provas[examIndex].status = newStatus;
+            
             let finalStatus = 'Pendente';
             if (provas.every(p => p.status === 'Deferido')) finalStatus = 'Deferido';
             if (provas.some(p => p.status === 'Indeferido')) finalStatus = 'Indeferido';
-            await window.supabaseClient.from('justificativas_ausencia').update({ status: finalStatus, provas_solicitadas: provas }).eq('id', reqId);
+            
+            await window.supabaseClient
+                .from('justificativas_ausencia')
+                .update({ status: finalStatus, provas_solicitadas: provas })
+                .eq('id', reqId);
+            
             await loadRequests();
+
+            if(currentExamOpen){
+                const requestsForExam = [];
+                allRequests.forEach(r=>{
+                    r.provas_solicitadas.forEach((p,idx)=>{
+                        if(p.id_calendario === currentExamOpen.id){
+                            RequestsForExam.push({
+                               ...p,
+                                reqId: r.id,
+                                aluno: r.alunos,
+                                ra: r.aluno_ra,
+                                anexo: r.anexo_url,
+                                examIndex: idx
+                            });
+                        }
+                    });
+                });
+                const updatedExam = {
+                    ...currentExamOpen,
+                    requests: requestsForExam
+                };
+                
+                openExamDetailModal(updatedExam);
+            }
         }
 
         function switchView(view) {
