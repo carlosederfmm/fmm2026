@@ -60,27 +60,42 @@
 
         @media print {
             @page { size: A4 portrait; margin: 8mm; }
+            html, body, main{
+                overflow: visible !important;
+                height: auto !important;
+            }
+            
             body > *:not(main) { display: none !important; }
             main > *:not(#printArea) { display: none !important; }
             #printArea { display: block !important; width: 100%; color: #000; font-family: Arial, Helvetica, sans-serif; }
-            
-            .print-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
-            .print-header img { height: 45px; }
-            .print-header .doc-title { text-align: right; }
-            .print-header h1 { font-size: 14pt; font-weight: 900; margin: 0; text-transform: uppercase; }
-            .print-header p { font-size: 9pt; font-weight: 700; margin: 2px 0 0 0; text-transform: uppercase; color: #333; }
 
-            .print-info-grid { display: grid; grid-template-columns: 3fr 1.5fr; gap: 10px; margin-bottom: 15px; }
-            .info-box { border: 1px solid #000; padding: 6px 10px; }
-            .info-box label { font-size: 7pt; font-weight: 900; color: #444; display: block; margin-bottom: 2px; text-transform: uppercase; }
-            .info-box span { font-size: 10pt; font-weight: 900; text-transform: uppercase; }
+            .print-page {
+                page-break-after: always;
+                break-after: page;
+                box-sizing: border-box;
+            }
+            .print-page:last-child {
+                page-break-after: auto;
+                break-after: auto;
+            }
+            
+            .print-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px; }
+            .print-header img { height: 40px; }
+            .print-header .doc-title { text-align: right; }
+            .print-header h1 { font-size: 13pt; font-weight: 900; margin: 0; text-transform: uppercase; }
+            .print-header p { font-size: 8.5pt; font-weight: 700; margin: 2px 0 0 0; text-transform: uppercase; color: #333; }
+
+            .print-info-grid { display: grid; grid-template-columns: 3fr 1.5fr; gap: 8px; margin-bottom: 12px; }
+            .info-box { border: 1px solid #000; padding: 5px 8px; }
+            .info-box label { font-size: 6.5pt; font-weight: 900; color: #444; display: block; margin-bottom: 2px; text-transform: uppercase; }
+            .info-box span { font-size: 9.5pt; font-weight: 900; text-transform: uppercase; }
 
             table.print-table { width: 100%; border-collapse: collapse; border: 1.5px solid #000; table-layout: fixed; }
             table.print-table th { 
                 background-color: #c8d400 !important; 
                 -webkit-print-color-adjust: exact; 
                 border: 1px solid #000; 
-                padding: 4px 2px; 
+                padding: 3px 2px; 
                 font-size: 7.5pt; 
                 font-weight: 900; 
                 text-transform: uppercase; 
@@ -89,10 +104,10 @@
             }
             table.print-table td { 
                 border: 1px solid #000; 
-                padding: 0 6px; 
+                padding: 0 4px; 
                 font-size: 6.5pt; 
                 font-weight: 700; 
-                height: 20px; 
+                height: 18px; 
                 vertical-align: middle; 
                 text-align: center;
             }
@@ -103,8 +118,8 @@
             .col-aluno { width: 220px; text-align: left !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             .col-signature { width: auto; } 
 
-            .print-footer { margin-top: 100px; display: flex; justify-content: space-around; }
-            .signature-line { width: 220px; border-top: 1px solid #000; text-align: center; padding-top: 6px; font-size: 7.5pt; font-weight: 900; text-transform: uppercase; }
+            .print-footer { margin-top: 25px; display: flex; justify-content: space-around; }
+            .signature-line { width: 220px; border-top: 1px solid #000; text-align: center; padding-top: 4px; font-size: 7pt; font-weight: 900; text-transform: uppercase; }
         }
     </style>
 </head>
@@ -744,19 +759,95 @@
 
         function printExamAttendanceList() {
             if (!currentExamOpen || !currentExamOpen.requests) return;
-            const deferidos = currentExamOpen.requests.filter(r => r.status === 'Deferido').sort((a, b) => a.aluno.nome_completo.localeCompare(b.aluno.nome_completo));
+            
+            const deferidos = currentExamOpen.requests
+                .filter(r => r.status === 'Deferido')
+                .sort((a, b) => a.aluno.nome_completo.localeCompare(b.aluno.nome_completo));
+                
             if (deferidos.length === 0) return alert("Nenhum aluno com requerimento DEFERIDO para esta prova.");
+        
             const printArea = document.getElementById('printArea');
             const nomeProva = currentExamOpen.disciplinas?.nome || currentExamOpen.sigla_disciplina;
-            let html = `<div class="print-container" style="padding: 15px;"><div class="print-header"><img src="../../assets/logo-fmm-color.png" alt="FMM Logo"><div class="doc-title text-right"><h1>Lista de Assinatura</h1><p>Segunda Chamada de Avaliação</p></div></div><div class="print-info-grid"><div class="info-box text-left"><label>Prova / Componente Curricular</label><span>${nomeProva} - ${currentExamOpen.tipo_prova}</span></div><div class="info-box text-left"><label>Data da Aplicação</label><span>____ / ____ / 2026</span></div></div><table class="print-table"><thead><tr><th class="col-num">Nº</th><th class="col-ra">RA</th><th class="col-aluno">Estudante</th><th class="col-turma">Turma</th><th class="col-signature">Assinatura Inicial</th><th class="col-signature">Assinatura Final</th></tr></thead><tbody>`;
-            const rowCount = Math.max(30, deferidos.length);
-            for (let i = 0; i < rowCount; i++) {
-                const r = deferidos[i];
-                html += `<tr><td class="col-num text-center">${r ? (i + 1) : ''}</td><td class="col-ra text-center">${r ? r.ra : ''}</td><td class="col-aluno" title="${r ? r.aluno.nome_completo : ''}">${r ? r.aluno.nome_completo : ''}</td><td class="col-turma text-center">${r ? r.aluno.turmas.nome : ''}</td><td class="col-signature"></td><td class="col-signature"></td></tr>`;
+            
+            const ITEMS_PER_PAGE = 43;
+            const totalPages = Math.ceil(deferidos.length / ITEMS_PER_PAGE);
+            let html = '';
+        
+            for (let p = 0; p < totalPages; p++) {
+                const pageStudents = deferidos.slice(p * ITEMS_PER_PAGE, (p + 1) * ITEMS_PER_PAGE);
+                
+                html += `<div class="print-page">`;
+                
+                // Cabeçalho repetido em cada página
+                html += `
+                    <div class="print-header">
+                        <img src="../../assets/logo-fmm-color.png" alt="FMM Logo">
+                        <div class="doc-title text-right">
+                            <h1>Lista de Assinatura</h1>
+                            <p>Segunda Chamada de Avaliação — Pág. ${p + 1}/${totalPages}</p>
+                        </div>
+                    </div>
+                    <div class="print-info-grid">
+                        <div class="info-box text-left">
+                            <label>Prova / Componente Curricular</label>
+                            <span>${nomeProva} - ${currentExamOpen.tipo_prova}</span>
+                        </div>
+                        <div class="info-box text-left">
+                            <label>Data da Aplicação</label>
+                            <span>____ / ____ / 2026</span>
+                        </div>
+                    </div>
+                `;
+                
+                // Tabela da página atual
+                html += `
+                    <table class="print-table">
+                        <thead>
+                            <tr>
+                                <th class="col-num">Nº</th>
+                                <th class="col-ra">RA</th>
+                                <th class="col-aluno">Estudante</th>
+                                <th class="col-turma">Turma</th>
+                                <th class="col-signature">Assinatura Inicial</th>
+                                <th class="col-signature">Assinatura Final</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+        
+                for (let i = 0; i < pageStudents.length; i++) {
+                    const r = pageStudents[i];
+                    const globalIndex = (p * ITEMS_PER_PAGE) + i + 1; // Mantém a contagem contínua entre páginas
+                    
+                    html += `
+                        <tr>
+                            <td class="col-num text-center">${globalIndex}</td>
+                            <td class="col-ra text-center">${r.ra}</td>
+                            <td class="col-aluno" title="${r.aluno.nome_completo}">${r.aluno.nome_completo}</td>
+                            <td class="col-turma text-center">${r.aluno.turmas?.nome || ''}</td>
+                            <td class="col-signature"></td>
+                            <td class="col-signature"></td>
+                        </tr>
+                    `;
+                }
+        
+                html += `
+                        </tbody>
+                    </table>
+                    
+                    <!-- Rodapé em todas as páginas -->
+                    <div class="print-footer">
+                        <div class="signature-line text-center">Assinatura do Aplicador</div>
+                        <div class="signature-line text-center">Coordenação Pedagógica</div>
+                    </div>
+                </div>`;
             }
-            html += `</tbody></table><div class="print-footer"><div class="signature-line text-center">Assinatura do Aplicador</div><div class="signature-line text-center">Coordenação Pedagógica</div></div></div>`;
+        
             printArea.innerHTML = html;
-            setTimeout(() => { window.print(); }, 500);
+            
+            setTimeout(() => { 
+                window.print(); 
+            }, 500);
         }
 
         function closeExamDetailModal() { document.getElementById('examDetailModal').classList.add('hidden'); currentExamOpen = null; }
