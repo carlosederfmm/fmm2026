@@ -271,8 +271,27 @@
                     <td class="p-5 text-center">${statusHTML}</td>
                     <td class="p-5 text-right">
                         <div class="flex justify-end gap-2">
-                            ${gabRegular ? `<button onclick="exportCSV('${gabRegular.id}')" class="bg-fmm-blue hover:bg-fmm-dark text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm"><i data-lucide="download" class="w-3 h-3"></i> Regular</button>` : `<div class="w-20 px-3 py-1.5 rounded-lg border border-dashed border-slate-200 text-[8px] text-slate-300 font-black text-center uppercase">Regular</div>`}
-                            ${gabAdaptado ? `<button onclick="exportCSV('${gabAdaptado.id}')" class="bg-fmm-green hover:bg-fmm-dark text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm"><i data-lucide="download" class="w-3 h-3"></i> Adaptado</button>` : `<div class="w-20 px-3 py-1.5 rounded-lg border border-dashed border-slate-200 text-[8px] text-slate-300 font-black text-center uppercase">Adaptado</div>`}
+                            ${gabRegular ? `
+                                <div class="flex items-center gap-1">
+                                    <button onclick="exportCSV('${gabRegular.id}')" class="bg-fmm-blue hover:bg-fmm-dark text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-sm" title="Baixar CSV Regular">
+                                        <i data-lucide="download" class="w-3 h-3"></i> Regular
+                                    </button>
+                                    <button onclick="deleteGabarito('${gabRegular.id}', 'Regular')" class="bg-red-50 hover:bg-red-500 text-red-500 hover:text-white p-1.5 rounded-lg transition-all shadow-sm flex items-center justify-center" title="Excluir Gabarito Regular">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
+                            ` : `<div class="w-20 px-3 py-1.5 rounded-lg border border-dashed border-slate-200 text-[8px] text-slate-300 font-black text-center uppercase">Regular</div>`}
+
+                            ${gabAdaptado ? `
+                                <div class="flex items-center gap-1">
+                                    <button onclick="exportCSV('${gabAdaptado.id}')" class="bg-fmm-green hover:bg-fmm-dark text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-sm" title="Baixar CSV Adaptado">
+                                        <i data-lucide="download" class="w-3 h-3"></i> Adaptado
+                                    </button>
+                                    <button onclick="deleteGabarito('${gabAdaptado.id}', 'Adaptado')" class="bg-red-50 hover:bg-red-500 text-red-500 hover:text-white p-1.5 rounded-lg transition-all shadow-sm flex items-center justify-center" title="Excluir Gabarito Adaptado">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
+                            ` : `<div class="w-20 px-3 py-1.5 rounded-lg border border-dashed border-slate-200 text-[8px] text-slate-300 font-black text-center uppercase">Adaptado</div>`}
                         </div>
                     </td>
                 </tr>`;
@@ -332,6 +351,27 @@
             link.setAttribute("href", url);
             link.setAttribute("download", fileName);
             link.click();
+        }
+
+        async function deleteGabarito(gabaritoId, modalidade) {
+            const confirmDelete = confirm(`Tem certeza que deseja excluir o registro deste gabarito (${modalidade.toUpperCase()})?\n\nEsta ação removerá o gabarito do banco de dados e permitirá que o professor envie uma nova versão.`);
+            if (!confirmDelete) return;
+
+            try {
+                const { error } = await window.supabaseClient
+                    .from('gabaritos_oficiais')
+                    .delete()
+                    .eq('id', gabaritoId);
+
+                if (error) {
+                    alert("Erro ao excluir o gabarito: " + error.message);
+                } else {
+                    await loadData();
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Erro inesperado ao tentar excluir o gabarito.");
+            }
         }
 
         window.onload = init;
