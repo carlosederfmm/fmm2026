@@ -85,72 +85,22 @@
         }
     </style>
 </head>
-<body class="antialiased">
+<body>
+    <div id="root"></div>
 
-    <!-- ==========================================
-         VIEWPORT DESKTOP (md:flex)
-         ========================================== -->
-    <div id="desktop-container" class="hidden md:flex bg-fmm-dark min-h-screen items-center justify-center p-4 relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-[600px] h-[600px] bg-fmm-blue rounded-full filter blur-[120px] opacity-20 -translate-x-1/2 -translate-y-1/2"></div>
-        <div class="absolute bottom-0 right-0 w-[500px] h-[500px] bg-fmm-lime rounded-full filter blur-[120px] opacity-10 translate-x-1/2 translate-y-1/2"></div>
+    <!-- Env (optional) - add assets/js/env.js to expose window.__ENV__ -->
+    <script src="assets/js/env.js"></script>
+    <!-- Supabase client (kept for compatibility) -->
+    <script src="assets/js/supabase_client.js"></script>
 
-        <div class="w-full max-w-md z-10 animate-slide-up">
-            <div class="glass-effect p-10 rounded-[40px] shadow-2xl border border-white/20">
-                <div class="flex flex-col items-center mb-10 text-center">
-                    <div class="bg-fmm-dark p-4 rounded-3xl mb-4 shadow-xl border border-white/5">
-                        <img src="assets/logo-fmm-white.png" alt="FMM Logo" class="h-10" onerror="this.src='https://ui-avatars.com/api/?name=FMM&background=003c5b&color=fff&size=128'">
-                    </div>
-                    <h1 class="text-2xl font-bold text-fmm-dark tracking-tight">Bem-vindo de volta</h1>
-                    <p class="text-slate-500 text-sm font-medium mt-1">SME Matias Machline 2026</p>
-                </div>
+    <!-- React (development via CDN) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-                <form id="loginFormDesktop" class="space-y-5">
-                    <div class="space-y-2 text-left">
-                        <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">E-mail Institucional</label>
-                        <div class="relative group">
-                            <i data-lucide="mail" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
-                            <input type="email" id="loginEmail" required placeholder="usuario@fmm.org.br" 
-                                   class="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-fmm-blue transition-all font-medium">
-                        </div>
-                    </div>
-
-                    <div class="space-y-2 text-left">
-                        <div class="flex justify-between items-center px-2">
-                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Senha de Acesso</label>
-                            <a href="#" class="text-[10px] font-black text-fmm-blue uppercase tracking-widest hover:underline">Esqueci a senha</a>
-                        </div>
-                        <div class="relative group">
-                            <i data-lucide="lock" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
-                            <input type="password" id="loginPassword" required placeholder="••••••••" 
-                                   class="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-fmm-blue transition-all font-medium">
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-between px-2 text-left">
-                        <label class="flex items-center gap-2 cursor-pointer group">
-                            <input type="checkbox" id="keepConnected" class="w-4 h-4 rounded border-slate-200 text-fmm-blue focus:ring-fmm-blue transition-all">
-                            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wide group-hover:text-slate-600 transition-colors">Manter conectado</span>
-                        </label>
-                    </div>
-
-                    <button type="submit" id="submitBtnDesktop" class="w-full bg-fmm-blue hover:bg-fmm-dark text-white py-4 rounded-2xl font-bold text-sm shadow-xl shadow-fmm-blue/20 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 mt-4 uppercase tracking-widest">
-                        <span>Entrar no Sistema</span>
-                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                    </button>
-                </form>
-
-                <div class="mt-8 pt-6 border-t border-slate-100 text-center">
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Acesso Restrito a Colaboradores</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ==========================================
-         VIEWPORT MOBILE (block md:hidden)
-         ========================================== -->
-    <div id="mobile-container" class="block md:hidden bg-white dark:bg-background-dark text-slate-900 dark:text-white mobile-height">
-        <div class="max-w-md mx-auto min-h-screen relative flex flex-col overflow-hidden bg-background-light dark:bg-slate-950">
+    <!-- Application entry (JSX via Babel) -->
+    <script type="text/babel" src="src/main.jsx"></script>
+</body>n relative flex flex-col overflow-hidden bg-background-light dark:bg-slate-950">
             <div class="relative w-full h-[45vh] overflow-hidden">
                 <img alt="tela_inicial" class="w-full h-full object-cover" src="assets/tela_inicial.JPG"/>
                 <div class="absolute inset-0 bg-black/10"></div>

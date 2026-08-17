@@ -1,0 +1,6 @@
+.env
+assets/js/env.js
+node_modules/
+.DS_Store
+/dist
+/build

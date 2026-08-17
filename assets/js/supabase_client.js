@@ -4,7 +4,8 @@
  * * Centraliza a conexão e helpers de data para evitar inconsistências de fuso horário.
  */
 
-const supabaseUrl = 'https://panxfescmzjdltthreqy.supabase.co';
+const supabaseUrl = (window.__ENV__ && window.__ENV__.SUPABASE_URL) || 'https://panxfescmzjdltthreqy.supabase.co';
+const supabaseKey = (window.__ENV__ && window.__ENV__.SUPABASE_KEY) || '******';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhbnhmZXNjbXpqZGx0dGhyZXF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwNTA5NDMsImV4cCI6MjA4MjYyNjk0M30.jSZVhw2TFD52zRV4NZUGUeXKBHedWXcdH7w_fXeoGhA';
 
 const supabaseOptions = {
