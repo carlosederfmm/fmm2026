@@ -438,12 +438,7 @@
         }
 
         function formatDriveUrl(url) {
-            if (!url) return null;
-            if (url.includes('drive.google.com')) {
-                const id = url.match(/\/d\/(.*?)\//);
-                return id ? `https://lh3.googleusercontent.com/d/${id[1]}` : url;
-            }
-            return url;
+            return window.formatStudentPhotoUrl(url);
         }
 
         function openCallModal(id) {

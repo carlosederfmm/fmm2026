@@ -182,6 +182,7 @@ const SidebarComponent = {
             { label: 'Presença', icon: 'calendar-check', link: 'professor/presenca_professor.html', roles: ['professor'] },
             { label: 'Lançar Notas', icon: 'graduation-cap', link: 'professor/notas_professor.html', roles: ['professor'] },
             { label: 'Gabaritos', icon: 'clipboard-list', link: 'professor/gabaritos_professor.html', roles: ['professor'] },
+            { label: 'Consultar Alunos', icon: 'users', link: 'professor/consultar_alunos_professor.html', roles: ['professor'] },
             { label: 'Gestão Individual', icon: 'user-search', link: 'professor/individual_professor.html', roles: ['professor'] },
             { label: 'Conteúdo de Aula', icon: 'book-text', link: 'professor/conteudo_professor.html', roles: ['professor'] },
             { label: 'Neurodivergentes', icon: 'brain', link: 'professor/alunos_neurodivergentes.html', roles: ['professor'] },

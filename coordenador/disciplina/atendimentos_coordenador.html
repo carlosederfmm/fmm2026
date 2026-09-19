@@ -255,14 +255,7 @@
         let userLevels = []; // Níveis permitidos ao coordenador
 
         function formatDriveUrl(url) {
-            if (!url) return null;
-            if (url.includes('drive.google.com') && url.includes('/file/d/')) {
-                const idMatch = url.match(/\/d\/(.*?)\//);
-                if (idMatch && idMatch[1]) {
-                    return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
-                }
-            }
-            return url;
+            return window.formatStudentPhotoUrl(url);
         }
 
         async function init() {

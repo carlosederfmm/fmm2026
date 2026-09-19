@@ -193,13 +193,7 @@
         let currentStudentRA = null;
 
         function formatDriveUrl(url) {
-            if (!url || typeof url !== 'string') return null;
-            if (url.includes('drive.google.com')) {
-                const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
-                const id = idMatch ? idMatch[1] : null;
-                if (id) return `https://drive.google.com/thumbnail?id=${id}&sz=w500`;
-            }
-            return url;
+            return window.formatStudentPhotoUrl(url);
         }
 
         async function init() {

@@ -84,4 +84,41 @@ const ManausTime = {
 window.supabaseClient = supabaseClient;
 window.ManausTime = ManausTime;
 
+/**
+ * Normaliza links públicos de fotos de alunos para uma URL direta de imagem.
+ * Links que não são do Google Drive são preservados, desde que usem HTTP(S).
+ */
+window.formatStudentPhotoUrl = (value) => {
+    if (typeof value !== 'string') return null;
+
+    const url = value.trim();
+    if (!url) return null;
+
+    let parsedUrl;
+    try {
+        parsedUrl = new URL(url);
+    } catch {
+        return null;
+    }
+
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) return null;
+
+    const isGoogleHost = parsedUrl.hostname === 'google.com' ||
+        parsedUrl.hostname.endsWith('.google.com') ||
+        parsedUrl.hostname === 'googleusercontent.com' ||
+        parsedUrl.hostname.endsWith('.googleusercontent.com');
+
+    if (!isGoogleHost) {
+        return parsedUrl.href;
+    }
+
+    const pathId = parsedUrl.pathname.match(/\/(?:file\/)?d\/([a-zA-Z0-9_-]+)/)?.[1];
+    const queryId = parsedUrl.searchParams.get('id')?.match(/^[a-zA-Z0-9_-]+$/)?.[0];
+    const fileId = pathId || queryId;
+
+    if (!fileId) return parsedUrl.href;
+
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w500`;
+};
+
 console.log("SME FMM: Timezone Localizada (Manaus/pt-BR) carregada.");

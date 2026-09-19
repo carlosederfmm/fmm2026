@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consultar Alunos | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="../assets/js/supabase_client.js"></script>
+    <script src="../sidebar.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; overflow: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .avatar-frame { width: 44px; height: 44px; border-radius: 14px; object-fit: cover; background: #f1f5f9; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,.08); cursor: zoom-in; }
+        .table-row-fast { contain: layout paint; }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden text-left">
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50">
+        <header class="bg-white h-20 border-b flex items-center justify-between px-8 shadow-sm shrink-0">
+            <div>
+                <h1 class="text-xl font-black text-fmm-dark tracking-tight">Consultar Alunos</h1>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Alunos das suas turmas e disciplinas</p>
+            </div>
+            <div class="flex items-center gap-3 bg-fmm-blue/5 px-4 py-2 rounded-2xl border border-fmm-blue/10">
+                <i data-lucide="users" class="w-4 h-4 text-fmm-blue"></i>
+                <span id="student-count" class="text-sm font-black text-fmm-dark">0</span>
+                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Alunos</span>
+            </div>
+        </header>
+
+        <section class="px-8 pt-8 shrink-0">
+            <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col lg:flex-row gap-3">
+                <div class="relative group flex-1">
+                    <i data-lucide="search" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
+                    <input id="searchInput" type="search" oninput="filterStudents(this.value)"
+                           placeholder="Pesquisar por nome ou RA..."
+                           class="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all text-sm font-medium">
+                </div>
+                <select id="turmaFilter" onchange="filterStudents()" aria-label="Filtrar por turma"
+                        class="lg:w-64 px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all text-sm font-bold text-slate-600">
+                    <option value="">Todas as turmas</option>
+                </select>
+            </div>
+        </section>
+
+        <section class="flex-1 overflow-y-auto p-8 custom-scrollbar relative">
+            <div id="loadingState" class="hidden absolute inset-0 z-20 bg-slate-50/70 backdrop-blur-[2px] flex items-center justify-center">
+                <div class="flex flex-col items-center gap-3">
+                    <i data-lucide="loader-2" class="w-10 h-10 animate-spin text-fmm-blue"></i>
+                    <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Carregando alunos...</span>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50/70 border-b border-slate-100 text-[10px] uppercase tracking-widest text-slate-400 font-black">
+                            <th class="px-8 py-5 w-24">Foto</th>
+                            <th class="px-6 py-5">Aluno</th>
+                            <th class="px-6 py-5">RA</th>
+                            <th class="px-6 py-5">Turma</th>
+                            <th class="px-8 py-5">E-mail</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody" class="divide-y divide-slate-50"></tbody>
+                </table>
+                <div id="emptyState" class="hidden py-20 flex-col items-center justify-center text-slate-300">
+                    <i data-lucide="user-round-x" class="w-12 h-12 mb-4 opacity-30"></i>
+                    <p class="text-xs font-black uppercase tracking-widest">Nenhum aluno encontrado</p>
+                </div>
+                <div id="errorState" class="hidden py-20 flex-col items-center justify-center text-red-300">
+                    <i data-lucide="triangle-alert" class="w-12 h-12 mb-4 opacity-50"></i>
+                    <p id="errorMessage" class="text-xs font-black uppercase tracking-widest">Não foi possível carregar os alunos</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="photoZoomModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onclick="closePhotoZoom()">
+        <div class="relative animate-fade" onclick="event.stopPropagation()">
+            <button type="button" onclick="closePhotoZoom()" aria-label="Fechar foto ampliada" class="absolute -top-12 -right-4 text-white hover:text-fmm-lime transition-colors">
+                <i data-lucide="x" class="w-8 h-8"></i>
+            </button>
+            <img id="enlargedPhoto" src="" alt="" class="max-w-[90vw] max-h-[80vh] rounded-[40px] shadow-2xl border-4 border-white/10 object-contain">
+            <div id="enlargedName" class="mt-4 text-center text-white font-bold text-lg tracking-tight"></div>
+        </div>
+    </div>
+
+    <script>
+        const PAGE_SIZE = 1000;
+        let allStudents = [];
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function formatDriveUrl(url) {
+            return window.formatStudentPhotoUrl(url);
+        }
+
+        async function fetchAllRows(queryFactory) {
+            const rows = [];
+            for (let from = 0; ; from += PAGE_SIZE) {
+                const { data, error } = await queryFactory().range(from, from + PAGE_SIZE - 1);
+                if (error) throw error;
+                rows.push(...(data || []));
+                if (!data || data.length < PAGE_SIZE) return rows;
+            }
+        }
+
+        async function loadStudents() {
+            const loading = document.getElementById('loadingState');
+            const errorState = document.getElementById('errorState');
+            const emptyState = document.getElementById('emptyState');
+            loading.classList.remove('hidden');
+            loading.classList.add('flex');
+            errorState.classList.add('hidden');
+            emptyState.classList.add('hidden');
+
+            try {
+                const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
+                if (authError || !user) return window.location.href = '../index.html';
+
+                const { data: profile, error: profileError } = await window.supabaseClient
+                    .from('perfis').select('cargo').eq('id', user.id).single();
+                if (profileError) throw profileError;
+                if (profile?.cargo !== 'professor') {
+                    throw new Error('Esta consulta está disponível apenas para professores.');
+                }
+
+                const gradeRows = await fetchAllRows(() => window.supabaseClient
+                    .from('grade_horaria')
+                    .select('id_turma, sigla_disciplina')
+                    .eq('id_professor', user.id)
+                    .order('id_turma'));
+
+                const turmaIds = [...new Set(gradeRows.map(row => row.id_turma).filter(Boolean))];
+                const matriculas = [];
+                for (let start = 0; start < turmaIds.length; start += 100) {
+                    const turmaBatch = turmaIds.slice(start, start + 100);
+                    const batchRows = await fetchAllRows(() => window.supabaseClient
+                        .from('matriculas')
+                        .select('id, ra_aluno, id_turma, status, alunos!inner(ra, nome_completo, url_foto, email_institucional, status), turmas(id, nome, serie)')
+                        .in('id_turma', turmaBatch)
+                        .eq('ano_letivo', 2026)
+                        .order('ra_aluno'));
+                    matriculas.push(...batchRows);
+                }
+
+                const unique = new Map();
+                matriculas.forEach(row => {
+                    const student = row.alunos;
+                    if (!student) return;
+                    const status = String(row.status || student.status || '').toLowerCase();
+                    if (status && !['cursando', 'ativo'].includes(status)) return;
+                    const key = `${row.ra_aluno || student.ra}-${row.id_turma}`;
+                    if (!unique.has(key)) unique.set(key, {
+                        nome: student.nome_completo,
+                        ra: row.ra_aluno || student.ra,
+                        foto: student.url_foto,
+                        email: student.email_institucional,
+                        turma: row.turmas
+                    });
+                });
+
+                allStudents = [...unique.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+                populateTurmaFilter();
+                renderStudents(allStudents);
+            } catch (error) {
+                console.error('Erro ao carregar alunos do professor:', error);
+                document.getElementById('errorMessage').innerText = error.message || 'Não foi possível carregar os alunos';
+                errorState.classList.remove('hidden');
+                errorState.classList.add('flex');
+            } finally {
+                loading.classList.add('hidden');
+                loading.classList.remove('flex');
+                lucide.createIcons();
+            }
+        }
+
+        function populateTurmaFilter() {
+            const select = document.getElementById('turmaFilter');
+            const turmas = [...new Map(
+                allStudents
+                    .filter(student => student.turma?.id && student.turma?.nome)
+                    .map(student => [student.turma.id, student.turma])
+            ).values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+            select.innerHTML = '<option value="">Todas as turmas</option>' +
+                turmas.map(turma => `<option value="${escapeHtml(turma.id)}">${escapeHtml(turma.nome)}</option>`).join('');
+        }
+
+        function filterStudents(value = document.getElementById('searchInput').value) {
+            const term = value.trim().toLocaleLowerCase('pt-BR');
+            const turmaId = document.getElementById('turmaFilter').value;
+            renderStudents(allStudents.filter(student =>
+                (!turmaId || String(student.turma?.id) === turmaId) &&
+                (String(student.nome || '').toLocaleLowerCase('pt-BR').includes(term) ||
+                String(student.ra || '').toLocaleLowerCase('pt-BR').includes(term))
+            ));
+        }
+
+        function renderStudents(students) {
+            const body = document.getElementById('studentTableBody');
+            const emptyState = document.getElementById('emptyState');
+            body.innerHTML = students.map(student => {
+                const name = escapeHtml(student.nome || 'Aluno sem nome');
+                const avatar = formatDriveUrl(student.foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.nome || 'Aluno')}&background=003c5b&color=fff`;
+                return `<tr class="table-row-fast hover:bg-slate-50 transition-colors">
+                    <td class="px-8 py-4"><img src="${escapeHtml(avatar)}" alt="Foto de ${name}" data-photo="${escapeHtml(avatar)}" data-name="${name}" class="avatar-frame" onclick="openPhotoZoom(this.dataset.photo, this.dataset.name)" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(student.nome || 'Aluno')}&background=003c5b&color=fff'"></td>
+                    <td class="px-6 py-4"><span class="text-sm font-black text-fmm-dark uppercase">${name}</span></td>
+                    <td class="px-6 py-4 font-mono text-xs font-bold text-slate-500">${escapeHtml(student.ra || '—')}</td>
+                    <td class="px-6 py-4"><span class="text-xs font-black text-fmm-blue uppercase">${escapeHtml(student.turma?.nome || 'Sem turma')}</span><span class="block text-[9px] text-slate-400 font-bold uppercase mt-1">${escapeHtml(student.turma?.serie || '')}</span></td>
+                    <td class="px-8 py-4 text-xs font-medium text-slate-500">${escapeHtml(student.email || 'Não informado')}</td>
+                </tr>`;
+            }).join('');
+            document.getElementById('student-count').innerText = students.length;
+            emptyState.classList.toggle('hidden', students.length > 0);
+            emptyState.classList.toggle('flex', students.length === 0);
+            lucide.createIcons();
+        }
+
+        function openPhotoZoom(url, name) {
+            const modal = document.getElementById('photoZoomModal');
+            const photo = document.getElementById('enlargedPhoto');
+            photo.src = url;
+            photo.alt = `Foto de ${name}`;
+            document.getElementById('enlargedName').innerText = name;
+            modal.classList.remove('hidden');
+        }
+
+        function closePhotoZoom() {
+            const modal = document.getElementById('photoZoomModal');
+            modal.classList.add('hidden');
+            document.getElementById('enlargedPhoto').src = '';
+        }
+
+        async function init() {
+            await SidebarComponent.render('sidebar-container');
+            await loadStudents();
+            lucide.createIcons();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

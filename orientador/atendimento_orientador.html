@@ -640,7 +640,7 @@
         }
 
         function toggleOther(checked) { document.getElementById('appOtherDesc').classList.toggle('hidden', !checked); }
-        function formatDriveUrl(url) { if (!url) return null; if (url.includes('drive.google.com')) { const id = url.match(/\/d\/(.*?)\//); return id ? `https://lh3.googleusercontent.com/d/${id[1]}` : url; } return url; }
+        function formatDriveUrl(url) { return window.formatStudentPhotoUrl(url); }
         function showToast(msg) { const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = msg; t.classList.replace('opacity-0', 'opacity-100'); t.classList.replace('translate-y-20', 'translate-y-0'); setTimeout(() => { t.classList.replace('opacity-100', 'opacity-0'); t.classList.replace('translate-y-0', 'translate-y-20'); }, 3000); }
         window.onload = init;
     </script>
