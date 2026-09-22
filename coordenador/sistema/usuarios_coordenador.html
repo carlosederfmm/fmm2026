@@ -65,9 +65,14 @@
                 <h1 class="text-xl font-bold text-fmm-dark">Gestão da Equipe (Staff)</h1>
                 <p class="text-xs text-slate-400">Controlo de acessos, cargos e permissões por nível</p>
             </div>
-            <button onclick="openModal()" class="bg-fmm-blue hover:bg-fmm-dark text-white px-6 py-2.5 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all shadow-lg shadow-fmm-blue/20">
-                <i data-lucide="user-plus" class="w-4 h-4"></i> Novo Cadastro
-            </button>
+            <div class="flex items-center gap-3">
+                <button onclick="openTransferModal()" class="bg-white border border-fmm-blue text-fmm-blue hover:bg-fmm-blue hover:text-white px-5 py-2.5 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all">
+                    <i data-lucide="arrow-right-left" class="w-4 h-4"></i> Transferir Turmas
+                </button>
+                <button onclick="openModal()" class="bg-fmm-blue hover:bg-fmm-dark text-white px-6 py-2.5 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all shadow-lg shadow-fmm-blue/20">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i> Novo Cadastro
+                </button>
+            </div>
         </header>
 
         <div class="px-8 pt-8 flex-shrink-0">
@@ -172,6 +177,41 @@
         </div>
     </div>
 
+    <div id="transferModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-xl rounded-[32px] shadow-2xl flex flex-col animate-fade-in-up overflow-hidden">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center">
+                <div>
+                    <h2 class="text-2xl font-bold text-fmm-dark">Transferir turmas</h2>
+                    <p class="text-xs text-slate-400 mt-1">Mova os vínculos e registros pedagógicos para outro professor.</p>
+                </div>
+                <button onclick="closeTransferModal()" class="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-slate-100 transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="p-8 space-y-5">
+                <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex gap-3 items-start">
+                    <i data-lucide="triangle-alert" class="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0"></i>
+                    <p class="text-xs text-amber-800 leading-relaxed">As turmas, horários, subturmas, conteúdos de aula e disciplinas vinculadas ao professor de origem serão atribuídos ao novo professor. Os registros de notas, frequência e autoria histórica não serão alterados.</p>
+                </div>
+                <div class="space-y-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Professor atual</label>
+                    <select id="transferFrom" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all"></select>
+                </div>
+                <div class="flex justify-center text-slate-300"><i data-lucide="arrow-down" class="w-5 h-5"></i></div>
+                <div class="space-y-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Novo professor</label>
+                    <select id="transferTo" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue transition-all"></select>
+                </div>
+            </div>
+            <div class="p-8 border-t bg-slate-50/50 rounded-b-[32px] flex justify-end gap-4">
+                <button onclick="closeTransferModal()" class="px-6 py-3 text-sm font-bold text-slate-500 hover:text-slate-700 transition-all">Cancelar</button>
+                <button onclick="transferProfessorRecords()" id="btnTransfer" class="px-8 py-3.5 bg-fmm-lime text-fmm-dark font-bold text-sm rounded-2xl shadow-xl hover:scale-105 transition-all">
+                    Confirmar transferência
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let editingId = null;
 
@@ -249,6 +289,99 @@
                     </td>
                 </tr>`}).join('');
             lucide.createIcons();
+        }
+
+        async function openTransferModal() {
+            const { data, error } = await window.supabaseClient
+                .from('perfis')
+                .select('id, nome_completo, email')
+                .eq('cargo', 'professor')
+                .order('nome_completo');
+            if (error) return alert("Não foi possível carregar os professores: " + error.message);
+            if (!data || data.length < 2) return alert("É necessário ter pelo menos dois professores cadastrados.");
+
+            const options = data.map(professor =>
+                `<option value="${professor.id}">${professor.nome_completo} (${professor.email})</option>`
+            ).join('');
+            document.getElementById('transferFrom').innerHTML = options;
+            document.getElementById('transferTo').innerHTML = options;
+            document.getElementById('transferTo').selectedIndex = 1;
+            document.getElementById('transferModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeTransferModal() {
+            document.getElementById('transferModal').classList.add('hidden');
+        }
+
+        async function transferProfessorRecords() {
+            const fromId = document.getElementById('transferFrom').value;
+            const toId = document.getElementById('transferTo').value;
+            const fromName = document.getElementById('transferFrom').selectedOptions[0]?.text || 'professor atual';
+            const toName = document.getElementById('transferTo').selectedOptions[0]?.text || 'novo professor';
+            const btn = document.getElementById('btnTransfer');
+
+            if (!fromId || !toId || fromId === toId) return alert("Selecione professores diferentes.");
+            if (!confirm(`Transferir os vínculos de ${fromName} para ${toName}? Esta ação não pode ser desfeita.`)) return;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin inline mr-2"></i>Transferindo...';
+            lucide.createIcons();
+
+            try {
+                const updates = [
+                    ['grade_horaria', 'id_professor'],
+                    ['subturmas', 'id_professor'],
+                    ['conteudos_aula', 'id_professor'],
+                    ['vinculo_elaboradores', 'professor_id']
+                ];
+
+                for (const [table, column] of updates) {
+                    const { error } = await window.supabaseClient
+                        .from(table)
+                        .update({ [column]: toId })
+                        .eq(column, fromId);
+                    if (error) throw new Error(`Não foi possível atualizar ${table}: ${error.message}`);
+                }
+
+                const { data: links, error: linksError } = await window.supabaseClient
+                    .from('professor_disciplinas')
+                    .select('sigla_disciplina')
+                    .eq('id_professor', fromId);
+                if (linksError) throw new Error(`Não foi possível ler as disciplinas vinculadas: ${linksError.message}`);
+
+                const { data: targetLinks, error: targetLinksError } = await window.supabaseClient
+                    .from('professor_disciplinas')
+                    .select('sigla_disciplina')
+                    .eq('id_professor', toId);
+                if (targetLinksError) throw new Error(`Não foi possível ler as disciplinas do novo professor: ${targetLinksError.message}`);
+
+                const targetSubjects = new Set((targetLinks || []).map(link => link.sigla_disciplina));
+                const newLinks = (links || [])
+                    .filter(link => link.sigla_disciplina && !targetSubjects.has(link.sigla_disciplina))
+                    .map(link => ({ id_professor: toId, sigla_disciplina: link.sigla_disciplina }));
+                if (newLinks.length) {
+                    const { error: insertError } = await window.supabaseClient
+                        .from('professor_disciplinas')
+                        .insert(newLinks);
+                    if (insertError) throw new Error(`Não foi possível transferir as disciplinas: ${insertError.message}`);
+                }
+
+                const { error: deleteError } = await window.supabaseClient
+                    .from('professor_disciplinas')
+                    .delete()
+                    .eq('id_professor', fromId);
+                if (deleteError) throw new Error(`Os vínculos antigos não puderam ser removidos: ${deleteError.message}`);
+
+                alert("Transferência concluída com sucesso!");
+                closeTransferModal();
+                await fetchUsuarios();
+            } catch (err) {
+                alert("A transferência foi interrompida. Verifique os vínculos atualizados antes de tentar novamente. Erro: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Confirmar transferência";
+            }
         }
 
         function toggleLevelSelector() {
