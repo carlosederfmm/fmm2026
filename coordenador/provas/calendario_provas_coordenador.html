@@ -1,367 +1,124 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Requerimentos | SME FMM</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendário de Provas | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script><script src="https://unpkg.com/lucide@latest"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- ConfiguraÃ§Ãµes SME -->
-    <script src="../../assets/js/constants.js"></script>
-    <script src="../../assets/js/supabase_client.js"></script>
-    <script src="../../sidebar.js"></script>
-
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        fmm: {
-                            dark: '#003c5b',
-                            blue: '#00638f',
-                            green: '#80a51b',
-                            lime: '#c8d400',
-                            bg: '#f8fafc'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        
-        .request-card { transition: all 0.2s; border-left: 4px solid transparent; }
-        .request-card.active { background-color: #f0f9ff; border-left-color: #00638f; }
-        
-        .status-badge { font-size: 9px; font-weight: 800; padding: 2px 10px; border-radius: 99px; text-transform: uppercase; }
-        .status-pending { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
-        .status-approved { background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7; }
-        .status-rejected { background: #fefce8; color: #a16207; border: 1px solid #fef08a; }
-
-        .view-tab.active { color: #00638f; border-bottom: 3px solid #00638f; }
-        
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
-
-        .serie-tag { font-size: 8px; font-weight: 800; background: #f1f5f9; color: #64748b; padding: 1px 6px; border-radius: 4px; text-transform: uppercase; border: 1px solid #e2e8f0; }
-        
-        .process-item { transition: transform 0.2s; border: 1px solid #f1f5f9; }
-        .process-item:hover { transform: translateX(4px); border-color: #00638f; background: #f8fafc; }
-
-        .exam-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
-        .exam-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); border-color: #00638f; }
-
-        @media print {
-            @page { size: A4 portrait; margin: 8mm; }
-            html, body, main{
-                overflow: visible !important;
-                height: auto !important;
-            }
-            
-            body > *:not(main) { display: none !important; }
-            main > *:not(#printArea) { display: none !important; }
-            #printArea { display: block !important; width: 100%; color: #000; font-family: Arial, Helvetica, sans-serif; }
-
-            .print-page {
-                page-break-after: always;
-                break-after: page;
-                box-sizing: border-box;
-            }
-            .print-page:last-child {
-                page-break-after: auto;
-                break-after: auto;
-            }
-            
-            .print-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px; }
-            .print-header img { height: 40px; }
-            .print-header .doc-title { text-align: right; }
-            .print-header h1 { font-size: 13pt; font-weight: 900; margin: 0; text-transform: uppercase; }
-            .print-header p { font-size: 8.5pt; font-weight: 700; margin: 2px 0 0 0; text-transform: uppercase; color: #333; }
-
-            .print-info-grid { display: grid; grid-template-columns: 3fr 1.5fr; gap: 8px; margin-bottom: 12px; }
-            .info-box { border: 1px solid #000; padding: 5px 8px; }
-            .info-box label { font-size: 6.5pt; font-weight: 900; color: #444; display: block; margin-bottom: 2px; text-transform: uppercase; }
-            .info-box span { font-size: 9.5pt; font-weight: 900; text-transform: uppercase; }
-
-            table.print-table { width: 100%; border-collapse: collapse; border: 1.5px solid #000; table-layout: fixed; }
-            table.print-table th { 
-                background-color: #c8d400 !important; 
-                -webkit-print-color-adjust: exact; 
-                border: 1px solid #000; 
-                padding: 3px 2px; 
-                font-size: 7.5pt; 
-                font-weight: 900; 
-                text-transform: uppercase; 
-                text-align: center;
-                vertical-align: middle;
-            }
-            table.print-table td { 
-                border: 1px solid #000; 
-                padding: 0 4px; 
-                font-size: 6.5pt; 
-                font-weight: 700; 
-                height: 18px; 
-                vertical-align: middle; 
-                text-align: center;
-            }
-            
-            .col-num { width: 25px; }
-            .col-ra { width: 60px; }
-            .col-turma { width: 55px; }
-            .col-aluno { width: 220px; text-align: left !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            .col-signature { width: auto; } 
-
-            .print-footer { margin-top: 25px; display: flex; justify-content: space-around; }
-            .signature-line { width: 220px; border-top: 1px solid #000; text-align: center; padding-top: 4px; font-size: 7pt; font-weight: 900; text-transform: uppercase; }
-        }
-    </style>
+    <script src="../../assets/js/constants.js"></script><script src="../../assets/js/supabase_client.js"></script><script src="../../sidebar.js"></script>
+    <script>let editingCalId = null;
+tailwind.config = { theme: { extend: { colors: { fmm: { dark: '#003c5b', blue: '#00638f', green: '#80a51b', lime: '#c8d400', bg: '#f8fafc' } } } } };</script>
+    <style>body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }.custom-scrollbar::-webkit-scrollbar { width: 4px; }.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }.animate-fade { animation: fadeIn 0.3s ease-out forwards; }@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }.serie-tag { font-size: 8px; font-weight: 800; background: #f1f5f9; color: #64748b; padding: 1px 6px; border-radius: 4px; text-transform: uppercase; border: 1px solid #e2e8f0; }</style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden text-slate-700">
-
-    <aside id="sidebar-container" class="w-72 flex-shrink-0 bg-fmm-dark text-white z-20 shadow-2xl print:hidden"></aside>
-
+    <aside id="sidebar-container" class="w-72 flex-shrink-0 bg-fmm-dark text-white z-20 shadow-2xl"></aside>
     <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden text-left">
-        <header class="bg-white border-b border-slate-200 flex flex-col shrink-0 z-10 shadow-sm text-left print:hidden">
-            <div class="h-20 px-8 flex items-center justify-between">
-                <div class="text-left">
-                    <h1 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-tight">GestÃ£o de Requerimentos</h1>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Abonos de Faltas e Segundas Chamadas</p>
-                </div>
-                <div class="flex gap-3">
-                    <button onclick="openSummaryModal()" class="bg-white border-2 border-fmm-blue text-fmm-blue hover:bg-fmm-blue hover:text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-sm">
-                        <i data-lucide="bar-chart-2" class="w-4 h-4"></i> Resumo por SÃ©rie
-                    </button>
-                    <div class="h-10 w-px bg-slate-200 mx-2"></div>
-                    <select id="filterStatus" onchange="loadRequests()" class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-fmm-blue cursor-pointer text-center">
-                        <option value="all">Todos os Status</option>
-                        <option value="Pendente">Pendentes</option>
-                        <option value="Deferido">Deferidos</option>
-                        <option value="Indeferido">Indeferidos</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="px-8 border-t border-slate-100 flex gap-8">
-                <button onclick="switchView('student')" id="tab-student" class="view-tab active py-3 text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all">
-                    <i data-lucide="users" class="w-4 h-4"></i> VisÃ£o por Aluno
-                </button>
-                <button onclick="switchView('exam')" id="tab-exam" class="view-tab py-3 text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all text-slate-400 hover:text-slate-600">
-                    <i data-lucide="clipboard-list" class="w-4 h-4"></i> VisÃ£o por Prova
-                </button>
-            </div>
-        </header>
-
-        <div class="flex-1 flex overflow-hidden print:hidden">
-            <div id="view-student-container" class="flex flex-1 overflow-hidden">
-                <aside class="w-96 bg-white border-r border-slate-200 flex flex-col shrink-0">
-                    <div class="p-4 border-b border-slate-100 text-left">
-                        <div class="relative">
-                            <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
-                            <input type="text" id="searchBox" onkeyup="filterList()" placeholder="Buscar aluno ou RA..." class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none">
+        <header class="bg-white border-b border-slate-200 h-20 px-8 flex items-center justify-between shrink-0 z-10 shadow-sm"><div><h1 class="text-xl font-black text-fmm-dark uppercase tracking-tight">Calendário de Provas</h1><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Cadastro e consulta das avaliações programadas</p></div><div class="flex items-center gap-2 text-xs font-bold text-fmm-blue bg-fmm-blue/5 px-4 py-2 rounded-xl"><i data-lucide="calendar-days" class="w-4 h-4"></i> Gestão acadêmica</div></header>
+        <div class="flex-1 flex flex-col min-h-0"><div id="calendarModal" class="flex-1 flex flex-col min-h-0 text-left">
+        <div class="bg-white w-full h-full overflow-hidden flex flex-col text-left">
+            <div class="flex flex-1 overflow-hidden">
+                <div class="w-80 bg-slate-50 p-6 border-r border-slate-100 overflow-y-auto custom-scrollbar text-left">
+                    <h3 class="text-[10px] font-black text-fmm-blue uppercase tracking-[0.2em] mb-6" id="calEntryTitle">Novo Registro</h3>
+                    <div class="space-y-5 text-left">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">Segmento</label>
+                            <select id="calMatriz" onchange="updateCalEtapa()" class="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600">
+                                <option value="Fundamental">Fundamental</option>
+                                <option value="Básica">Médio (Básica)</option>
+                                <option value="Técnica">Médio (Técnico)</option>
+                            </select>
+                        </div>
+                        <div class="p-4 bg-white border border-slate-200 rounded-2xl space-y-3 text-left">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 text-left">Aplicar às Séries:</label>
+                            <div id="seriesContainer" class="grid grid-cols-1 gap-2 text-left"></div>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">Período Referência</label>
+                            <select id="calEtapa" class="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600"></select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">Disciplina</label>
+                            <select id="calDisc" class="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600"></select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">Tipo de Prova</label>
+                            <select id="calTipo" class="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600">
+                                <option value="P1">P1</option>
+                                <option value="P2">P2</option>
+                                <option value="REC">RC</option>
+                                <option value="P1 - 2ª CHAMADA">P1 - 2ª CHAMADA</option>
+                                <option value="P2 - 2ª CHAMADA">P2 - 2ª CHAMADA</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">Data de Realização</label>
+                            <input type="date" id="calDate" class="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600">
+                        </div>
+                        <div class="flex gap-2">
+                            <button id="btnCancelEditCal" onclick="resetCalForm()" class="hidden flex-1 py-4 bg-slate-200 text-slate-600 text-xs font-black uppercase rounded-2xl active:scale-95 transition-all">Cancelar</button>
+                            <button onclick="addExamRef()" id="btnSaveCal" class="flex-[2] py-4 bg-fmm-blue text-white text-xs font-black uppercase rounded-2xl shadow-lg hover:bg-fmm-dark transition-all transform active:scale-95">Salvar Registro</button>
                         </div>
                     </div>
-                    <div id="requestListAgrupada" class="flex-1 overflow-y-auto custom-scrollbar">
-                        <div class="p-8 text-center"><i class="animate-spin text-slate-300" data-lucide="loader-2"></i></div>
+                </div>
+                
+                <div class="flex-1 p-8 bg-white flex flex-col overflow-hidden text-left border-slate-100 border">
+                    <div class="flex justify-between items-center mb-6 text-left">
+                        <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest text-left">Filtros de Pesquisa</h3>
                     </div>
-                </aside>
-
-                <section class="flex-1 bg-slate-50/50 flex flex-col relative overflow-hidden text-left">
-                    <div id="emptyStateStudent" class="absolute inset-0 flex flex-col items-center justify-center text-slate-300">
-                        <i data-lucide="inbox" class="w-16 h-16 mb-4 opacity-20"></i>
-                        <p class="text-sm font-black uppercase tracking-widest opacity-40 text-center">Selecione um aluno para gerenciar<br>suas solicitaÃ§Ãµes</p>
-                    </div>
-
-                    <div id="studentDetail" class="hidden flex-1 flex flex-col overflow-hidden animate-fade">
-                        <div class="bg-white p-8 border-b border-slate-200 shrink-0 flex justify-between items-center text-left">
-                            <div class="flex gap-6 items-center text-left">
-                                <div class="w-20 h-20 bg-slate-100 rounded-[24px] flex items-center justify-center overflow-hidden text-4xl shadow-sm border border-slate-200 cursor-pointer hover:scale-105 transition-transform" id="detAvatar">ðŸŽ“</div>
-                                <div class="text-left">
-                                    <h2 id="detName" class="text-2xl font-black text-fmm-dark uppercase tracking-tight leading-none text-left">Nome do Aluno</h2>
-                                    <p class="text-xs font-bold text-slate-500 mt-2 uppercase tracking-widest text-left">RA: <span id="detRA" class="text-fmm-blue">---</span> â€¢ Turma: <span id="detTurma">---</span></p>
-                                </div>
-                            </div>
-                            <div class="bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100 text-center">
-                                <p id="detProcessCount" class="text-xl font-black text-fmm-dark leading-none">0</p>
-                                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Processos Totais</p>
-                            </div>
-                        </div>
-
-                        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-10 text-left">
-                            <div class="space-y-4">
-                                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                                    <i data-lucide="file-check" class="w-4 h-4 text-slate-300"></i> Abonos de Faltas (Justificativas Simples)
-                                </h3>
-                                <div id="listAbonos" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-                            </div>
-
-                            <div class="space-y-4">
-                                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                                    <i data-lucide="alert-circle" class="w-4 h-4 text-fmm-blue"></i> SolicitaÃ§Ãµes de Segunda Chamada
-                                </h3>
-                                <div id="listSegundas" class="space-y-6"></div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            <div id="view-exam-container" class="hidden flex-1 flex flex-col overflow-hidden bg-slate-50/50 text-left">
-                <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                    <div id="examCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
-                    <div id="emptyStateExams" class="hidden py-24 flex flex-col items-center justify-center text-slate-300">
-                        <i data-lucide="clipboard-x" class="w-16 h-16 mb-4 opacity-20"></i>
-                        <p class="text-sm font-black uppercase tracking-widest opacity-40">Nenhuma prova com solicitaÃ§Ãµes ativas.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="printArea" class="hidden print:block bg-white"></div>
-    </main>
-
-    <div id="summaryModal" class="hidden fixed inset-0 z-[150] flex items-center justify-center p-4 bg-fmm-dark/80 backdrop-blur-md print:hidden text-left">
-        <div class="bg-white w-full max-w-4xl h-[80vh] rounded-[40px] shadow-2xl flex flex-col animate-fade overflow-hidden">
-            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-                <div class="text-left">
-                    <h2 class="text-2xl font-black text-fmm-dark uppercase tracking-tight">Resumo de InscriÃ§Ãµes Deferidas</h2>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Quantitativo de 2Âª Chamada por Disciplina e SÃ©rie</p>
-                </div>
-                <button onclick="closeSummaryModal()" class="w-12 h-12 flex items-center justify-center hover:bg-slate-100 rounded-full transition-all text-slate-400"><i data-lucide="x" class="w-6 h-6"></i></button>
-            </div>
-            <div class="flex-1 overflow-y-auto custom-scrollbar p-8 bg-slate-50/30">
-                <div id="summaryTableContainer" class="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                                <th class="p-6">Disciplina</th>
-                                <th class="p-6">SÃ©rie</th>
-                                <th class="p-6 text-center">Deferidos</th>
-                            </tr>
-                        </thead>
-                        <tbody id="summaryTableBody" class="divide-y divide-slate-50 text-xs font-bold text-slate-600 uppercase"></tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="p-8 border-t bg-white flex justify-end shrink-0">
-                <button onclick="closeSummaryModal()" class="px-10 py-3.5 bg-fmm-dark text-white text-xs font-black uppercase rounded-2xl shadow-xl active:scale-95 transition-all">Fechar RelatÃ³rio</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="examDetailModal" class="hidden fixed inset-0 z-[150] flex items-center justify-center p-4 bg-fmm-dark/80 backdrop-blur-md print:hidden text-left">
-        <div class="bg-white w-full max-w-5xl h-[85vh] rounded-[40px] shadow-2xl flex flex-col animate-fade overflow-hidden">
-            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-                <div class="text-left">
-                    <h2 id="examModalTitle" class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none text-left">Disciplina - Tipo</h2>
-                    <p id="examModalSubtitle" class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2 text-left">Data Realizada: --/--/---- â€¢ Matriz: ---</p>
-                </div>
-                <div class="flex items-center gap-3">
-                    <button onclick="printExamAttendanceList()" class="bg-fmm-blue hover:bg-fmm-dark text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition-all shadow-lg shadow-fmm-blue/10 active:scale-95">
-                        <i data-lucide="printer" class="w-4 h-4"></i> Gerar Lista de Chamada
-                    </button>
-                    <button onclick="closeExamDetailModal()" class="w-12 h-12 flex items-center justify-center hover:bg-slate-100 rounded-full transition-all text-slate-400"><i data-lucide="x" class="w-6 h-6"></i></button>
-                </div>
-            </div>
-            <div class="flex-1 overflow-y-auto custom-scrollbar p-8">
-                <table class="w-full text-left border-collapse">
-                    <thead class="sticky top-0 bg-white z-10">
-                        <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                            <th class="pb-4 pr-4">Aluno / RA</th>
-                            <th class="pb-4 pr-4">Turma</th>
-                            <th class="pb-4 pr-4 text-center">Comprovante</th>
-                            <th class="pb-4 pr-4 text-center">Status Atual</th>
-                            <th class="pb-4 text-right">DecisÃ£o</th>
-                        </tr>
-                    </thead>
-                    <tbody id="examDetailTableBody" class="divide-y divide-slate-50 text-xs font-bold text-slate-600"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div id="editModal" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-4 bg-fmm-dark/80 backdrop-blur-md print:hidden text-left">
-        <div class="bg-white w-full max-w-xl rounded-[40px] shadow-2xl overflow-hidden animate-fade text-left">
-            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 text-left">
-                <div class="text-left">
-                    <h2 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none text-left">Administrar Requerimento</h2>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 text-left">EdiÃ§Ã£o de dados e justificativa</p>
-                </div>
-                <button onclick="closeEditModal()" class="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors"><i data-lucide="x" class="w-6 h-6 text-slate-400"></i></button>
-            </div>
-            <div class="p-8 space-y-6 text-left">
-                <div class="grid grid-cols-2 gap-4 text-left">
-                    <div class="space-y-1.5 text-left">
-                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block">RA do Aluno</label>
-                        <input type="text" id="editRA" disabled class="w-full p-3 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-400">
-                    </div>
-                    <div class="space-y-1.5 text-left">
-                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block">Tipo Documento</label>
-                        <select id="editDocType" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600">
-                            <option value="MEDICO">Atestado MÃ©dico / Odonto</option>
-                            <option value="OBITO">Atestado de Ã“bito</option>
-                            <option value="MILITAR">Alistamento Militar</option>
-                            <option value="COMPARECIMENTO">Comparecimento</option>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6 text-left">
+                        <select id="calFilterMatriz" onchange="renderCalendar()" class="p-2.5 px-4 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none focus:ring-2 focus:ring-fmm-blue uppercase text-slate-600">
+                            <option value="all">Todas Matrizes</option>
+                            <option value="Fundamental">Fundamental</option>
+                            <option value="Básica">Básica</option>
+                            <option value="Técnica">Técnica</option>
                         </select>
+                        <select id="calFilterSerie" onchange="renderCalendar()" class="p-2.5 px-4 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none focus:ring-2 focus:ring-fmm-blue uppercase text-slate-600">
+                            <option value="all">Todas Séries</option>
+                            <option value="5º Ano">5º Ano</option>
+                            <option value="6º Ano">6º Ano</option>
+                            <option value="7º Ano">7º Ano</option>
+                            <option value="8º Ano">8º Ano</option>
+                            <option value="9º Ano">9º Ano</option>
+                            <option value="1ª Série">1ª Série</option>
+                            <option value="2ª Série">2ª Série</option>
+                            <option value="3ª Série">3ª Série</option>
+                        </select>
+                        <input type="date" id="calFilterDate" onchange="renderCalendar()" class="p-2.5 px-4 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-slate-600">
+                        <div class="relative group">
+                            <i data-lucide="search" class="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
+                            <input type="text" id="calSearch" onkeyup="renderCalendar()" placeholder="Buscar disciplina..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none transition-all text-slate-600">
+                        </div>
                     </div>
-                </div>
-                <div class="grid grid-cols-2 gap-4 text-left">
-                    <div class="space-y-1.5 text-left">
-                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block">Data InÃ­cio</label>
-                        <input type="date" id="editStart" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600">
+                    <div class="flex-1 overflow-y-auto custom-scrollbar border border-slate-100 rounded-3xl text-left">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-slate-50 sticky top-0 z-10 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b">
+                                <tr>
+                                    <th class="p-4 text-center"><button type="button" onclick="sortCalendar('date')" class="w-full flex items-center justify-center gap-1 hover:text-fmm-blue transition-colors">Data <span id="sortIcon-date"></span></button></th>
+                                    <th class="p-4"><button type="button" onclick="sortCalendar('discipline')" class="flex items-center gap-1 hover:text-fmm-blue transition-colors">Disciplina <span id="sortIcon-discipline"></span></button></th>
+                                    <th class="p-4"><button type="button" onclick="sortCalendar('matrix')" class="flex items-center gap-1 hover:text-fmm-blue transition-colors">Matriz / Período <span id="sortIcon-matrix"></span></button></th>
+                                    <th class="p-4 text-left"><button type="button" onclick="sortCalendar('series')" class="flex items-center gap-1 hover:text-fmm-blue transition-colors">Séries <span id="sortIcon-series"></span></button></th>
+                                    <th class="p-4 text-center"><button type="button" onclick="sortCalendar('type')" class="w-full flex items-center justify-center gap-1 hover:text-fmm-blue transition-colors">Tipo <span id="sortIcon-type"></span></button></th>
+                                    <th class="p-4 text-right">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="calTableBody" class="divide-y divide-slate-50 text-xs font-bold text-slate-600"></tbody>
+                        </table>
                     </div>
-                    <div class="space-y-1.5 text-left">
-                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block">Qtd Dias</label>
-                        <input type="number" id="editDays" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600">
-                    </div>
-                </div>
-                <div class="space-y-1.5 text-left">
-                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block">CID / Justificativa</label>
-                    <input type="text" id="editExtra" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-fmm-blue">
-                </div>
-
-                <div id="editAnexoArea" class="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
-                    <div class="flex items-center gap-3 text-left">
-                        <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-slate-200 text-fmm-blue shadow-sm"><i data-lucide="file-text" class="w-5 h-5"></i></div>
-                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest text-left">Documento em anexo</p>
-                    </div>
-                    <button id="btnVerAnexo" onclick="window.open(this.dataset.url, '_blank')" class="bg-white hover:bg-slate-100 text-fmm-dark px-4 py-2 rounded-xl text-[10px] font-black uppercase border border-slate-200 transition-all shadow-sm">Visualizar Atestado</button>
-                </div>
-
-                <div class="pt-6 flex gap-3 text-left">
-                    <button onclick="deleteRequest()" class="p-4 bg-red-50 text-red-500 hover:bg-red-100 rounded-2xl transition-all shadow-sm"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
-                    <button onclick="closeEditModal()" class="flex-1 py-4 bg-slate-100 text-slate-500 text-xs font-black uppercase rounded-2xl hover:bg-slate-200 transition-all">Cancelar</button>
-                    <button onclick="saveEdit()" class="flex-[2] py-4 bg-fmm-blue text-white text-xs font-black uppercase rounded-2xl shadow-lg hover:shadow-fmm-blue/20">Salvar AlteraÃ§Ãµes</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL: CALENDÃRIO -->
-    <div id="photoZoomModal" class="hidden fixed inset-0 z-[500] flex items-center justify-center p-4 bg-fmm-dark/95 backdrop-blur-xl print:hidden" onclick="closePhotoZoom()">
-        <div class="relative max-w-4xl w-full flex flex-col items-center gap-6 animate-fade" onclick="event.stopPropagation()">
-            <button onclick="closePhotoZoom()" class="absolute -top-12 -right-4 text-white/50 hover:text-white transition-colors"><i data-lucide="x" class="w-8 h-8"></i></button>
-            <img id="zoomedImage" src="" class="max-h-[80vh] max-w-full rounded-[40px] shadow-2xl border-4 border-white/5 object-contain">
-            <div id="zoomedName" class="text-white text-xl font-black uppercase tracking-widest bg-black/40 px-8 py-3 rounded-2xl backdrop-blur-md">...</div>
-        </div>
-    </div>
-
-    <script>
-        let allRequests = [];
-        let studentsAgrupados = [];
-        let selectedRA = null;
-        let calendarData = [];
-        let currentView = 'student';
-        let userLevels = [];
-        let currentExamOpen = null;
-        let editingCalId = null;
-
+</div>
+    </main>
+    <script>let calendarData = [];
+        let calendarSort = { key: 'date', direction: 'desc' };
+        async function loadDisciplinas() {
+            const { data, error } = await window.supabaseClient.from('disciplinas').select('sigla, nome').order('nome');
+            if (error) throw new Error('Não foi possível carregar as disciplinas: ' + error.message);
+            document.getElementById('calDisc').innerHTML = (data || []).map(d => `<option value="${d.sigla}">${d.nome}</option>`).join('');
+        }
+        function closeCalendarModal() {}
         async function init() {
             if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
             const { data: { user } } = await window.supabaseClient.auth.getUser();
@@ -375,7 +132,9 @@
             }
 
             lucide.createIcons();
+            await loadDisciplinas();
             await loadRequests();
+            updateCalEtapa();
         }
 
         function getDriveDirect(url) {
@@ -457,7 +216,7 @@
             document.getElementById('detTurma').innerText = data.aluno.turmas?.nome || 'FMM';
             document.getElementById('detProcessCount').innerText = data.requests.length;
             const avatarImg = getDriveDirect(data.aluno.url_foto);
-            document.getElementById('detAvatar').innerHTML = avatarImg ? `<img src="${avatarImg}" class="w-full h-full object-cover" onclick="openPhotoZoom(this.src, '${data.aluno.nome_completo.replace(/'/g, "")}')">` : 'ðŸŽ“';
+            document.getElementById('detAvatar').innerHTML = avatarImg ? `<img src="${avatarImg}" class="w-full h-full object-cover" onclick="openPhotoZoom(this.src, '${data.aluno.nome_completo.replace(/'/g, "")}')">` : '🎓';
 
             const abonos = data.requests.filter(r => r.provas_solicitadas.length === 0);
             const segundas = data.requests.filter(r => r.provas_solicitadas.length > 0);
@@ -483,7 +242,7 @@
                                 <div class="text-left">
                                     <span class="status-badge ${statusClasses[r.status]} text-left">${r.status}</span>
                                     <h4 class="text-xs font-black text-fmm-dark uppercase mt-2 text-left">${r.tipo_documento.replace('MEDICO', 'ATESTADO')}</h4>
-                                    <p class="text-[10px] text-slate-400 font-bold uppercase text-left">${new Date(r.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')} â€” ${r.quantidade_dias} dias</p>
+                                    <p class="text-[10px] text-slate-400 font-bold uppercase text-left">${new Date(r.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')} — ${r.quantidade_dias} dias</p>
                                 </div>
                                 <span class="text-[9px] font-black text-slate-300 uppercase text-right">${new Date(r.criado_em).toLocaleDateString('pt-BR')}</span>
                             </div>
@@ -506,7 +265,7 @@
                         </div>
                     </div>`;
                 }).join('')
-                : '<div class="p-10 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 text-[10px] font-bold text-slate-300 uppercase text-center">Nenhuma solicitaÃ§Ã£o de prova.</div>';
+                : '<div class="p-10 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 text-[10px] font-bold text-slate-300 uppercase text-center">Nenhuma solicitação de prova.</div>';
             lucide.createIcons();
         }
 
@@ -577,7 +336,7 @@
             currentExamOpen = exam;
             const modal = document.getElementById('examDetailModal');
             document.getElementById('examModalTitle').innerText = `${exam.disciplinas?.nome || exam.sigla_disciplina} - ${exam.tipo_prova}`;
-            document.getElementById('examModalSubtitle').innerText = `Data: ${new Date(exam.data_prova + 'T12:00:00').toLocaleDateString('pt-BR')} â€¢ Matriz: ${exam.matriz} â€¢ PerÃ­odo: ${exam.periodo_ref.replace('_', ' ')}`;
+            document.getElementById('examModalSubtitle').innerText = `Data: ${new Date(exam.data_prova + 'T12:00:00').toLocaleDateString('pt-BR')} • Matriz: ${exam.matriz} • Período: ${exam.periodo_ref.replace('_', ' ')}`;
             
             const tbody = document.getElementById('examDetailTableBody');
             const statusClasses = { 'Pendente': 'status-pending', 'Deferido': 'status-approved', 'Indeferido': 'status-rejected' };
@@ -611,7 +370,7 @@
             const summary = {}; 
 
             allRequests.forEach(req => {
-                const studentSerie = req.alunos?.turmas?.serie || 'Sem SÃ©rie';
+                const studentSerie = req.alunos?.turmas?.serie || 'Sem Série';
                 req.provas_solicitadas.forEach(prova => {
                     if (prova.status === 'Deferido') {
                         const disc = prova.disciplina;
@@ -642,7 +401,7 @@
                 });
             });
 
-            if (rowsHtml === '') body.innerHTML = '<tr><td colspan="3" class="p-12 text-center text-slate-300 italic">Nenhuma inscriÃ§Ã£o deferida atÃ© o momento.</td></tr>';
+            if (rowsHtml === '') body.innerHTML = '<tr><td colspan="3" class="p-12 text-center text-slate-300 italic">Nenhuma inscrição deferida até o momento.</td></tr>';
             else body.innerHTML = rowsHtml;
 
             document.getElementById('summaryModal').classList.remove('hidden');
@@ -672,13 +431,13 @@
                 
                 html += `<div class="print-page">`;
                 
-                // CabeÃ§alho repetido em cada pÃ¡gina
+                // Cabeçalho repetido em cada página
                 html += `
                     <div class="print-header">
                         <img src="../../assets/logo-fmm-color.png" alt="FMM Logo">
                         <div class="doc-title text-right">
                             <h1>Lista de Assinatura</h1>
-                            <p>Segunda Chamada de AvaliaÃ§Ã£o â€” PÃ¡g. ${p + 1}/${totalPages}</p>
+                            <p>Segunda Chamada de Avaliação — Pág. ${p + 1}/${totalPages}</p>
                         </div>
                     </div>
                     <div class="print-info-grid">
@@ -687,18 +446,18 @@
                             <span>${nomeProva} - ${currentExamOpen.tipo_prova}</span>
                         </div>
                         <div class="info-box text-left">
-                            <label>Data da AplicaÃ§Ã£o</label>
+                            <label>Data da Aplicação</label>
                             <span>____ / ____ / 2026</span>
                         </div>
                     </div>
                 `;
                 
-                // Tabela da pÃ¡gina atual
+                // Tabela da página atual
                 html += `
                     <table class="print-table">
                         <thead>
                             <tr>
-                                <th class="col-num">NÂº</th>
+                                <th class="col-num">Nº</th>
                                 <th class="col-ra">RA</th>
                                 <th class="col-aluno">Estudante</th>
                                 <th class="col-turma">Turma</th>
@@ -711,7 +470,7 @@
         
                 for (let i = 0; i < pageStudents.length; i++) {
                     const r = pageStudents[i];
-                    const globalIndex = (p * ITEMS_PER_PAGE) + i + 1; // MantÃ©m a contagem contÃ­nua entre pÃ¡ginas
+                    const globalIndex = (p * ITEMS_PER_PAGE) + i + 1; // Mantém a contagem contínua entre páginas
                     
                     html += `
                         <tr>
@@ -729,10 +488,10 @@
                         </tbody>
                     </table>
                     
-                    <!-- RodapÃ© em todas as pÃ¡ginas -->
+                    <!-- Rodapé em todas as páginas -->
                     <div class="print-footer">
                         <div class="signature-line text-center">Assinatura do Aplicador</div>
-                        <div class="signature-line text-center">CoordenaÃ§Ã£o PedagÃ³gica</div>
+                        <div class="signature-line text-center">Coordenação Pedagógica</div>
                     </div>
                 </div>`;
             }
@@ -750,7 +509,7 @@
             const req = allRequests.find(r => r.id === reqId);
             if (!req) return;
         
-            // 1. AtualizaÃ§Ã£o local imediata na memÃ³ria (Interface responde na hora)
+            // 1. Atualização local imediata na memória (Interface responde na hora)
             const provas = [...req.provas_solicitadas];
             provas[examIndex].status = newStatus;
             
@@ -766,7 +525,7 @@
                 const updatedRequests = [];
                 allRequests.forEach(r => {
                     r.provas_solicitadas.forEach((p, idx) => {
-                        // Converte ambos para String para garantir a comparaÃ§Ã£o exata do ID da prova
+                        // Converte ambos para String para garantir a comparação exata do ID da prova
                         if (String(p.id_calendario) === String(currentExamOpen.id)) {
                             updatedRequests.push({ 
                                 ...p, 
@@ -805,8 +564,8 @@
 
         async function loadCalendar() { 
             let query = window.supabaseClient.from('calendario_referencia_provas').select('*, disciplinas(nome)').order('data_prova', { ascending: false });
-            const { data } = await query; calendarData = data || [];
-            if (document.getElementById("calTableBody")) renderCalendar();
+            const { data } = await query; calendarData = data || []; 
+            renderCalendar();
         }
 
         function openEditModal(request) {
@@ -837,10 +596,170 @@
             closeEditModal(); await loadRequests();
         }
 
+        function openCalendarModal() { resetCalForm(); document.getElementById('calendarModal').classList.remove('hidden'); renderCalendar(); }
+        function closeCalendarModal() { document.getElementById('calendarModal').classList.add('hidden'); }
         function openPhotoZoom(src, name) { document.getElementById('zoomedImage').src = src; document.getElementById('zoomedName').innerText = name || "Aluno"; document.getElementById('photoZoomModal').classList.remove('hidden'); }
         function closePhotoZoom() { document.getElementById('photoZoomModal').classList.add('hidden'); }
 
+        function updateCalEtapa(preSelected = null) {
+            const matriz = document.getElementById('calMatriz').value;
+            const etapa = document.getElementById('calEtapa');
+            const seriesContainer = document.getElementById('seriesContainer');
+            
+            // TASK: Correção Semestre para Técnico
+            if(matriz === 'Fundamental') etapa.innerHTML = `<option value="1_BIMESTRE">1º Bimestre</option><option value="2_BIMESTRE">2º Bimestre</option><option value="3_BIMESTRE">3º Bimestre</option><option value="4_BIMESTRE">4º Bimestre</option>`;
+            else if(matriz === 'Técnica') etapa.innerHTML = `<option value="1_SEMESTRE">1º Semestre</option><option value="2_SEMESTRE">2º Semestre</option>`;
+            else etapa.innerHTML = `<option value="1_TRIMESTRE">1º Trimestre</option><option value="2_TRIMESTRE">2º Trimestre</option><option value="3_TRIMESTRE">3º Trimestre</option>`;
+            
+            if(preSelected) etapa.value = preSelected;
+
+            let options = matriz === 'Fundamental' ? ['5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano'] : ['1ª Série', '2ª Série', '3ª Série'];
+            seriesContainer.innerHTML = options.map(s => `<label class="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl cursor-pointer hover:bg-slate-50 transition-all group text-left"><input type="checkbox" name="serie_checkbox" value="${s}" class="w-4 h-4 rounded border-slate-300 text-fmm-blue focus:ring-fmm-blue"><span class="text-[11px] font-bold text-slate-500 uppercase group-hover:text-fmm-dark text-left">${s}</span></label>`).join('');
+        }
+
+        async function addExamRef() {
+            const data = document.getElementById('calDate').value;
+            const selectedSeries = Array.from(document.querySelectorAll('input[name="serie_checkbox"]:checked')).map(cb => cb.value);
+            if(!data || selectedSeries.length === 0) return alert("Preencha data e série.");
+
+            const payload = { 
+                matriz: document.getElementById('calMatriz').value, 
+                periodo_ref: document.getElementById('calEtapa').value, 
+                sigla_disciplina: document.getElementById('calDisc').value, 
+                tipo_prova: document.getElementById('calTipo').value, 
+                data_prova: data, 
+                series: selectedSeries 
+            };
+
+            const btn = document.getElementById('btnSaveCal');
+            btn.disabled = true; btn.innerText = "Sincronizando...";
+
+            try {
+                if (editingCalId) {
+                    const { error } = await window.supabaseClient.from('calendario_referencia_provas').update(payload).eq('id', editingCalId);
+                    if(error) throw error;
+                } else {
+                    const { error } = await window.supabaseClient.from('calendario_referencia_provas').insert([payload]);
+                    if(error) throw error;
+                }
+                resetCalForm();
+                await loadCalendar();
+            } catch (err) {
+                alert("Erro ao salvar: " + err.message);
+            } finally {
+                btn.disabled = false; btn.innerText = editingCalId ? "Atualizar Registro" : "Salvar no Calendário";
+            }
+        }
+
+        // TASK: Lógica de Edição do Calendário
+        function prepEditCal(c) {
+            editingCalId = c.id;
+            document.getElementById('calEntryTitle').innerText = "Editar Registro";
+            document.getElementById('btnSaveCal').innerText = "Atualizar Registro";
+            document.getElementById('btnCancelEditCal').classList.remove('hidden');
+            
+            document.getElementById('calMatriz').value = c.matriz;
+            updateCalEtapa(c.periodo_ref);
+            
+            document.getElementById('calDisc').value = c.sigla_disciplina;
+            document.getElementById('calTipo').value = c.tipo_prova;
+            document.getElementById('calDate').value = c.data_prova;
+            
+            const checks = document.querySelectorAll('input[name="serie_checkbox"]');
+            checks.forEach(cb => {
+                cb.checked = (c.series || []).includes(cb.value);
+            });
+            lucide.createIcons();
+        }
+
+        function resetCalForm() {
+            editingCalId = null;
+            document.getElementById('calEntryTitle').innerText = "Novo Registro";
+            document.getElementById('btnSaveCal').innerText = "Salvar no Calendário";
+            document.getElementById('btnCancelEditCal').classList.add('hidden');
+            document.getElementById('calMatriz').value = "Fundamental";
+            updateCalEtapa();
+            document.getElementById('calDate').value = "";
+            document.getElementById('calTipo').value = "P1";
+            lucide.createIcons();
+        }
+
+        async function deleteCal(id) { if(confirm("Remover do calendário?")) { await window.supabaseClient.from('calendario_referencia_provas').delete().eq('id', id); await loadCalendar(); } }
+
+        function sortCalendar(key) {
+            calendarSort = {
+                key,
+                direction: calendarSort.key === key && calendarSort.direction === 'asc' ? 'desc' : 'asc'
+            };
+            renderCalendar();
+        }
+
+        function getCalendarSortValue(item, key) {
+            if (key === 'date') return item.data_prova || '';
+            if (key === 'discipline') return item.disciplinas?.nome || item.sigla_disciplina || '';
+            if (key === 'matrix') return `${item.matriz || ''} ${item.periodo_ref || ''}`;
+            if (key === 'series') return (item.series || []).join(', ');
+            return item.tipo_prova || '';
+        }
+
+        function updateCalendarSortIcons() {
+            ['date', 'discipline', 'matrix', 'series', 'type'].forEach(key => {
+                const icon = document.getElementById(`sortIcon-${key}`);
+                if (!icon) return;
+                icon.innerHTML = key === calendarSort.key
+                    ? `<i data-lucide="${calendarSort.direction === 'asc' ? 'arrow-up' : 'arrow-down'}" class="w-3 h-3"></i>`
+                    : '<i data-lucide="chevrons-up-down" class="w-3 h-3 opacity-40"></i>';
+            });
+        }
+
+        function renderCalendar() {
+            const body = document.getElementById('calTableBody');
+            const fMatriz = document.getElementById('calFilterMatriz').value;
+            const fSerie = document.getElementById('calFilterSerie').value;
+            const fDate = document.getElementById('calFilterDate').value;
+            const term = document.getElementById('calSearch').value.toLowerCase();
+            
+            // TASK: Sistema de Filtros Avançados
+            const filtered = calendarData.filter(c => {
+                const matchMatriz = fMatriz === 'all' || c.matriz === fMatriz;
+                const matchSerie = fSerie === 'all' || (c.series || []).includes(fSerie);
+                const matchDate = fDate ? c.data_prova === fDate : true;
+                const discName = (c.disciplinas?.nome || c.sigla_disciplina).toLowerCase();
+                const matchSearch = discName.includes(term) || c.sigla_disciplina.toLowerCase().includes(term);
+                
+                return matchMatriz && matchSerie && matchDate && matchSearch;
+            });
+
+            filtered.sort((a, b) => {
+                const first = getCalendarSortValue(a, calendarSort.key).toLocaleLowerCase('pt-BR');
+                const second = getCalendarSortValue(b, calendarSort.key).toLocaleLowerCase('pt-BR');
+                const result = first.localeCompare(second, 'pt-BR', { numeric: true, sensitivity: 'base' });
+                return calendarSort.direction === 'asc' ? result : -result;
+            });
+
+            body.innerHTML = filtered.map(c => `
+                <tr class="hover:bg-slate-50 transition-colors text-left text-xs font-bold text-slate-600">
+                    <td class="p-4 text-center">${new Date(c.data_prova + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
+                    <td class="p-4 uppercase text-fmm-blue text-left">${c.disciplinas?.nome || c.sigla_disciplina}</td>
+                    <td class="p-4 uppercase text-left">
+                        <span class="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 tracking-widest">${c.matriz}</span>
+                        <p class="mt-1 text-slate-400 uppercase text-[9px] tracking-tight text-left">${c.periodo_ref.replace('_', ' ')}</p>
+                    </td>
+                    <td class="p-4 text-left"><div class="flex flex-wrap gap-1 text-left">${(c.series || []).map(s => `<span class="serie-tag">${s}</span>`).join('')}</div></td>
+                    <td class="p-4 text-center"><span class="bg-fmm-blue text-white px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest shadow-sm">${c.tipo_prova}</span></td>
+                    <td class="p-4 text-right">
+                        <div class="flex justify-end gap-2">
+                            <button onclick='prepEditCal(${JSON.stringify(c)})' class="text-slate-400 hover:text-fmm-blue p-2"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                            <button onclick="deleteCal('${c.id}')" class="text-slate-200 hover:text-red-500 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </div>
+                    </td>
+                </tr>`).join('');
+            updateCalendarSortIcons();
+            lucide.createIcons();
+        }
+
+        
+        async function init() { if (window.SidebarComponent) await SidebarComponent.render('sidebar-container'); const { data: { user } } = await window.supabaseClient.auth.getUser(); if (!user) return window.location.href = '../../index.html'; lucide.createIcons(); await loadDisciplinas(); await loadCalendar(); resetCalForm(); }
         window.onload = init;
     </script>
-</body>
-</html>
+</body></html>
