@@ -131,12 +131,12 @@
         <header class="bg-white border-b border-slate-200 flex flex-col shrink-0 z-10 shadow-sm text-left print:hidden">
             <div class="h-20 px-8 flex items-center justify-between">
                 <div class="text-left">
-                    <h1 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-tight">GestÃ£o de Requerimentos</h1>
+                    <h1 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-tight">Gestão de Requerimentos</h1>
                     <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Abonos de Faltas e Segundas Chamadas</p>
                 </div>
                 <div class="flex gap-3">
                     <button onclick="openSummaryModal()" class="bg-white border-2 border-fmm-blue text-fmm-blue hover:bg-fmm-blue hover:text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-sm">
-                        <i data-lucide="bar-chart-2" class="w-4 h-4"></i> Resumo por SÃ©rie
+                        <i data-lucide="bar-chart-2" class="w-4 h-4"></i> Resumo por Série
                     </button>
                     <div class="h-10 w-px bg-slate-200 mx-2"></div>
                     <select id="filterStatus" onchange="loadRequests()" class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-fmm-blue cursor-pointer text-center">
@@ -150,10 +150,10 @@
             
             <div class="px-8 border-t border-slate-100 flex gap-8">
                 <button onclick="switchView('student')" id="tab-student" class="view-tab active py-3 text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all">
-                    <i data-lucide="users" class="w-4 h-4"></i> VisÃ£o por Aluno
+                    <i data-lucide="users" class="w-4 h-4"></i> Visão por Aluno
                 </button>
                 <button onclick="switchView('exam')" id="tab-exam" class="view-tab py-3 text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all text-slate-400 hover:text-slate-600">
-                    <i data-lucide="clipboard-list" class="w-4 h-4"></i> VisÃ£o por Prova
+                    <i data-lucide="clipboard-list" class="w-4 h-4"></i> Visão por Prova
                 </button>
             </div>
         </header>
@@ -175,7 +175,7 @@
                 <section class="flex-1 bg-slate-50/50 flex flex-col relative overflow-hidden text-left">
                     <div id="emptyStateStudent" class="absolute inset-0 flex flex-col items-center justify-center text-slate-300">
                         <i data-lucide="inbox" class="w-16 h-16 mb-4 opacity-20"></i>
-                        <p class="text-sm font-black uppercase tracking-widest opacity-40 text-center">Selecione um aluno para gerenciar<br>suas solicitaÃ§Ãµes</p>
+                        <p class="text-sm font-black uppercase tracking-widest opacity-40 text-center">Selecione um aluno para gerenciar<br>suas solicitações</p>
                     </div>
 
                     <div id="studentDetail" class="hidden flex-1 flex flex-col overflow-hidden animate-fade">
@@ -203,7 +203,7 @@
 
                             <div class="space-y-4">
                                 <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                                    <i data-lucide="alert-circle" class="w-4 h-4 text-fmm-blue"></i> SolicitaÃ§Ãµes de Segunda Chamada
+                                    <i data-lucide="alert-circle" class="w-4 h-4 text-fmm-blue"></i> Solicitações de Segunda Chamada
                                 </h3>
                                 <div id="listSegundas" class="space-y-6"></div>
                             </div>
@@ -217,7 +217,7 @@
                     <div id="examCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
                     <div id="emptyStateExams" class="hidden py-24 flex flex-col items-center justify-center text-slate-300">
                         <i data-lucide="clipboard-x" class="w-16 h-16 mb-4 opacity-20"></i>
-                        <p class="text-sm font-black uppercase tracking-widest opacity-40">Nenhuma prova com solicitaÃ§Ãµes ativas.</p>
+                        <p class="text-sm font-black uppercase tracking-widest opacity-40">Nenhuma prova com solicitações ativas.</p>
                     </div>
                 </div>
             </div>
@@ -230,8 +230,8 @@
         <div class="bg-white w-full max-w-4xl h-[80vh] rounded-[40px] shadow-2xl flex flex-col animate-fade overflow-hidden">
             <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                 <div class="text-left">
-                    <h2 class="text-2xl font-black text-fmm-dark uppercase tracking-tight">Resumo de InscriÃ§Ãµes Deferidas</h2>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Quantitativo de 2Âª Chamada por Disciplina e SÃ©rie</p>
+                    <h2 class="text-2xl font-black text-fmm-dark uppercase tracking-tight">Resumo de Inscrições Deferidas</h2>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Quantitativo de 2ª Chamada por Disciplina e Série</p>
                 </div>
                 <button onclick="closeSummaryModal()" class="w-12 h-12 flex items-center justify-center hover:bg-slate-100 rounded-full transition-all text-slate-400"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
@@ -241,7 +241,7 @@
                         <thead>
                             <tr class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
                                 <th class="p-6">Disciplina</th>
-                                <th class="p-6">SÃ©rie</th>
+                                <th class="p-6">Série</th>
                                 <th class="p-6 text-center">Deferidos</th>
                             </tr>
                         </thead>
@@ -250,7 +250,7 @@
                 </div>
             </div>
             <div class="p-8 border-t bg-white flex justify-end shrink-0">
-                <button onclick="closeSummaryModal()" class="px-10 py-3.5 bg-fmm-dark text-white text-xs font-black uppercase rounded-2xl shadow-xl active:scale-95 transition-all">Fechar RelatÃ³rio</button>
+                <button onclick="closeSummaryModal()" class="px-10 py-3.5 bg-fmm-dark text-white text-xs font-black uppercase rounded-2xl shadow-xl active:scale-95 transition-all">Fechar Relatório</button>
             </div>
         </div>
     </div>
@@ -277,7 +277,7 @@
                             <th class="pb-4 pr-4">Turma</th>
                             <th class="pb-4 pr-4 text-center">Comprovante</th>
                             <th class="pb-4 pr-4 text-center">Status Atual</th>
-                            <th class="pb-4 text-right">DecisÃ£o</th>
+                            <th class="pb-4 text-right">Decisão</th>
                         </tr>
                     </thead>
                     <tbody id="examDetailTableBody" class="divide-y divide-slate-50 text-xs font-bold text-slate-600"></tbody>
@@ -291,7 +291,7 @@
             <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 text-left">
                 <div class="text-left">
                     <h2 class="text-xl font-black text-fmm-dark uppercase tracking-tight leading-none text-left">Administrar Requerimento</h2>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 text-left">EdiÃ§Ã£o de dados e justificativa</p>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 text-left">Edição de dados e justificativa</p>
                 </div>
                 <button onclick="closeEditModal()" class="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors"><i data-lucide="x" class="w-6 h-6 text-slate-400"></i></button>
             </div>
@@ -304,8 +304,8 @@
                     <div class="space-y-1.5 text-left">
                         <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block">Tipo Documento</label>
                         <select id="editDocType" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600">
-                            <option value="MEDICO">Atestado MÃ©dico / Odonto</option>
-                            <option value="OBITO">Atestado de Ã“bito</option>
+                            <option value="MEDICO">Atestado Médico / Odonto</option>
+                            <option value="OBITO">Atestado de Óbito</option>
                             <option value="MILITAR">Alistamento Militar</option>
                             <option value="COMPARECIMENTO">Comparecimento</option>
                         </select>
@@ -313,7 +313,7 @@
                 </div>
                 <div class="grid grid-cols-2 gap-4 text-left">
                     <div class="space-y-1.5 text-left">
-                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block">Data InÃ­cio</label>
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block">Data Início</label>
                         <input type="date" id="editStart" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600">
                     </div>
                     <div class="space-y-1.5 text-left">
@@ -337,13 +337,13 @@
                 <div class="pt-6 flex gap-3 text-left">
                     <button onclick="deleteRequest()" class="p-4 bg-red-50 text-red-500 hover:bg-red-100 rounded-2xl transition-all shadow-sm"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                     <button onclick="closeEditModal()" class="flex-1 py-4 bg-slate-100 text-slate-500 text-xs font-black uppercase rounded-2xl hover:bg-slate-200 transition-all">Cancelar</button>
-                    <button onclick="saveEdit()" class="flex-[2] py-4 bg-fmm-blue text-white text-xs font-black uppercase rounded-2xl shadow-lg hover:shadow-fmm-blue/20">Salvar AlteraÃ§Ãµes</button>
+                    <button onclick="saveEdit()" class="flex-[2] py-4 bg-fmm-blue text-white text-xs font-black uppercase rounded-2xl shadow-lg hover:shadow-fmm-blue/20">Salvar Alterações</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL: CALENDÃRIO -->
+    <!-- MODAL: CALENDÁRIO -->
     <div id="photoZoomModal" class="hidden fixed inset-0 z-[500] flex items-center justify-center p-4 bg-fmm-dark/95 backdrop-blur-xl print:hidden" onclick="closePhotoZoom()">
         <div class="relative max-w-4xl w-full flex flex-col items-center gap-6 animate-fade" onclick="event.stopPropagation()">
             <button onclick="closePhotoZoom()" class="absolute -top-12 -right-4 text-white/50 hover:text-white transition-colors"><i data-lucide="x" class="w-8 h-8"></i></button>
@@ -672,13 +672,13 @@
                 
                 html += `<div class="print-page">`;
                 
-                // CabeÃ§alho repetido em cada pÃ¡gina
+                // Cabeçalho repetido em cada página
                 html += `
                     <div class="print-header">
                         <img src="../../assets/logo-fmm-color.png" alt="FMM Logo">
                         <div class="doc-title text-right">
                             <h1>Lista de Assinatura</h1>
-                            <p>Segunda Chamada de AvaliaÃ§Ã£o â€” PÃ¡g. ${p + 1}/${totalPages}</p>
+                            <p>Segunda Chamada de Avaliação — Pág. ${p + 1}/${totalPages}</p>
                         </div>
                     </div>
                     <div class="print-info-grid">
@@ -687,13 +687,13 @@
                             <span>${nomeProva} - ${currentExamOpen.tipo_prova}</span>
                         </div>
                         <div class="info-box text-left">
-                            <label>Data da AplicaÃ§Ã£o</label>
+                            <label>Data da Aplicação</label>
                             <span>____ / ____ / 2026</span>
                         </div>
                     </div>
                 `;
                 
-                // Tabela da pÃ¡gina atual
+                // Tabela da página atual
                 html += `
                     <table class="print-table">
                         <thead>
@@ -711,7 +711,7 @@
         
                 for (let i = 0; i < pageStudents.length; i++) {
                     const r = pageStudents[i];
-                    const globalIndex = (p * ITEMS_PER_PAGE) + i + 1; // MantÃ©m a contagem contÃ­nua entre pÃ¡ginas
+                    const globalIndex = (p * ITEMS_PER_PAGE) + i + 1; // Mantém a contagem contínua entre páginas
                     
                     html += `
                         <tr>
@@ -729,10 +729,10 @@
                         </tbody>
                     </table>
                     
-                    <!-- RodapÃ© em todas as pÃ¡ginas -->
+                    <!-- Rodapé em todas as páginas -->
                     <div class="print-footer">
                         <div class="signature-line text-center">Assinatura do Aplicador</div>
-                        <div class="signature-line text-center">CoordenaÃ§Ã£o PedagÃ³gica</div>
+                        <div class="signature-line text-center">Coordenação Pedagógica</div>
                     </div>
                 </div>`;
             }
@@ -750,7 +750,7 @@
             const req = allRequests.find(r => r.id === reqId);
             if (!req) return;
         
-            // 1. AtualizaÃ§Ã£o local imediata na memÃ³ria (Interface responde na hora)
+            // 1. Atualização local imediata na memória (Interface responde na hora)
             const provas = [...req.provas_solicitadas];
             provas[examIndex].status = newStatus;
             
@@ -766,7 +766,7 @@
                 const updatedRequests = [];
                 allRequests.forEach(r => {
                     r.provas_solicitadas.forEach((p, idx) => {
-                        // Converte ambos para String para garantir a comparaÃ§Ã£o exata do ID da prova
+                        // Converte ambos para String para garantir a comparação exata do ID da prova
                         if (String(p.id_calendario) === String(currentExamOpen.id)) {
                             updatedRequests.push({ 
                                 ...p, 
