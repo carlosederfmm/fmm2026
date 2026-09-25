@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arquivo de Atestados | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="../../assets/js/constants.js"></script>
+    <script src="../../assets/js/supabase_client.js"></script>
+    <script src="../../sidebar.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden text-slate-700">
+    <aside id="sidebar-container" class="w-72 flex-shrink-0 bg-fmm-dark text-white z-20 shadow-2xl"></aside>
+
+    <main class="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto custom-scrollbar">
+        <header class="bg-white border-b border-slate-200 min-h-[4.5rem] py-3 px-8 flex items-center justify-between shrink-0 shadow-sm">
+            <div>
+                <h1 class="text-xl font-black text-fmm-dark uppercase tracking-tight">Arquivo de Atestados</h1>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Arquivos existentes no armazenamento, do mais recente ao mais antigo</p>
+            </div>
+            <button id="refreshButton" onclick="loadFiles()" class="bg-fmm-blue hover:bg-fmm-dark text-white px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i> Atualizar arquivos
+            </button>
+        </header>
+
+        <section class="px-8 pt-4 shrink-0 space-y-3">
+            <div id="statusMessage" class="hidden p-3.5 rounded-2xl border text-xs font-semibold" role="status"></div>
+            <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col gap-3">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-sm font-black text-fmm-dark">Compilar por formato</h2>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Cada compilação é um ZIP com todos os arquivos existentes daquele tipo no período filtrado.</p>
+                    </div>
+                    <div id="fileSummary" class="text-xs font-bold text-slate-500">Carregando...</div>
+                </div>
+                <div id="typeGroups" class="flex flex-wrap gap-2">
+                    <span class="text-xs text-slate-400">Os formatos aparecerão após a leitura do armazenamento.</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
+                        <input id="searchFiles" type="search" oninput="onSearchOrFilterChange()" placeholder="Buscar nome de arquivo..."
+                               class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-fmm-blue">
+                    </div>
+                    <select id="filterMonth" onchange="onMonthChange()" class="px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-fmm-blue">
+                        <option value="">Todos os meses</option>
+                    </select>
+                    <select id="filterType" onchange="onSearchOrFilterChange()" class="px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-fmm-blue">
+                        <option value="">Todos os formatos</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <section class="flex-1 min-h-[450px] px-8 py-4 pb-6 flex flex-col">
+            <div class="flex-1 flex flex-col bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                <div class="px-6 py-3.5 border-b border-slate-100 flex items-center justify-between gap-4 shrink-0">
+                    <h2 class="text-xs font-black text-slate-500 uppercase tracking-widest">Arquivos encontrados</h2>
+                    <span id="visibleCount" class="text-[10px] font-bold text-slate-400"></span>
+                </div>
+                <div class="flex-1 overflow-auto custom-scrollbar relative min-h-[250px]">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="sticky top-0 bg-slate-50 z-10">
+                            <tr class="text-[9px] uppercase tracking-widest text-slate-400 font-black border-b border-slate-100">
+                                <th class="px-6 py-3.5">Data do arquivo</th>
+                                <th class="px-6 py-3.5">Arquivo</th>
+                                <th class="px-6 py-3.5">Tipo</th>
+                                <th class="px-6 py-3.5 text-right">Tamanho</th>
+                                <th class="px-6 py-3.5 text-right">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="filesTableBody" class="divide-y divide-slate-50"></tbody>
+                    </table>
+                    <div id="emptyState" class="hidden p-12 text-center text-xs font-semibold text-slate-400">
+                        Nenhum arquivo encontrado.
+                    </div>
+                </div>
+                <div id="pagination" class="px-6 py-2.5 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0"></div>
+                <div class="px-6 py-2.5 bg-slate-50 border-t border-slate-100 text-[9px] text-slate-400 font-medium shrink-0">
+                    A lista é carregada diretamente do Storage. Referências a arquivos excluídos não são exibidas.
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const STORAGE_PAGE_SIZE = 1000;
+        const FILES_PER_PAGE = 100;
+        let storedFiles = [];
+        let visibleFiles = [];
+        let currentPage = 1;
+
+        async function init() {
+            if (window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+            const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
+            if (authError) throw authError;
+            if (!user) return window.location.href = '../../index.html';
+
+            const { data: profile, error: profileError } = await window.supabaseClient
+                .from('perfis')
+                .select('cargo')
+                .eq('id', user.id)
+                .single();
+            if (profileError) throw profileError;
+            if (!['coordenador', 'diretor'].includes(profile?.cargo)) {
+                document.getElementById('statusMessage').className = 'p-4 rounded-2xl border border-red-200 bg-red-50 text-red-700 text-xs font-semibold';
+                document.getElementById('statusMessage').innerText = 'Acesso restrito à coordenação e direção.';
+                return;
+            }
+
+            lucide.createIcons();
+            await loadFiles();
+        }
+
+        function setStatus(message, type = 'info') {
+            const status = document.getElementById('statusMessage');
+            const styles = {
+                info: 'border-blue-200 bg-blue-50 text-blue-700',
+                error: 'border-red-200 bg-red-50 text-red-700',
+                success: 'border-green-200 bg-green-50 text-green-700'
+            };
+            status.className = `p-4 rounded-2xl border text-xs font-semibold ${styles[type]}`;
+            status.innerText = message;
+            status.classList.remove('hidden');
+        }
+
+        function parseStorageObjectUrl(value) {
+            if (!value || typeof value !== 'string') return null;
+            const cleanStr = value.trim();
+            if (!cleanStr) return null;
+
+            try {
+                let path = cleanStr;
+                if (cleanStr.startsWith('http://') || cleanStr.startsWith('https://')) {
+                    path = new URL(cleanStr).pathname;
+                }
+                path = path.split('?')[0];
+
+                const storageMatch = path.match(/(?:storage\/v1\/object\/(?:public|sign|authenticated)\/)([^/]+)\/(.+)$/);
+                if (storageMatch) {
+                    return {
+                        bucket: decodeURIComponent(storageMatch[1]),
+                        path: storageMatch[2].split('/').map(decodeURIComponent).join('/')
+                    };
+                }
+
+                const directMatch = path.replace(/^\/+/, '').match(/^([^/]+)\/(.+)$/);
+                if (directMatch) {
+                    return {
+                        bucket: decodeURIComponent(directMatch[1]),
+                        path: directMatch[2].split('/').map(decodeURIComponent).join('/')
+                    };
+                }
+            } catch {
+                return null;
+            }
+            return null;
+        }
+
+        async function getBucketsFromReferences() {
+            const buckets = new Set();
+            const pageSize = 1000;
+            for (let offset = 0; ; offset += pageSize) {
+                const { data, error } = await window.supabaseClient
+                    .from('justificativas_ausencia')
+                    .select('anexo_url')
+                    .not('anexo_url', 'is', null)
+                    .neq('anexo_url', '')
+                    .range(offset, offset + pageSize - 1);
+                if (error) throw new Error('Não foi possível consultar os registros de atestados: ' + error.message);
+                
+                (data || []).forEach(row => {
+                    const object = parseStorageObjectUrl(row.anexo_url);
+                    if (object) buckets.add(object.bucket);
+                });
+                if (!data || data.length < pageSize) break;
+            }
+            return [...buckets];
+        }
+
+        async function listStorageFolder(bucket, folderPath = '', ancestors = new Set()) {
+            const folderKey = `${bucket}/${folderPath}`;
+            if (ancestors.has(folderKey)) return [];
+            const nextAncestors = new Set(ancestors);
+            nextAncestors.add(folderKey);
+            const files = [];
+
+            for (let offset = 0; ; offset += STORAGE_PAGE_SIZE) {
+                const { data, error } = await window.supabaseClient.storage
+                    .from(bucket)
+                    .list(folderPath, {
+                        limit: STORAGE_PAGE_SIZE,
+                        offset,
+                        sortBy: { column: 'name', order: 'asc' }
+                    });
+                if (error) throw new Error(`Não foi possível listar o bucket "${bucket}"${folderPath ? `/${folderPath}` : ''}: ${error.message}`);
+
+                for (const item of data || []) {
+                    if (!item || item.name === '.emptyFolderPlaceholder') continue;
+                    const fullPath = folderPath ? `${folderPath}/${item.name}` : item.name;
+                    const isFolder = !item.id || item.metadata === null || item.id === null;
+
+                    if (isFolder) {
+                        const subFiles = await listStorageFolder(bucket, fullPath, nextAncestors);
+                        files.push(...subFiles);
+                    } else {
+                        const extensionMatch = item.name.match(/\.([^.]+)$/);
+                        files.push({
+                            bucket,
+                            path: fullPath,
+                            name: item.name,
+                            extension: extensionMatch ? extensionMatch[1].toLowerCase() : 'sem extensão',
+                            updatedAt: item.updated_at || item.created_at || item.metadata?.lastModified || null,
+                            size: Number(item.metadata?.size) || 0,
+                            mimeType: item.metadata?.mimetype || 'application/octet-stream'
+                        });
+                    }
+                }
+                if (!data || data.length < STORAGE_PAGE_SIZE) break;
+            }
+            return files;
+        }
+
+        async function loadFiles() {
+            const button = document.getElementById('refreshButton');
+            button.disabled = true;
+            button.innerHTML = '<i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Buscando todos...';
+            lucide.createIcons();
+            document.getElementById('fileSummary').innerText = 'Lendo referências e percorrendo buckets...';
+            document.getElementById('statusMessage').classList.add('hidden');
+
+            try {
+                let buckets = await getBucketsFromReferences();
+                if (buckets.length === 0) {
+                    const { data: bucketList } = await window.supabaseClient.storage.listBuckets();
+                    if (bucketList && bucketList.length > 0) {
+                        buckets = bucketList.map(b => b.name);
+                    }
+                }
+
+                if (buckets.length === 0) {
+                    storedFiles = [];
+                    updateMonthOptions();
+                    updateTypeGroups();
+                    renderFiles();
+                    setStatus('Nenhuma referência ou bucket de Storage foi encontrado.', 'info');
+                    return;
+                }
+
+                const results = await Promise.all(buckets.map(bucket => listStorageFolder(bucket)));
+                storedFiles = results.flat().sort((a, b) => {
+                    const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+                    const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+                    return dateB - dateA;
+                });
+                currentPage = 1;
+                updateMonthOptions();
+                updateTypeGroups();
+                renderFiles();
+                setStatus(`${storedFiles.length.toLocaleString('pt-BR')} arquivo(s) existente(s) encontrados em ${buckets.length} bucket(s). Ordenados do mais recente para o mais antigo.`, 'success');
+            } catch (error) {
+                storedFiles = [];
+                updateMonthOptions();
+                updateTypeGroups();
+                renderFiles();
+                setStatus(error.message, 'error');
+            } finally {
+                button.disabled = false;
+                button.innerHTML = '<i data-lucide="refresh-cw" class="w-4 h-4"></i> Atualizar arquivos';
+                lucide.createIcons();
+            }
+        }
+
+        function updateMonthOptions() {
+            const filterMonth = document.getElementById('filterMonth');
+            const selected = filterMonth.value;
+            const monthSet = new Set();
+            let hasNoDate = false;
+
+            storedFiles.forEach(file => {
+                if (!file.updatedAt) {
+                    hasNoDate = true;
+                    return;
+                }
+                const date = new Date(file.updatedAt);
+                if (isNaN(date.getTime())) {
+                    hasNoDate = true;
+                    return;
+                }
+                const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                monthSet.add(key);
+            });
+
+            const sortedMonths = [...monthSet].sort().reverse();
+            filterMonth.innerHTML = '<option value="">Todos os meses</option>';
+
+            sortedMonths.forEach(yearMonth => {
+                const option = document.createElement('option');
+                option.value = yearMonth;
+                option.textContent = formatMonthYear(yearMonth);
+                filterMonth.appendChild(option);
+            });
+
+            if (hasNoDate) {
+                const option = document.createElement('option');
+                option.value = 'sem-data';
+                option.textContent = 'Sem data registrada';
+                filterMonth.appendChild(option);
+            }
+
+            if ([...filterMonth.options].some(opt => opt.value === selected)) {
+                filterMonth.value = selected;
+            }
+        }
+
+        function formatMonthYear(yearMonthStr) {
+            if (yearMonthStr === 'sem-data') return 'Sem data registrada';
+            const [year, month] = yearMonthStr.split('-');
+            const date = new Date(Number(year), Number(month) - 1, 1);
+            const monthName = date.toLocaleString('pt-BR', { month: 'long' });
+            return `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} / ${year}`;
+        }
+
+        function getFilesForMonth() {
+            const monthSelect = document.getElementById('filterMonth');
+            const selectedMonth = monthSelect ? monthSelect.value : '';
+            if (!selectedMonth) return storedFiles;
+
+            return storedFiles.filter(file => {
+                if (!file.updatedAt) return selectedMonth === 'sem-data';
+                const date = new Date(file.updatedAt);
+                if (isNaN(date.getTime())) return selectedMonth === 'sem-data';
+                const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                return key === selectedMonth;
+            });
+        }
+
+        function updateTypeGroups() {
+            const monthFiles = getFilesForMonth();
+            const counts = new Map();
+            monthFiles.forEach(file => counts.set(file.extension, (counts.get(file.extension) || 0) + 1));
+            const groups = document.getElementById('typeGroups');
+            groups.replaceChildren();
+            const filter = document.getElementById('filterType');
+            const selected = filter.value;
+            filter.innerHTML = '<option value="">Todos os formatos</option>';
+
+            [...counts.entries()].sort(([a], [b]) => a.localeCompare(b, 'pt-BR')).forEach(([extension, count]) => {
+                const option = document.createElement('option');
+                option.value = extension;
+                option.textContent = `.${extension} (${count})`;
+                filter.appendChild(option);
+
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-[10px] font-bold text-slate-600 hover:border-fmm-blue hover:text-fmm-blue transition-colors disabled:opacity-50';
+                button.innerHTML = `<span>.${escapeHtml(extension)} <span class="text-slate-400">(${count})</span></span><i data-lucide="archive" class="w-3.5 h-3.5"></i>`;
+                button.title = `Compilar todos os arquivos .${extension} em um ZIP`;
+                button.onclick = () => compileType(extension, button);
+                groups.appendChild(button);
+            });
+            if ([...counts.keys()].includes(selected)) filter.value = selected;
+
+            document.getElementById('fileSummary').innerText =
+                `${monthFiles.length.toLocaleString('pt-BR')} arquivos · ${counts.size} formatos`;
+            if (counts.size === 0) {
+                groups.innerHTML = '<span class="text-xs text-slate-400">Nenhum arquivo disponível para compilar no período.</span>';
+            }
+            lucide.createIcons();
+        }
+
+        function onMonthChange() {
+            currentPage = 1;
+            updateTypeGroups();
+            renderFiles();
+        }
+
+        function onSearchOrFilterChange() {
+            currentPage = 1;
+            renderFiles();
+        }
+
+        function renderFiles() {
+            const monthFiles = getFilesForMonth();
+            const term = document.getElementById('searchFiles').value.trim().toLocaleLowerCase('pt-BR');
+            const type = document.getElementById('filterType').value;
+
+            visibleFiles = monthFiles.filter(file =>
+                (!type || file.extension === type) &&
+                (!term || file.name.toLocaleLowerCase('pt-BR').includes(term) || file.path.toLocaleLowerCase('pt-BR').includes(term))
+            );
+            visibleFiles.sort((a, b) => {
+                const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+                const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+                return dateB - dateA;
+            });
+
+            const body = document.getElementById('filesTableBody');
+            body.replaceChildren();
+
+            const pageCount = Math.max(1, Math.ceil(visibleFiles.length / FILES_PER_PAGE));
+            if (currentPage > pageCount) currentPage = pageCount;
+            if (currentPage < 1) currentPage = 1;
+
+            const start = (currentPage - 1) * FILES_PER_PAGE;
+            const pageFiles = visibleFiles.slice(start, start + FILES_PER_PAGE);
+
+            pageFiles.forEach(file => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-slate-50 transition-colors border-b border-slate-50';
+                row.innerHTML = `
+                    <td class="px-6 py-3.5 text-[10px] font-semibold text-slate-500 whitespace-nowrap">${formatDate(file.updatedAt)}</td>
+                    <td class="px-6 py-3.5"><div class="font-bold text-xs text-fmm-dark break-all">${escapeHtml(file.name)}</div><div class="text-[9px] text-slate-400 mt-0.5 break-all">${escapeHtml(file.bucket + '/' + file.path)}</div></td>
+                    <td class="px-6 py-3.5"><span class="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 text-[9px] font-black uppercase">.${escapeHtml(file.extension)}</span></td>
+                    <td class="px-6 py-3.5 text-right text-[10px] font-semibold text-slate-500 whitespace-nowrap">${formatBytes(file.size)}</td>
+                    <td class="px-6 py-3.5 text-right"><button type="button" class="download-one p-1.5 rounded-lg text-slate-400 hover:text-fmm-blue hover:bg-blue-50 transition-colors" title="Baixar arquivo"><i data-lucide="download" class="w-4 h-4"></i></button></td>`;
+                row.querySelector('.download-one').addEventListener('click', event => downloadFile(file, event.currentTarget));
+                body.appendChild(row);
+            });
+
+            document.getElementById('visibleCount').innerText = visibleFiles.length
+                ? `${start + 1}–${Math.min(start + FILES_PER_PAGE, visibleFiles.length)} de ${visibleFiles.length.toLocaleString('pt-BR')}`
+                : '0 arquivos';
+            document.getElementById('emptyState').classList.toggle('hidden', visibleFiles.length > 0);
+            renderPagination(pageCount);
+            lucide.createIcons();
+        }
+
+        function renderPagination(pageCount) {
+            const container = document.getElementById('pagination');
+            container.replaceChildren();
+            if (pageCount <= 1 || visibleFiles.length === 0) return;
+
+            const previous = document.createElement('button');
+            previous.textContent = 'Anterior';
+            previous.disabled = currentPage <= 1;
+            previous.className = 'px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-colors';
+            previous.onclick = () => { currentPage--; renderFiles(); };
+
+            const page = document.createElement('span');
+            page.className = 'text-[10px] font-semibold text-slate-500';
+            page.textContent = `Página ${currentPage} de ${pageCount}`;
+
+            const next = document.createElement('button');
+            next.textContent = 'Próxima';
+            next.disabled = currentPage >= pageCount;
+            next.className = 'px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-colors';
+            next.onclick = () => { currentPage++; renderFiles(); };
+
+            container.append(previous, page, next);
+        }
+
+        async function downloadFile(file, button) {
+            const original = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i>';
+            lucide.createIcons();
+            try {
+                const { data, error } = await window.supabaseClient.storage.from(file.bucket).download(file.path);
+                if (error) throw error;
+                triggerDownload(data, file.name);
+            } catch (error) {
+                setStatus(`Falha ao baixar "${file.name}": ${error.message}`, 'error');
+            } finally {
+                button.disabled = false;
+                button.innerHTML = original;
+                lucide.createIcons();
+            }
+        }
+
+        async function compileType(extension, button) {
+            const files = getFilesForMonth().filter(file => file.extension === extension);
+            if (files.length === 0) return;
+            if (!window.JSZip) return setStatus('A biblioteca de compactação não foi carregada. Atualize a página e tente novamente.', 'error');
+
+            button.disabled = true;
+            const originalContent = button.innerHTML;
+            button.innerHTML = '<i data-lucide="loader-circle" class="w-3.5 h-3.5 animate-spin"></i> Preparando...';
+            lucide.createIcons();
+            try {
+                const zip = new JSZip();
+                const usedNames = new Map();
+                for (let index = 0; index < files.length; index++) {
+                    const file = files[index];
+                    button.innerHTML = `<i data-lucide="loader-circle" class="w-3.5 h-3.5 animate-spin"></i> ${index + 1}/${files.length}`;
+                    lucide.createIcons();
+                    const { data, error } = await window.supabaseClient.storage.from(file.bucket).download(file.path);
+                    if (error) throw new Error(`Falha ao baixar "${file.name}": ${error.message}`);
+                    const archivePath = `${file.bucket}/${file.path}`;
+                    const occurrences = (usedNames.get(archivePath) || 0) + 1;
+                    usedNames.set(archivePath, occurrences);
+                    zip.file(occurrences === 1 ? archivePath : `${occurrences}_${archivePath}`, data);
+                }
+                const monthSelect = document.getElementById('filterMonth').value;
+                const monthLabel = monthSelect ? `_${monthSelect}` : '';
+                const archive = await zip.generateAsync({ type: 'blob' });
+                triggerDownload(archive, `atestados${monthLabel}_${extension.replace(/[^a-z0-9_-]/gi, '_')}.zip`);
+                setStatus(`Compilação .${extension} concluída: ${files.length} arquivo(s) incluído(s).`, 'success');
+            } catch (error) {
+                setStatus(`Não foi possível compilar .${extension}: ${error.message}`, 'error');
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalContent;
+                updateTypeGroups();
+            }
+        }
+
+        function triggerDownload(blob, fileName) {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        function formatDate(value) {
+            if (!value) return 'Data indisponível';
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? 'Data indisponível' : date.toLocaleString('pt-BR');
+        }
+
+        function formatBytes(value) {
+            if (!value || value <= 0) return '0 B';
+            const units = ['B', 'KB', 'MB', 'GB'];
+            const index = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
+            return `${(value / (1024 ** index)).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} ${units[index]}`;
+        }
+
+        function escapeHtml(value) {
+            if (value === null || value === undefined) return '';
+            return String(value).replace(/[&<>"']/g, char => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[char]);
+        }
+
+        window.onload = () => init().catch(error => setStatus(`Erro ao inicializar: ${error.message}`, 'error'));
+    </script>
+</body>
+</html>

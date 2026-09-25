@@ -176,6 +176,7 @@ const SidebarComponent = {
         sistema: [
             { label: 'Grade Horária', icon: 'calendar-range', link: 'coordenador/sistema/grade_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Disciplinas', icon: 'book-open', link: 'coordenador/sistema/disciplinas_coordenador.html', roles: ['diretor', 'coordenador'] },
+            { label: 'Arquivo de Atestados', icon: 'folder-archive', link: 'coordenador/sistema/atestados_arquivo_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Usuários / Staff', icon: 'shield-check', link: 'coordenador/sistema/usuarios_coordenador.html', roles: ['diretor', 'coordenador'] }
         ],
         docente: [
