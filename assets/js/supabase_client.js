@@ -4,9 +4,12 @@
  * * Centraliza a conexão e helpers de data para evitar inconsistências de fuso horário.
  */
 
-const supabaseUrl = 'https://panxfescmzjdltthreqy.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhbnhmZXNjbXpqZGx0dGhyZXF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwNTA5NDMsImV4cCI6MjA4MjYyNjk0M30.jSZVhw2TFD52zRV4NZUGUeXKBHedWXcdH7w_fXeoGhA';
+const supabaseUrl = window.__ENV__?.SUPABASE_URL;
+const supabaseKey = window.__ENV__?.SUPABASE_ANON_KEY;
 
+if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Credenciais do Supabase não carregadas.');
+}
 const supabaseOptions = {
     global: {
         headers: {
