@@ -284,6 +284,7 @@
                     <td class="px-8 py-5">
                         <div class="flex items-center justify-center gap-2">
                             <button onclick='prepEdit(${JSON.stringify(u)})' class="p-2.5 text-slate-400 hover:text-fmm-blue hover:bg-fmm-blue/10 rounded-xl transition-all shadow-sm"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                            <button type="button" onclick="resetUserPassword('${u.id}', this)" title="Redefinir senha para Mudar123" aria-label="Redefinir senha para Mudar123" class="p-2.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all shadow-sm"><i data-lucide="key-round" class="w-4 h-4"></i></button>
                             <button onclick="deleteUser('${u.id}')" class="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all shadow-sm"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                         </div>
                     </td>
@@ -513,6 +514,30 @@
                     fetchUsuarios();
                 }
             });
+        }
+
+        async function resetUserPassword(id, button) {
+            if (!confirm("Redefinir a senha deste usuário para Mudar123?")) return;
+
+            const originalContent = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>';
+            lucide.createIcons();
+
+            try {
+                const { error } = await window.supabaseClient.rpc('admin_update_user_password', {
+                    user_id: id,
+                    new_password: 'Mudar123'
+                });
+                if (error) throw error;
+                alert("Senha redefinida para Mudar123.");
+            } catch (err) {
+                alert("Erro ao redefinir senha: " + err.message);
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalContent;
+                lucide.createIcons();
+            }
         }
 
         function closeModal() { 
