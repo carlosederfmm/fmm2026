@@ -4,15 +4,29 @@
 const SidebarComponent = {
     styles: `
         .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        @media (min-width: 768px) {
+            #sidebar-container { z-index: 40; }
+        }
         @media (max-width: 767px) {
             #sidebar-container { display: none !important; }
-            .mobile-nav-active { padding-bottom: 70px !important; }
+            body.mobile-nav-active { padding-bottom: calc(65px + env(safe-area-inset-bottom)) !important; }
         }
         @media (min-width: 768px) {
             .bottom-nav { display: none !important; }
             .sidebar-collapsed .sidebar-text, .sidebar-collapsed .chevron-icon { display: none !important; }
             .sidebar-collapsed .logo-full { display: none !important; }
             .sidebar-collapsed .logo-short { display: block !important; }
+            .sidebar-collapsed #sidebar-container nav h4 { display: none !important; }
+            .sidebar-collapsed #sidebar-container .sidebar-item {
+                justify-content: center;
+                padding-left: 0;
+                padding-right: 0;
+            }
+            .sidebar-collapsed #sidebar-container .category-group > button {
+                justify-content: center;
+                padding-left: 0;
+                padding-right: 0;
+            }
         }
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; right: 0; height: 65px;
@@ -272,6 +286,7 @@ const SidebarComponent = {
             <div class="flex flex-col h-full bg-[#003c5b] relative">
                 <div class="p-6 h-24 border-b border-white/5 flex items-center justify-center relative flex-shrink-0">
                     <img src="${prefix}assets/logo-fmm-white.png" alt="FMM" class="logo-full h-10 object-contain">
+                    <span class="logo-short text-white text-xs font-black tracking-widest">FMM</span>
                 </div>
                 <nav class="flex-1 overflow-y-auto py-4 custom-scrollbar">${navHTML}</nav>
                 <div class="p-4 border-t border-white/5">
@@ -299,6 +314,7 @@ const SidebarComponent = {
         const existingNav = document.querySelector('.bottom-nav');
         if (existingNav) existingNav.remove();
         document.body.appendChild(bottomNav);
+        document.body.classList.add('mobile-nav-active');
 
         let hub = document.getElementById('mobile-menu-hub');
         if (!hub) {
@@ -340,11 +356,13 @@ const SidebarComponent = {
     buildAccordion: function(title, id, iconName, items, activePage, prefix) {
         if (!items.length) return '';
         const isActive = activePage && items.some(i => i.link.includes(activePage));
-        return `<div class="category-group border-b border-white/5"><button onclick="SidebarComponent.toggleCategory('${id}')" class="w-full flex items-center justify-between px-6 py-4 hover:bg-white/5 group text-left"><div class="flex items-center gap-3"><i data-lucide="${iconName}" class="w-4 h-4 text-slate-400 group-hover:text-white"></i><span class="sidebar-text text-[10px] font-black text-slate-300 uppercase tracking-widest">${title}</span></div><i data-lucide="chevron-down" class="chevron-icon w-3.5 h-3.5 text-slate-500 transition-transform ${isActive ? 'rotate-180' : ''}" id="icon-${id}"></i></button><div id="${id}" class="category-content ${isActive ? 'open' : ''}" style="max-height: ${isActive ? 'none' : '0'}">${items.map(item => this.buildLink(item, activePage, prefix)).join('')}</div></div>`;
+        return `<div class="category-group border-b border-white/5"><button onclick="SidebarComponent.toggleCategory('${id}', this)" class="w-full flex items-center justify-between px-6 py-4 hover:bg-white/5 group text-left"><div class="flex items-center gap-3"><i data-lucide="${iconName}" class="w-4 h-4 text-slate-400 group-hover:text-white"></i><span class="sidebar-text text-[10px] font-black text-slate-300 uppercase tracking-widest">${title}</span></div><i data-lucide="chevron-down" class="chevron-icon w-3.5 h-3.5 text-slate-500 transition-transform ${isActive ? 'rotate-180' : ''}" id="icon-${id}"></i></button><div id="${id}" class="category-content ${isActive ? 'open' : ''}" style="max-height: ${isActive ? 'none' : '0'}">${items.map(item => this.buildLink(item, activePage, prefix)).join('')}</div></div>`;
     },
 
-    toggleCategory: function(id) {
-        const target = document.getElementById(id), icon = document.getElementById(`icon-${id}`);
+    toggleCategory: function(id, button) {
+        const group = button?.closest('.category-group');
+        const target = group?.querySelector('.category-content') || document.getElementById(id);
+        const icon = group?.querySelector('.chevron-icon') || document.getElementById(`icon-${id}`);
         if (!target) return;
         const isOpen = target.classList.contains('open');
         target.classList.toggle('open');

@@ -88,6 +88,115 @@
         .final-grade-bold {
             font-weight: 700;
         }
+
+        @media (max-width: 767px) {
+            #detailsView > header {
+                height: auto !important;
+                min-height: 0;
+                flex-wrap: wrap;
+                gap: 8px;
+                padding: 12px 16px !important;
+            }
+            #detailsView > header > div:first-child {
+                flex: 1 1 100%;
+                min-width: 0;
+                gap: 8px;
+            }
+            #detailsView > header > div:first-child > div:last-child { min-width: 0; }
+            #detailsView > header h1 {
+                font-size: 16px;
+                line-height: 1.2;
+            }
+            #detailsView > header p { font-size: 10px; }
+            #detailsView > header > div:last-child {
+                width: 100%;
+                justify-content: flex-end;
+            }
+            #detailsView > header > div:last-child button {
+                padding: 10px 14px;
+                font-size: 9px;
+            }
+            #detailsView > div.flex-1 { padding: 16px !important; }
+            #detailsView > div.flex-1 > div.max-w-7xl { gap: 16px; }
+            #detailsView > div.flex-1 > div.max-w-7xl > .grid.grid-cols-1 { gap: 12px !important; }
+            #detailsView > div.flex-1 > div.max-w-7xl > .grid.grid-cols-1 > div:first-child {
+                align-items: flex-start;
+                gap: 12px !important;
+                padding: 16px !important;
+                border-radius: 20px;
+            }
+            #studentPhoto {
+                width: 64px;
+                height: 64px;
+                border-radius: 16px;
+            }
+            #detailsView > div.flex-1 > div.max-w-7xl > .grid.grid-cols-1 > div:first-child > div:last-child {
+                min-width: 0;
+            }
+            #detailsView > div.flex-1 > div.max-w-7xl > .grid.grid-cols-1 > div:first-child h2 {
+                font-size: 14px;
+                line-height: 1.25;
+            }
+            #studentName {
+                font-size: 14px;
+                line-height: 1.3;
+                overflow-wrap: anywhere;
+            }
+            #studentRA,
+            #studentTurma { font-size: 12px; }
+            #detailsView .flex.wrap {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 12px 20px;
+            }
+            #detailsView > div.flex-1 > div.max-w-7xl > .grid.grid-cols-1 > div:nth-child(2) {
+                gap: 12px !important;
+            }
+            #detailsView > div.flex-1 > div.max-w-7xl > .grid.grid-cols-1 > div:nth-child(2) > div {
+                min-width: 0;
+                padding: 12px 8px !important;
+                border-radius: 20px;
+            }
+            #detailsView > div.flex-1 > div.max-w-7xl > .grid.grid-cols-1 > div:nth-child(2) svg {
+                width: 24px !important;
+                height: 24px !important;
+            }
+            #detailsView > div.flex-1 > div.max-w-7xl > .grid.grid-cols-1 > div:nth-child(2) p:nth-child(2) {
+                font-size: 10px !important;
+                line-height: 1.25;
+            }
+            #totalAbsences,
+            #globalAverage { font-size: 24px; }
+            #basicAreaSection > div:first-child,
+            #technicalAreaSection > div:first-child,
+            #detailsView > div.flex-1 > div.max-w-7xl > div.bg-slate-50 {
+                padding: 16px;
+            }
+            #basicAreaTitle,
+            #technicalAreaSection h2 { font-size: 14px; line-height: 1.3; }
+            #basicAreaSection > div.overflow-x-auto,
+            #technicalAreaSection > div.overflow-x-auto {
+                padding: 8px;
+                overscroll-behavior-x: contain;
+            }
+            .grade-table { min-width: 550px; }
+            #basicAreaSection .grade-table { min-width: 615px; }
+            .grade-table th,
+            .grade-table td { padding: 7px 5px; }
+            #detailsView > div.flex-1 > div.max-w-7xl > div.bg-slate-50 h3 { font-size: 12px; }
+            #detailsView > div.flex-1 > div.max-w-7xl > div.bg-slate-50 li,
+            #detailsView > div.flex-1 > div.max-w-7xl > div.bg-slate-50 p {
+                overflow-wrap: anywhere;
+            }
+        }
+
+        @media (max-width: 359px) {
+            #studentPhoto { width: 52px; height: 52px; }
+            #detailsView > div.flex-1 > div.max-w-7xl > .grid.grid-cols-1 > div:first-child { gap: 8px !important; }
+            #detailsView .flex.wrap { gap: 8px 12px; }
+            #studentRA,
+            #studentTurma { font-size: 11px; }
+        }
     </style>
 </head>
 
@@ -96,6 +205,28 @@
     <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
 
     <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden relative text-left">
+
+        <section id="studentSearchView" class="hidden flex-1 overflow-y-auto custom-scrollbar p-6 md:p-10">
+            <div class="max-w-4xl mx-auto w-full">
+                <header class="mb-6">
+                    <h1 class="text-2xl font-black text-fmm-dark uppercase tracking-tight">Boletim Individual</h1>
+                    <p class="mt-2 text-sm text-slate-500">Pesquise um aluno para consultar e imprimir o boletim.</p>
+                </header>
+
+                <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 md:p-8">
+                    <label for="studentSearchInput" class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Nome ou RA do aluno</label>
+                    <form id="studentSearchForm" class="flex flex-col sm:flex-row gap-3">
+                        <input id="studentSearchInput" type="search" autocomplete="off" placeholder="Digite o nome completo ou RA..."
+                            class="flex-1 min-w-0 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-fmm-blue">
+                        <button type="submit" class="px-6 py-3 bg-fmm-dark text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-fmm-blue transition-colors">
+                            Buscar aluno
+                        </button>
+                    </form>
+                    <p id="studentSearchStatus" role="status" aria-live="polite" class="mt-4 text-sm text-slate-500"></p>
+                    <div id="studentSearchResults" class="mt-4 space-y-2"></div>
+                </div>
+            </div>
+        </section>
         
         <div id="detailsView" class="flex-1 flex flex-col min-h-0 view-transition bg-white">
             <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0 gap-4 text-left">
@@ -249,6 +380,8 @@
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const raVal = urlParams.get('ra');
+        let studentSearchLevels = [];
+        let studentSearchSequence = 0;
 
         const HIDDEN_SUBJECTS = ['ATUAL', 'BIO.APL', 'ENS.RELIG', 'FÍSICA.APL', 'GEO.APL', 'HIST.APL', 'P.DESP', 'QUIM.APL', 'SIM'];
 
@@ -278,9 +411,129 @@
 
         async function init() {
             if (window.SidebarComponent) await SidebarComponent.render('sidebar-container');
-            if (!raVal) return window.location.href = 'boletim_coordenador.html';
+            if (!raVal) {
+                document.getElementById('detailsView').classList.add('hidden');
+                document.getElementById('studentSearchView').classList.remove('hidden');
+                document.getElementById('studentSearchForm').addEventListener('submit', (event) => {
+                    event.preventDefault();
+                    searchStudents(document.getElementById('studentSearchInput').value);
+                });
+                await loadStudentSearchAccess();
+                lucide.createIcons();
+                return;
+            }
             await loadData();
             lucide.createIcons();
+        }
+
+        async function loadStudentSearchAccess() {
+            const status = document.getElementById('studentSearchStatus');
+            try {
+                const { data: { user }, error: userError } = await window.supabaseClient.auth.getUser();
+                if (userError) throw userError;
+                if (!user) throw new Error('Sua sessão expirou. Entre novamente no sistema.');
+
+                const { data: profile, error: profileError } = await window.supabaseClient
+                    .from('perfis')
+                    .select('cargo, niveis_acesso')
+                    .eq('id', user.id)
+                    .maybeSingle();
+                if (profileError) throw profileError;
+                if (!profile) throw new Error('Não foi possível carregar as permissões do seu perfil.');
+
+                studentSearchLevels = profile.cargo?.toLowerCase() === 'diretor'
+                    ? ['EF1', 'EF2', 'EMT']
+                    : (profile.niveis_acesso || []);
+
+                if (studentSearchLevels.length === 0) {
+                    status.textContent = 'Seu perfil não possui níveis de acesso para consultar alunos.';
+                    document.getElementById('studentSearchInput').disabled = true;
+                    document.querySelector('#studentSearchForm button').disabled = true;
+                    return;
+                }
+
+                status.textContent = 'Digite pelo menos 2 caracteres para buscar.';
+            } catch (error) {
+                console.error('Erro ao preparar a busca de alunos do boletim:', error);
+                status.textContent = error.message || 'Não foi possível preparar a busca de alunos.';
+                document.getElementById('studentSearchInput').disabled = true;
+                document.querySelector('#studentSearchForm button').disabled = true;
+            }
+        }
+
+        async function searchStudents(searchTerm) {
+            const term = searchTerm.trim();
+            const status = document.getElementById('studentSearchStatus');
+            const results = document.getElementById('studentSearchResults');
+            const sequence = ++studentSearchSequence;
+            results.replaceChildren();
+
+            if (term.length < 2) {
+                status.textContent = 'Digite pelo menos 2 caracteres para buscar.';
+                return;
+            }
+
+            if (studentSearchLevels.length === 0) {
+                status.textContent = 'Seu perfil não possui níveis de acesso para consultar alunos.';
+                return;
+            }
+
+            status.textContent = 'Buscando alunos...';
+            try {
+                const { data, error } = await window.supabaseClient
+                    .from('alunos')
+                    .select('ra, nome_completo, url_foto, turmas!inner(nome, nivel, serie)')
+                    .in('turmas.nivel', studentSearchLevels)
+                    .or(`nome_completo.ilike.%${term}%,ra.ilike.%${term}%`)
+                    .order('nome_completo')
+                    .limit(10);
+                if (error) throw error;
+                if (sequence !== studentSearchSequence) return;
+
+                if (!data?.length) {
+                    status.textContent = 'Nenhum aluno encontrado nos níveis de acesso do seu perfil.';
+                    return;
+                }
+
+                status.textContent = `${data.length} aluno(s) encontrado(s). Selecione para abrir o boletim.`;
+                data.forEach((student) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'w-full flex items-center gap-4 p-3 text-left rounded-2xl border border-slate-100 hover:border-fmm-blue/30 hover:bg-slate-50 transition-colors';
+                    button.addEventListener('click', () => {
+                        window.location.href = `boletim_coordenador.html?ra=${encodeURIComponent(student.ra)}`;
+                    });
+
+                    const photo = document.createElement('img');
+                    photo.src = formatDriveUrl(student.url_foto) || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.nome_completo || 'Aluno')}&background=003c5b&color=fff`;
+                    photo.alt = '';
+                    photo.className = 'w-12 h-12 rounded-xl object-cover bg-slate-100 shrink-0';
+                    photo.onerror = () => {
+                        photo.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(student.nome_completo || 'Aluno')}&background=003c5b&color=fff`;
+                    };
+
+                    const details = document.createElement('span');
+                    details.className = 'min-w-0 flex-1';
+                    const name = document.createElement('span');
+                    name.className = 'block text-sm font-black text-fmm-dark uppercase truncate';
+                    name.textContent = student.nome_completo || 'Aluno sem nome';
+                    const info = document.createElement('span');
+                    info.className = 'block mt-1 text-xs font-semibold text-slate-500';
+                    info.textContent = `${student.turmas?.nome || 'Turma não informada'} · RA: ${student.ra}`;
+                    details.append(name, info);
+
+                    const icon = document.createElement('i');
+                    icon.setAttribute('data-lucide', 'chevron-right');
+                    icon.className = 'w-5 h-5 text-slate-300 shrink-0';
+                    button.append(photo, details, icon);
+                    results.appendChild(button);
+                });
+                lucide.createIcons();
+            } catch (error) {
+                if (sequence !== studentSearchSequence) return;
+                console.error('Erro ao buscar alunos para o boletim individual:', error);
+                status.textContent = 'Não foi possível buscar alunos. Tente novamente.';
+            }
         }
 
         let academicDataForPrint = { basic: [], tech: [], student: {}, totalAbsences: 0, globalAverage: '---' };

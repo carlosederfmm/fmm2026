@@ -55,6 +55,14 @@
         
         /* Otimização para tabelas longas */
         .table-row-fast { contain: layout paint; }
+        @media (max-width: 767px) {
+            #studentModal {
+                bottom: calc(65px + env(safe-area-inset-bottom));
+            }
+            #studentModal > div {
+                max-height: calc(100dvh - 65px - env(safe-area-inset-bottom) - 2rem);
+            }
+        }
     </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden text-left">
@@ -62,17 +70,17 @@
     <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
 
     <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
-        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0">
+        <header class="bg-white min-h-20 border-b flex flex-col items-stretch justify-center gap-3 px-4 py-3 z-10 shadow-sm flex-shrink-0 sm:px-6 md:flex-row md:items-center md:justify-between md:px-8 md:py-0">
             <div class="flex flex-col">
                 <h1 class="text-xl font-bold text-fmm-dark">Gestão de Alunos</h1>
                 <p class="text-xs text-slate-400">Total: <span id="student-count" class="font-bold text-fmm-blue tracking-widest">Calculando...</span> alunos registrados</p>
             </div>
-            <button onclick="window.openModal()" class="bg-fmm-blue hover:bg-fmm-dark text-white px-6 py-2.5 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all shadow-lg">
+            <button onclick="window.openModal()" class="self-start bg-fmm-blue hover:bg-fmm-dark text-white px-5 py-2.5 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all shadow-lg md:self-auto">
                 <i data-lucide="plus" class="w-4 h-4"></i> Novo Aluno
             </button>
         </header>
 
-        <div class="px-8 pt-8 flex-shrink-0">
+        <div class="px-4 pt-4 flex-shrink-0 sm:px-6 sm:pt-6 md:px-8 md:pt-8">
             <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col lg:flex-row gap-4">
                 <div class="flex-1 relative group">
                     <i data-lucide="search" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
@@ -81,18 +89,18 @@
                 </div>
                 
                 <div class="flex flex-wrap gap-2">
-                    <select id="filterTurma" onchange="fetchAlunos()" class="px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-slate-600 font-bold text-sm min-w-[150px] cursor-pointer">
+                    <select id="filterTurma" onchange="fetchAlunos()" class="min-w-0 flex-1 px-3 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-slate-600 font-bold text-xs cursor-pointer sm:min-w-[150px] sm:px-4 sm:text-sm">
                         <option value="">Todas as Turmas</option>
                     </select>
 
-                    <select id="filterOrigem" onchange="fetchAlunos()" class="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-slate-600 font-bold text-sm cursor-pointer">
+                    <select id="filterOrigem" onchange="fetchAlunos()" class="min-w-0 flex-1 px-3 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-slate-600 font-bold text-xs cursor-pointer sm:px-4 sm:text-sm">
                         <option value="">Todas as Origens</option>
                         <option value="FMM">FMM</option>
                         <option value="Seduc">Seduc</option>
                         <option value="Semed">Semed</option>
                     </select>
 
-                    <select id="filterStatus" onchange="fetchAlunos()" class="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-slate-600 font-bold text-sm cursor-pointer">
+                    <select id="filterStatus" onchange="fetchAlunos()" class="min-w-0 flex-1 px-3 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-slate-600 font-bold text-xs cursor-pointer sm:px-4 sm:text-sm">
                         <option value="">Todos os Status</option>
                         <option value="Cursando">Cursando</option>
                         <option value="Transferido">Transferido</option>
@@ -101,7 +109,7 @@
             </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar relative">
+        <div class="flex-1 min-h-0 overflow-auto p-4 custom-scrollbar relative sm:p-6 md:p-8">
             <div id="loadingOverlay" class="hidden absolute inset-0 bg-white/60 backdrop-blur-[2px] z-50 flex items-center justify-center">
                  <div class="flex flex-col items-center gap-3">
                     <div class="w-12 h-12 border-4 border-fmm-blue/20 border-t-fmm-blue rounded-full animate-spin"></div>
@@ -109,7 +117,8 @@
                  </div>
             </div>
             <div class="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-                <table class="w-full text-left border-collapse">
+                <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full min-w-[760px] text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-50/50 border-b border-slate-100 text-[11px] uppercase tracking-widest text-slate-400 font-bold">
                             <th class="px-8 py-5">Identificação</th>
@@ -121,20 +130,21 @@
                     </thead>
                     <tbody id="studentTableBody" class="divide-y divide-slate-50"></tbody>
                 </table>
+                </div>
             </div>
         </div>
     </main>
 
     <!-- MODAL DE CADASTRO / EDIÇÃO -->
     <div id="studentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-fmm-dark/60 backdrop-blur-sm p-4">
-        <div class="bg-white w-full max-w-4xl rounded-[32px] shadow-2xl flex flex-col max-h-[90vh] animate-fade-in-up">
-            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-white rounded-t-[32px]">
-                <h2 class="text-2xl font-bold text-fmm-dark" id="modalTitle">Novo Aluno</h2>
+        <div class="bg-white w-full max-w-4xl rounded-[24px] sm:rounded-[32px] shadow-2xl flex flex-col max-h-[90dvh] animate-fade-in-up">
+            <div class="p-5 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-white rounded-t-[24px] sm:rounded-t-[32px]">
+                <h2 class="text-xl sm:text-2xl font-bold text-fmm-dark" id="modalTitle">Novo Aluno</h2>
                 <button onclick="window.closeModal()" class="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-slate-100 transition-colors">
                     <i data-lucide="x" class="w-6 h-6"></i>
                 </button>
             </div>
-            <div class="modal-content overflow-y-auto p-8 space-y-8 custom-scrollbar">
+            <div class="modal-content overflow-y-auto p-5 sm:p-8 space-y-6 sm:space-y-8 custom-scrollbar">
                 <div class="space-y-6">
                     <h3 class="text-xs font-black text-fmm-blue uppercase tracking-widest flex items-center gap-2">
                         <span class="w-1.5 h-4 bg-fmm-lime rounded-full"></span>
@@ -214,7 +224,7 @@
                     </div>
                 </div>
             </div>
-            <div class="p-8 border-t bg-slate-50/50 rounded-b-[32px] flex justify-end gap-4 shrink-0">
+            <div class="p-5 sm:p-8 border-t bg-slate-50/50 rounded-b-[24px] sm:rounded-b-[32px] flex justify-end gap-3 sm:gap-4 shrink-0">
                 <button onclick="window.closeModal()" class="px-6 py-3 text-sm font-bold text-slate-500">Cancelar</button>
                 <button id="btnSave" onclick="saveStudent()" class="px-10 py-3.5 bg-fmm-lime text-fmm-dark font-bold text-sm rounded-2xl shadow-xl">Guardar Registo</button>
             </div>

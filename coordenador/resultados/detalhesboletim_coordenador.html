@@ -278,7 +278,7 @@
 
         async function init() {
             if (window.SidebarComponent) await SidebarComponent.render('sidebar-container');
-            if (!raVal) return window.location.href = 'boletim_coordenador.html';
+            if (!raVal) return window.location.replace('mapa_coordenador.html');
             await loadData();
             lucide.createIcons();
         }

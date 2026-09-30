@@ -82,6 +82,17 @@
         @media (max-width: 767px) {
             main { padding-bottom: env(safe-area-inset-bottom); }
             .details-hero-photo { width: 130px; height: 130px; }
+            #actionModal {
+                bottom: calc(65px + env(safe-area-inset-bottom));
+            }
+            #actionModal > div {
+                max-height: calc(100dvh - 65px - env(safe-area-inset-bottom) - 2rem);
+            }
+            #actionModalBody {
+                flex: 1;
+                min-height: 0;
+                overflow-y: auto;
+            }
         }
     </style>
 </head>
@@ -184,7 +195,7 @@
                     <h2 class="text-lg font-bold text-fmm-dark flex items-center gap-2" id="modalTitle">Registrar Ocorrência</h2>
                     <button onclick="closeActionModal()" class="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
                 </div>
-                <div class="p-8 space-y-6">
+                <div id="actionModalBody" class="p-8 space-y-6">
                     <div id="levelNotice" class="hidden p-4 bg-orange-50 border border-orange-100 rounded-2xl flex gap-3">
                         <i data-lucide="alert-triangle" class="w-5 h-5 text-orange-500 flex-shrink-0"></i>
                         <div>

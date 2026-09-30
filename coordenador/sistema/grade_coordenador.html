@@ -46,6 +46,7 @@
         .grid-container {
             display: grid;
             grid-template-columns: 100px repeat(5, minmax(0, 1fr));
+            min-width: 900px;
             border: 1px solid #e2e8f0;
             background: white;
             border-radius: 1.5rem;
@@ -145,23 +146,23 @@
 
     <!-- CONTEÚDO PRINCIPAL -->
     <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
-        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-10 shadow-sm flex-shrink-0">
+        <header class="bg-white min-h-20 border-b flex flex-col items-stretch gap-3 px-4 py-3 z-10 shadow-sm flex-shrink-0 sm:px-6 md:flex-row md:items-center md:justify-between md:px-8 md:py-0">
             <div class="flex flex-col">
                 <h1 class="text-xl font-bold text-fmm-dark tracking-tight">Grade Horária Académica</h1>
                 <p class="text-xs text-slate-400">Atribuições e tempos de aula</p>
             </div>
             
-            <div class="flex items-center gap-4">
-                <button onclick="openFinderModal()" class="bg-white border-2 border-fmm-lime text-fmm-dark px-5 py-2.5 rounded-xl font-black text-xs flex items-center gap-2 transition-all hover:bg-fmm-lime/10 shadow-sm">
+            <div class="flex flex-wrap items-center gap-2 md:gap-4">
+                <button onclick="openFinderModal()" class="bg-white border-2 border-fmm-lime text-fmm-dark px-3 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition-all hover:bg-fmm-lime/10 shadow-sm sm:px-5 sm:text-xs">
                     <i data-lucide="search" class="w-4 h-4 text-fmm-lime"></i> Localizar Professor
                 </button>
 
-                <div class="mode-switch">
+                <div class="mode-switch flex-1 justify-center md:flex-none">
                     <button onclick="setMode('turma')" id="btn-mode-turma" class="mode-btn active">Por Turma</button>
                     <button onclick="setMode('professor')" id="btn-mode-professor" class="mode-btn">Por Professor</button>
                 </div>
 
-                <select id="selectPrincipal" onchange="handleSelectionChange()" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-fmm-dark min-w-[220px]">
+                <select id="selectPrincipal" onchange="handleSelectionChange()" class="flex-1 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-fmm-blue text-fmm-dark min-w-0 md:flex-none md:min-w-[220px]">
                     <option value="">Selecionar...</option>
                 </select>
                 
@@ -171,7 +172,8 @@
             </div>
         </header>
 
-        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+        <div class="flex-1 min-h-0 overflow-auto p-4 custom-scrollbar sm:p-6 md:p-8">
+            <div class="overflow-x-auto rounded-[1.5rem]">
             <div class="grid-container shadow-xl">
                 <div class="grid-header">Horário</div>
                 <div class="grid-header">Segunda</div>
@@ -181,6 +183,7 @@
                 <div class="grid-header">Sexta</div>
 
                 <div id="grade-rows-container" class="contents"></div>
+            </div>
             </div>
         </div>
     </main>

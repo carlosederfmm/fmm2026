@@ -33,6 +33,22 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .avatar-frame { width: 44px; height: 44px; border-radius: 14px; object-fit: cover; background: #f1f5f9; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,.08); cursor: zoom-in; }
         .table-row-fast { contain: layout paint; }
+        .student-table-scroll { overflow-x: auto; }
+
+        @media (max-width: 767px) {
+            main > header {
+                height: auto !important;
+                min-height: 0;
+                align-items: flex-start !important;
+                flex-direction: column !important;
+                gap: 10px;
+                padding: 12px 16px !important;
+            }
+            main > header > div:last-child { align-self: flex-end; }
+            main > section:first-of-type { padding: 16px 16px 0 !important; }
+            main > section:last-of-type { padding: 16px !important; }
+            .student-table-scroll table { min-width: 760px; }
+        }
     </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden text-left">
@@ -51,7 +67,7 @@
             </div>
         </header>
 
-        <section class="px-8 pt-8 shrink-0">
+        <section class="px-4 pt-4 md:px-8 md:pt-8 shrink-0">
             <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col lg:flex-row gap-3">
                 <div class="relative group flex-1">
                     <i data-lucide="search" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-fmm-blue transition-colors"></i>
@@ -66,7 +82,7 @@
             </div>
         </section>
 
-        <section class="flex-1 overflow-y-auto p-8 custom-scrollbar relative">
+        <section class="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar relative">
             <div id="loadingState" class="hidden absolute inset-0 z-20 bg-slate-50/70 backdrop-blur-[2px] flex items-center justify-center">
                 <div class="flex flex-col items-center gap-3">
                     <i data-lucide="loader-2" class="w-10 h-10 animate-spin text-fmm-blue"></i>
@@ -75,6 +91,7 @@
             </div>
 
             <div class="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+                <div class="student-table-scroll">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-50/70 border-b border-slate-100 text-[10px] uppercase tracking-widest text-slate-400 font-black">
@@ -87,6 +104,7 @@
                     </thead>
                     <tbody id="studentTableBody" class="divide-y divide-slate-50"></tbody>
                 </table>
+                </div>
                 <div id="emptyState" class="hidden py-20 flex-col items-center justify-center text-slate-300">
                     <i data-lucide="user-round-x" class="w-12 h-12 mb-4 opacity-30"></i>
                     <p class="text-xs font-black uppercase tracking-widest">Nenhum aluno encontrado</p>
