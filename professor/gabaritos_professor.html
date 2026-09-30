@@ -236,14 +236,14 @@
                     const hasAdaptada = existingGabaritos.some(g => g.calendario_id === cal.id && g.serie_alvo === v.serie && g.modalidade === 'Adaptada');
 
                     return `
-                    <div class="exam-card bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex flex-col gap-6 text-left">
+                    <div class="exam-card bg-white p-6 rounded-[32px] border border-slate-250 shadow-lg flex flex-col gap-6 text-left">
                         <div class="flex justify-between items-start">
                             <div class="p-3 bg-fmm-blue/5 rounded-2xl text-fmm-blue"><i data-lucide="file-text" class="w-6 h-6"></i></div>
-                            <span class="text-[9px] font-black text-slate-300 uppercase">${new Date(cal.data_prova + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                            <span class="text-[12px] font-black text-slate-500 uppercase">${new Date(cal.data_prova + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
                         </div>
                         <div>
                             <h3 class="text-base font-black text-fmm-dark uppercase tracking-tight leading-tight">${cal.disciplinas?.nome}</h3>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest">${v.serie} • ${cal.matriz} • ${cal.tipo_prova}</p>
+                            <p class="text-[10px] font-bold text-slate-500 uppercase mt-1 tracking-widest">${v.serie} • ${cal.matriz} • ${cal.tipo_prova}</p>
                         </div>
                         <div class="grid grid-cols-2 gap-3 pt-4 border-t border-slate-50">
                             <button onclick="openGabarito('${v.id}', 'Regular')" class="py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${hasRegular ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-fmm-blue text-white shadow-lg shadow-fmm-blue/10 active:scale-95'}">
