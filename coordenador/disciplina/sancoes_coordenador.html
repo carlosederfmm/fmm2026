@@ -68,6 +68,90 @@
             transition: transform 0.3s ease;
         }
         .details-hero-photo:hover { transform: scale(1.05); }
+
+        @media (max-width: 767px) {
+            #listView > header,
+            #detailsView > header {
+                height: auto !important;
+                min-height: 0;
+                flex-wrap: wrap;
+                gap: 12px;
+                padding: 14px 16px !important;
+            }
+            #listView > header > div:first-child {
+                min-width: 0;
+                width: 100%;
+            }
+            #listView > header h1 { font-size: 16px; }
+            #listView > header > div:last-child {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+                gap: 8px;
+                width: 100%;
+            }
+            #listView > header select {
+                width: 100%;
+                min-width: 0;
+                padding: 10px 8px;
+                font-size: 10px;
+            }
+            #listView > header #btnAlertFilter {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 8px;
+            }
+            #listView > header > div:last-child > div {
+                grid-column: 1 / -1;
+                width: 100%;
+            }
+            #listView > header input { font-size: 12px; }
+            #listView > div.flex-1 { padding: 16px !important; padding-bottom: calc(65px + env(safe-area-inset-bottom)) !important; }
+            #detailsView > header { gap: 10px; }
+            #detailsView > header h2 { font-size: 14px; line-height: 1.3; }
+            #detailsView > div.flex-1 > div.max-w-5xl {
+                padding: 16px;
+                padding-bottom: calc(65px + env(safe-area-inset-bottom));
+                gap: 24px;
+            }
+            #detailsView > div.flex-1 > div.max-w-5xl > div:first-child {
+                padding: 20px;
+                border-radius: 24px;
+            }
+            .details-hero-photo {
+                width: min(150px, 42vw);
+                height: min(150px, 42vw);
+                border-radius: 28px;
+            }
+            #detailsName { font-size: 20px; overflow-wrap: anywhere; }
+            #historyList { padding-bottom: 20px; }
+            #sanctionModal,
+            #emailModal,
+            #photoZoomModal {
+                bottom: calc(65px + env(safe-area-inset-bottom));
+            }
+            #sanctionModal > div,
+            #emailModal > div {
+                max-height: calc(100dvh - 65px - env(safe-area-inset-bottom) - 2rem);
+                overflow-y: auto;
+                border-radius: 24px;
+            }
+            #sanctionModal > div > div:nth-child(2) { padding: 16px; }
+            #sanctionModal > div > div:last-child {
+                flex-wrap: wrap;
+                padding: 12px 16px;
+            }
+            #sanctionModal > div > div:last-child button {
+                flex: 1;
+                padding: 10px 8px;
+            }
+            #emailModal > div { padding: 20px; }
+            #emailBody { height: min(16rem, 38dvh); padding: 12px; font-size: 12px; }
+            #photoZoomModal { padding: 16px; }
+            #photoZoomModal > button { top: 12px; right: 12px; padding: 10px; }
+            #zoomedImage { max-height: calc(70dvh - 65px); border-width: 4px; border-radius: 24px; }
+            #zoomedName { max-width: 100%; padding: 10px 16px; font-size: 14px; text-align: center; }
+        }
     </style>
 </head>
 

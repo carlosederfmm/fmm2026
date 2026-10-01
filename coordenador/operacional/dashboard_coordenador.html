@@ -89,6 +89,206 @@
             transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.01);
         }
         .kpi-card:hover { border-color: #00638f30; transform: translateY(-2px); }
+
+        @media (max-width: 767px) {
+            main > header {
+                height: auto;
+                min-height: 68px;
+                gap: 8px;
+                padding: 10px 16px;
+            }
+            main > header > div:first-child {
+                min-width: 0;
+                flex: 1;
+            }
+            main > header h1 { font-size: 14px; line-height: 1.2; }
+            #current-date {
+                margin-top: 3px;
+                font-size: 8px;
+                letter-spacing: 0.08em;
+                line-height: 1.35;
+            }
+            main > header > div:last-child { gap: 8px; }
+            #userName {
+                max-width: 82px;
+                font-size: 9px;
+                line-height: 1.25;
+                text-align: right;
+                overflow-wrap: anywhere;
+            }
+            #userRoleLabel { font-size: 7px; letter-spacing: 0.06em; }
+            #userInitials {
+                width: 36px;
+                height: 36px;
+                flex: 0 0 36px;
+                border-radius: 12px;
+                font-size: 12px;
+            }
+            main > div.flex-1.overflow-y-auto {
+                padding: 16px;
+                padding-bottom: calc(85px + env(safe-area-inset-bottom));
+            }
+            main > div.flex-1.overflow-y-auto > :not([hidden]) ~ :not([hidden]) {
+                margin-top: 20px;
+            }
+            main > div.flex-1.overflow-y-auto > div:first-child {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+            .kpi-card {
+                min-width: 0;
+                gap: 8px;
+                padding: 12px 10px;
+                border-radius: 18px;
+            }
+            .kpi-card > div:first-child {
+                width: 36px;
+                height: 36px;
+                flex: 0 0 36px;
+                border-radius: 11px;
+            }
+            .kpi-card > div:first-child svg { width: 17px; height: 17px; }
+            .kpi-card > div:last-child { min-width: 0; }
+            .kpi-card > div:last-child > span:first-child { font-size: 18px; }
+            .kpi-card > div:last-child > span:last-child {
+                font-size: 8px;
+                line-height: 1.2;
+                letter-spacing: 0.04em;
+                overflow-wrap: anywhere;
+            }
+            main > div.flex-1.overflow-y-auto > div:nth-child(2) {
+                min-height: 0;
+                border-radius: 26px;
+            }
+            main > div.flex-1.overflow-y-auto > div:nth-child(2) > div:first-child {
+                align-items: stretch;
+                gap: 14px;
+                padding: 16px;
+            }
+            main > div.flex-1.overflow-y-auto > div:nth-child(2) > div:first-child > div:first-child {
+                gap: 12px;
+            }
+            main > div.flex-1.overflow-y-auto > div:nth-child(2) > div:first-child > div:first-child > div:first-child {
+                padding: 10px;
+                border-radius: 14px;
+            }
+            main > div.flex-1.overflow-y-auto > div:nth-child(2) > div:first-child > div:first-child svg {
+                width: 20px;
+                height: 20px;
+            }
+            #calendar-header-title { font-size: 14px; line-height: 1.25; }
+            #calendar-subtitle { font-size: 8px; letter-spacing: 0.1em; }
+            main > div.flex-1.overflow-y-auto > div:nth-child(2) > div:first-child > div:last-child {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            main > div.flex-1.overflow-y-auto > div:nth-child(2) .view-tab {
+                flex: 1;
+                padding: 8px 10px;
+                font-size: 9px;
+                letter-spacing: 0.06em;
+            }
+            main > div.flex-1.overflow-y-auto > div:nth-child(2) > div:first-child > div:last-child > div:nth-child(2) {
+                display: none;
+            }
+            main > div.flex-1.overflow-y-auto > div:nth-child(2) > div:first-child > div:last-child > div:last-child {
+                justify-content: center;
+                flex: 1;
+            }
+            main > div.flex-1.overflow-y-auto > div:nth-child(2) > div:first-child > div:last-child > div:last-child button {
+                padding: 8px;
+            }
+            main > div.flex-1.overflow-y-auto > div:nth-child(2) > div:first-child > div:last-child > div:last-child button:nth-child(2) {
+                padding-right: 12px;
+                padding-left: 12px;
+            }
+            #calendar-container {
+                min-height: 430px;
+                overflow: visible;
+            }
+            #calendar-weekday-header > div {
+                padding-top: 9px;
+                padding-bottom: 9px;
+                font-size: 8px;
+                letter-spacing: 0.06em;
+            }
+            .calendar-day {
+                min-height: 62px;
+                padding: 6px;
+            }
+            .calendar-day > span {
+                display: inline-flex;
+                min-width: 20px;
+                min-height: 20px;
+                align-items: center;
+                justify-content: center;
+                padding: 2px 5px;
+                font-size: 9px;
+            }
+            .calendar-day > div { margin-top: 4px; }
+            .event-tag {
+                margin-bottom: 2px;
+                padding: 3px 4px;
+                border-left-width: 2px;
+                border-radius: 5px;
+                font-size: 7px;
+                line-height: 1.2;
+            }
+            #calendar-body.flex.divide-x {
+                overflow-x: auto;
+                overscroll-behavior-x: contain;
+            }
+            #calendar-body.flex.divide-x > div { min-width: 140px; }
+            #calendar-body.p-8 { padding: 16px; }
+            .event-card-full {
+                padding: 16px;
+                border-radius: 20px;
+                border-left-width: 4px;
+            }
+            .event-card-full > div:first-child {
+                align-items: flex-start;
+                gap: 12px;
+            }
+            .event-card-full h4 {
+                font-size: 16px;
+                line-height: 1.25;
+                overflow-wrap: anywhere;
+            }
+            #eventModal {
+                bottom: calc(65px + env(safe-area-inset-bottom));
+                padding: 12px;
+            }
+            #eventModal > div {
+                max-height: calc(100dvh - 65px - env(safe-area-inset-bottom) - 24px);
+                border-radius: 24px;
+                border-width: 2px;
+            }
+            #eventModal > div > div:first-child { gap: 10px; padding: 16px; }
+            #modalTitle { font-size: 14px; line-height: 1.25; }
+            #eventModal > div > div:first-child > div:first-child { gap: 10px; }
+            #eventModal > div > div:first-child > div:first-child > div:first-child {
+                width: 36px;
+                height: 36px;
+                flex: 0 0 36px;
+            }
+            #eventModal > div > div:nth-child(2) {
+                min-height: 0;
+                max-height: none;
+                padding: 16px;
+                gap: 16px;
+            }
+            #eventModal > div > div:nth-child(2) > .grid { grid-template-columns: minmax(0, 1fr); }
+            #eventModal input { min-width: 0; padding-top: 12px; padding-bottom: 12px; }
+            #eventModal > div > div:last-child {
+                flex-wrap: wrap;
+                gap: 8px;
+                padding: 12px 16px;
+            }
+            #eventModal > div > div:last-child > button { padding: 10px 12px; }
+            #btnSave { padding-right: 20px !important; padding-left: 20px !important; }
+            #toast { right: 12px; bottom: calc(76px + env(safe-area-inset-bottom)); left: 12px; }
+            #toast > div { justify-content: center; padding: 12px 16px; }
+        }
     </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden">

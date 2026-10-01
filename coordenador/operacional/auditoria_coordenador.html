@@ -81,6 +81,60 @@
 
         /* Espaçamento entre tabela e assinaturas no Drawer */
         .drawer-footer-spacing { margin-top: 60px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+
+        @media (max-width: 767px) {
+            main > header {
+                height: auto !important;
+                min-height: 0;
+                align-items: stretch;
+                flex-direction: column;
+                gap: 12px;
+                padding: 14px 16px;
+            }
+            main > header > div:first-child {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 10px;
+            }
+            main > header h1 { font-size: 16px; }
+            main > header > div:first-child > div:last-child {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 8px;
+                width: 100%;
+            }
+            main > header select { width: 100%; min-width: 0; padding: 9px 8px; font-size: 10px; }
+            main > header > div:last-child {
+                justify-content: flex-start;
+                gap: 24px;
+                padding-top: 8px;
+                border-top: 1px solid #f1f5f9;
+            }
+            main > header > div:last-child > div { align-items: flex-start; }
+            main > header > div:last-child > div > span:first-child { font-size: 8px; }
+            main > header > div:last-child > div > span:last-child { font-size: 16px; }
+            #mainScroll {
+                min-height: 0;
+                padding-bottom: calc(65px + env(safe-area-inset-bottom));
+                overscroll-behavior: contain;
+            }
+            #auditContainer { width: max-content; min-width: 100%; }
+            .audit-table { min-width: max-content; }
+            #auditHeader .sticky-intersect,
+            #auditBody .sticky-col { min-width: 200px !important; width: 200px !important; }
+            #drawer { bottom: calc(65px + env(safe-area-inset-bottom)); }
+            #drawer > .drawer-content {
+                width: 100%;
+                max-width: none;
+            }
+            #drawer > .drawer-content > div:first-child { padding: 16px; gap: 12px; }
+            #drawerTeacher { font-size: 16px; line-height: 1.25; }
+            #drawer > .drawer-content > div#drawerList { min-height: 0; padding: 16px; }
+            #drawer > .drawer-content > div:last-child {
+                margin-top: 0;
+                padding: 12px 16px;
+            }
+        }
     </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden text-left">

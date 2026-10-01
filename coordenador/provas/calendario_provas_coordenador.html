@@ -8,7 +8,70 @@
     <script src="../../assets/js/constants.js"></script><script src="../../assets/js/supabase_client.js"></script><script src="../../sidebar.js"></script>
     <script>let editingCalId = null;
 tailwind.config = { theme: { extend: { colors: { fmm: { dark: '#003c5b', blue: '#00638f', green: '#80a51b', lime: '#c8d400', bg: '#f8fafc' } } } } };</script>
-    <style>body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }.custom-scrollbar::-webkit-scrollbar { width: 4px; }.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }.animate-fade { animation: fadeIn 0.3s ease-out forwards; }@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }.serie-tag { font-size: 8px; font-weight: 800; background: #f1f5f9; color: #64748b; padding: 1px 6px; border-radius: 4px; text-transform: uppercase; border: 1px solid #e2e8f0; }</style>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .serie-tag { font-size: 8px; font-weight: 800; background: #f1f5f9; color: #64748b; padding: 1px 6px; border-radius: 4px; text-transform: uppercase; border: 1px solid #e2e8f0; }
+
+        @media (max-width: 767px) {
+            main > header {
+                height: auto !important;
+                min-height: 0;
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 10px;
+                padding: 14px 16px;
+            }
+            main > header h1 { font-size: 16px; }
+            main > header > div:last-child { padding: 7px 10px; font-size: 10px; }
+            main > div.flex-1.flex.flex-col.min-h-0 {
+                min-height: 0;
+                overflow-y: auto;
+                padding-bottom: calc(65px + env(safe-area-inset-bottom));
+            }
+            #calendarModal { flex: 0 0 auto; min-height: 0; overflow: visible; }
+            #calendarModal > .bg-white {
+                height: auto;
+                min-height: 100%;
+                overflow: visible;
+            }
+            #calendarModal > .bg-white > .flex.flex-1.overflow-hidden {
+                flex-direction: column;
+                flex: 0 0 auto;
+                overflow: visible;
+            }
+            #calendarModal [class~="w-80"] {
+                width: 100%;
+                flex: 0 0 auto;
+                padding: 16px;
+                border-right: 0;
+                border-bottom: 1px solid #e2e8f0;
+                overflow: visible;
+            }
+            #calendarModal [class~="w-80"] .space-y-5 { gap: 14px; }
+            #calendarModal [class~="w-80"] button { padding-top: 12px; padding-bottom: 12px; }
+            #calendarModal > .bg-white > .flex.flex-1.overflow-hidden > .flex-1 {
+                min-height: 0;
+                flex: 0 0 auto;
+                padding: 16px;
+                overflow: visible;
+            }
+            #calendarModal > .bg-white > .flex.flex-1.overflow-hidden > .flex-1 > .flex-1.overflow-y-auto {
+                flex: 0 0 auto;
+                height: 60dvh;
+                min-height: 320px;
+                overflow: auto;
+                overscroll-behavior: contain;
+            }
+            #calTableBody table,
+            #calendarModal table { min-width: 700px; }
+            #calendarModal th,
+            #calendarModal td { padding: 10px 8px; }
+        }
+    </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden text-slate-700">
     <aside id="sidebar-container" class="w-72 flex-shrink-0 bg-fmm-dark text-white z-20 shadow-2xl"></aside>
