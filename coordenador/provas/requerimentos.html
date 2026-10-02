@@ -183,6 +183,7 @@
 
         @media print {
             @page { size: A4 portrait; margin: 8mm; }
+            @page repro-page { size: A4 landscape; margin: 8mm; }
             html, body, main{
                 overflow: visible !important;
                 height: auto !important;
@@ -191,6 +192,17 @@
             body > *:not(main) { display: none !important; }
             main > *:not(#printArea) { display: none !important; }
             #printArea { display: block !important; width: 100%; color: #000; font-family: Arial, Helvetica, sans-serif; }
+            #printArea.repro-print { page: repro-page; }
+            .repro-print-header { margin-bottom: 12px; }
+            .repro-print-header h1 { margin: 0 0 4px; font-size: 16pt; font-weight: 900; text-transform: uppercase; }
+            .repro-print-header p { margin: 0; font-size: 8pt; color: #475569; }
+            .repro-print-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 8pt; }
+            .repro-print-table th,
+            .repro-print-table td { border: 1px solid #334155; padding: 5px 4px; text-align: center; }
+            .repro-print-table th { background: #e2e8f0 !important; font-weight: 900; text-transform: uppercase; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .repro-print-table th:first-child,
+            .repro-print-table td:first-child { text-align: left; }
+            .repro-print-empty { margin-top: 24px; text-align: center; font-size: 10pt; }
 
             .print-page {
                 page-break-after: always;
@@ -278,10 +290,40 @@
                 <button onclick="switchView('exam')" id="tab-exam" class="view-tab py-3 text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all text-slate-400 hover:text-slate-600">
                     <i data-lucide="clipboard-list" class="w-4 h-4"></i> Visão por Prova
                 </button>
+                <button onclick="switchView('repro')" id="tab-repro" class="view-tab py-3 text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all text-slate-400 hover:text-slate-600">
+                    <i data-lucide="printer" class="w-4 h-4"></i> Visão Reprografia
+                </button>
             </div>
         </header>
 
-        <div class="flex-1 flex overflow-hidden print:hidden">
+        <div class="flex-1 flex flex-col min-h-0 overflow-hidden print:hidden">
+            <div class="hidden flex flex-wrap items-center justify-between gap-3 px-8 pt-6 text-left" id="examFilters">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Filtrar e ordenar provas</p>
+                <div class="flex flex-wrap items-center gap-3">
+                    <label for="examPeriodFilter" class="sr-only">Filtrar por período</label>
+                    <select id="examPeriodFilter" onchange="renderCurrentExamView()" class="min-w-[180px] px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 uppercase outline-none focus:ring-2 focus:ring-fmm-blue">
+                        <option value="all">Todos os períodos</option>
+                        <option value="1_BIMESTRE">1º Bimestre</option>
+                        <option value="2_BIMESTRE">2º Bimestre</option>
+                        <option value="3_BIMESTRE">3º Bimestre</option>
+                        <option value="4_BIMESTRE">4º Bimestre</option>
+                        <option value="1_TRIMESTRE">1º Trimestre</option>
+                        <option value="2_TRIMESTRE">2º Trimestre</option>
+                        <option value="3_TRIMESTRE">3º Trimestre</option>
+                        <option value="1_SEMESTRE">1º Semestre</option>
+                        <option value="2_SEMESTRE">2º Semestre</option>
+                    </select>
+                    <label for="examDisciplineFilter" class="sr-only">Filtrar por disciplina</label>
+                    <select id="examDisciplineFilter" onchange="renderCurrentExamView()" class="min-w-[190px] px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 uppercase outline-none focus:ring-2 focus:ring-fmm-blue">
+                        <option value="all">Todas as disciplinas</option>
+                    </select>
+                    <label for="examSortOrder" class="sr-only">Ordenar disciplinas</label>
+                    <select id="examSortOrder" onchange="renderCurrentExamView()" class="min-w-[170px] px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 uppercase outline-none focus:ring-2 focus:ring-fmm-blue">
+                        <option value="asc">Disciplina: A–Z</option>
+                        <option value="desc">Disciplina: Z–A</option>
+                    </select>
+                </div>
+            </div>
             <div id="view-student-container" class="flex flex-1 overflow-hidden">
                 <aside class="w-96 bg-white border-r border-slate-200 flex flex-col shrink-0">
                     <div class="p-4 border-b border-slate-100 text-left">
@@ -335,39 +377,42 @@
                 </section>
             </div>
 
-            <div id="view-exam-container" class="hidden flex-1 flex flex-col overflow-hidden bg-slate-50/50 text-left">
-                <div class="flex flex-wrap items-center justify-between gap-3 px-8 pt-6 text-left" id="examFilters">
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Filtrar e ordenar provas</p>
-                    <div class="flex flex-wrap items-center gap-3">
-                        <label for="examPeriodFilter" class="sr-only">Filtrar por período</label>
-                        <select id="examPeriodFilter" onchange="renderExamCards()" class="min-w-[180px] px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 uppercase outline-none focus:ring-2 focus:ring-fmm-blue">
-                            <option value="all">Todos os períodos</option>
-                            <option value="1_BIMESTRE">1º Bimestre</option>
-                            <option value="2_BIMESTRE">2º Bimestre</option>
-                            <option value="3_BIMESTRE">3º Bimestre</option>
-                            <option value="4_BIMESTRE">4º Bimestre</option>
-                            <option value="1_TRIMESTRE">1º Trimestre</option>
-                            <option value="2_TRIMESTRE">2º Trimestre</option>
-                            <option value="3_TRIMESTRE">3º Trimestre</option>
-                            <option value="1_SEMESTRE">1º Semestre</option>
-                            <option value="2_SEMESTRE">2º Semestre</option>
-                        </select>
-                        <label for="examDisciplineFilter" class="sr-only">Filtrar por disciplina</label>
-                        <select id="examDisciplineFilter" onchange="renderExamCards()" class="min-w-[190px] px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 uppercase outline-none focus:ring-2 focus:ring-fmm-blue">
-                            <option value="all">Todas as disciplinas</option>
-                        </select>
-                        <label for="examSortOrder" class="sr-only">Ordenar disciplinas</label>
-                        <select id="examSortOrder" onchange="renderExamCards()" class="min-w-[170px] px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 uppercase outline-none focus:ring-2 focus:ring-fmm-blue">
-                            <option value="asc">Disciplina: A–Z</option>
-                            <option value="desc">Disciplina: Z–A</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            <div id="view-exam-container" class="hidden flex-1 min-h-0 flex flex-col overflow-hidden bg-slate-50/50 text-left">
+                <div class="flex-1 min-h-0 overflow-y-auto p-8 custom-scrollbar">
                     <div id="examCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
                     <div id="emptyStateExams" class="hidden py-24 flex flex-col items-center justify-center text-slate-300">
                         <i data-lucide="clipboard-x" class="w-16 h-16 mb-4 opacity-20"></i>
                         <p class="text-sm font-black uppercase tracking-widest opacity-40">Nenhuma prova com solicitações ativas.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-repro-container" class="hidden flex-1 min-h-0 overflow-auto bg-white custom-scrollbar text-left">
+                <div class="min-w-[1100px] p-4 md:p-8 pb-24">
+                    <div class="flex justify-end mb-4 print:hidden">
+                        <button type="button" onclick="downloadReproPdf()" class="inline-flex items-center justify-center gap-2 px-5 py-3 bg-fmm-dark text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg hover:bg-fmm-blue transition-colors">
+                            <i data-lucide="download" class="w-4 h-4"></i> Baixar PDF
+                        </button>
+                    </div>
+                    <table class="w-full border-collapse text-left">
+                        <thead>
+                            <tr class="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                <th class="p-4 border border-slate-200">Disciplina</th>
+                                <th class="p-4 border border-slate-200">Período</th>
+                                <th class="p-4 border border-slate-200">1ª Série</th>
+                                <th class="p-4 border border-slate-200">2ª Série</th>
+                                <th class="p-4 border border-slate-200">3ª Série</th>
+                                <th class="p-4 border border-slate-200">5º Ano</th>
+                                <th class="p-4 border border-slate-200">6º Ano</th>
+                                <th class="p-4 border border-slate-200">7º Ano</th>
+                                <th class="p-4 border border-slate-200">8º Ano</th>
+                                <th class="p-4 border border-slate-200">9º Ano</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reproTableBody" class="divide-y divide-slate-100 text-xs font-bold text-slate-600"></tbody>
+                    </table>
+                    <div id="emptyStateRepro" class="hidden py-20 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">
+                        Nenhuma prova encontrada para os filtros selecionados.
                     </div>
                 </div>
             </div>
@@ -512,6 +557,18 @@
         let currentExamOpen = null;
         let editingCalId = null;
 
+        const REPRO_SERIES = ['1ª Série', '2ª Série', '3ª Série', '5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano'];
+
+        function normalizeSeries(value) {
+            return (value || '').trim().toLocaleLowerCase('pt-BR').replace(/[ºª°]/g, '').replace(/\s+/g, ' ');
+        }
+
+        function getSeriesForPeriod(period) {
+            if ((period || '').includes('BIMESTRE')) return REPRO_SERIES.slice(3);
+            if ((period || '').includes('TRIMESTRE') || (period || '').includes('SEMESTRE')) return REPRO_SERIES.slice(0, 3);
+            return [];
+        }
+
         async function init() {
             if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
             const { data: { user } } = await window.supabaseClient.auth.getUser();
@@ -570,7 +627,7 @@
             if (selectedRA) showStudent(selectedRA);
             
             await loadCalendar();
-            if (currentView === 'exam') renderExamCards();
+            if (currentView === 'exam' || currentView === 'repro') renderCurrentExamView();
         }
 
         function renderList() {
@@ -660,13 +717,8 @@
             lucide.createIcons();
         }
 
-        function renderExamCards() {
-            const grid = document.getElementById('examCardsGrid');
-            grid.innerHTML = '';
+        function getFilteredCalendarExams() {
             const periodFilter = document.getElementById('examPeriodFilter').value;
-            const disciplineFilter = document.getElementById('examDisciplineFilter').value;
-            const sortDirection = document.getElementById('examSortOrder').value;
-
             const disciplineSelect = document.getElementById('examDisciplineFilter');
             const selectedDiscipline = disciplineSelect.value;
             const disciplines = new Map();
@@ -685,12 +737,35 @@
                     disciplineSelect.appendChild(option);
                 });
             disciplineSelect.value = disciplines.has(selectedDiscipline) ? selectedDiscipline : 'all';
-            
-            const examStats = calendarData.filter(exam => {
+            const disciplineFilter = disciplineSelect.value;
+            const sortDirection = document.getElementById('examSortOrder').value;
+            const exams = calendarData.filter(exam => {
                 const disciplineKey = exam.sigla_disciplina || exam.disciplinas?.nome;
                 return (periodFilter === 'all' || exam.periodo_ref === periodFilter)
                     && (disciplineFilter === 'all' || disciplineKey === disciplineFilter);
-            }).map(exam => {
+            });
+            exams.sort((a, b) => {
+                const nameA = a.disciplinas?.nome || a.sigla_disciplina || '';
+                const nameB = b.disciplinas?.nome || b.sigla_disciplina || '';
+                const alphabeticalOrder = nameA.localeCompare(nameB, 'pt-BR', { sensitivity: 'base' });
+                const periodOrder = (a.periodo_ref || '').localeCompare(b.periodo_ref || '', 'pt-BR');
+                const dateOrder = (a.data_prova || '').localeCompare(b.data_prova || '');
+                return (sortDirection === 'desc' ? -alphabeticalOrder : alphabeticalOrder) || periodOrder || dateOrder;
+            });
+            return exams;
+        }
+
+        function renderCurrentExamView() {
+            if (currentView === 'exam') renderExamCards();
+            else if (currentView === 'repro') renderReproTable();
+        }
+
+        function renderExamCards() {
+            const grid = document.getElementById('examCardsGrid');
+            grid.innerHTML = '';
+            const periodFilter = document.getElementById('examPeriodFilter').value;
+            const disciplineFilter = document.getElementById('examDisciplineFilter').value;
+            const examStats = getFilteredCalendarExams().map(exam => {
                 const requestsForExam = [];
                 allRequests.forEach(req => {
                     req.provas_solicitadas.forEach((p, idx) => {
@@ -721,15 +796,6 @@
             }
             document.getElementById('emptyStateExams').classList.add('hidden');
 
-            examStats.sort((a, b) => {
-                const nameA = a.disciplinas?.nome || a.sigla_disciplina || '';
-                const nameB = b.disciplinas?.nome || b.sigla_disciplina || '';
-                const alphabeticalOrder = nameA.localeCompare(nameB, 'pt-BR', { sensitivity: 'base' });
-                const periodOrder = (a.periodo_ref || '').localeCompare(b.periodo_ref || '', 'pt-BR');
-                const dateOrder = (a.data_prova || '').localeCompare(b.data_prova || '');
-                return (sortDirection === 'desc' ? -alphabeticalOrder : alphabeticalOrder) || periodOrder || dateOrder;
-            });
-
             grid.innerHTML = examStats.map(exam => `
                 <div onclick='openExamDetailModal(${JSON.stringify(exam).replace(/'/g, "&apos;")})' class="exam-card bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex flex-col gap-5 text-left">
                     <div class="flex justify-between items-start text-left">
@@ -758,6 +824,98 @@
                     </div>
                 </div>`).join('');
             lucide.createIcons();
+        }
+
+        function renderReproTable() {
+            const tbody = document.getElementById('reproTableBody');
+            const emptyState = document.getElementById('emptyStateRepro');
+            const exams = getFilteredCalendarExams();
+
+            if (exams.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.textContent = 'Nenhuma prova encontrada para os filtros selecionados.';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            const groupedExams = new Map();
+            exams.forEach(exam => {
+                const discipline = exam.disciplinas?.nome || exam.sigla_disciplina || '—';
+                const groupKey = `${discipline.toLocaleLowerCase('pt-BR')}|${exam.periodo_ref || ''}`;
+                if (!groupedExams.has(groupKey)) {
+                    groupedExams.set(groupKey, {
+                        discipline,
+                        period: exam.periodo_ref || '',
+                        counts: Object.fromEntries(REPRO_SERIES.map(series => [normalizeSeries(series), 0]))
+                    });
+                }
+                const allowedSeries = new Set(getSeriesForPeriod(exam.periodo_ref).map(normalizeSeries));
+                const configuredSeries = new Set((Array.isArray(exam.series) ? exam.series : []).map(normalizeSeries));
+                allRequests.forEach(request => {
+                    const studentSeries = normalizeSeries(request.alunos?.turmas?.serie);
+                    if (!allowedSeries.has(studentSeries) || (configuredSeries.size > 0 && !configuredSeries.has(studentSeries))) return;
+                    request.provas_solicitadas.forEach(prova => {
+                        if (String(prova.id_calendario) === String(exam.id) && prova.status === 'Deferido') {
+                            groupedExams.get(groupKey).counts[studentSeries]++;
+                        }
+                    });
+                });
+            });
+
+            tbody.innerHTML = [...groupedExams.values()].map(exam => {
+                const seriesCells = REPRO_SERIES.map(series => {
+                    const seriesKey = normalizeSeries(series);
+                    return getSeriesForPeriod(exam.period).some(periodSeries => normalizeSeries(periodSeries) === seriesKey)
+                        ? String(exam.counts[seriesKey])
+                        : '—';
+                });
+                return `
+                    <tr class="hover:bg-slate-50/70">
+                        <td class="p-4 border border-slate-100 font-black text-fmm-dark uppercase">${exam.discipline}</td>
+                        <td class="p-4 border border-slate-100 uppercase">${exam.period.replace('_', ' ')}</td>
+                        ${seriesCells.map(count => `<td class="p-4 border border-slate-100 text-center">${count}</td>`).join('')}
+                    </tr>`;
+            }).join('');
+        }
+
+        function downloadReproPdf() {
+            const printArea = document.getElementById('printArea');
+            const table = document.querySelector('#view-repro-container table');
+            const period = document.getElementById('examPeriodFilter');
+            const discipline = document.getElementById('examDisciplineFilter');
+            const order = document.getElementById('examSortOrder');
+            const periodLabel = period.value === 'all' ? 'Todos os períodos' : period.options[period.selectedIndex].text;
+            const disciplineLabel = discipline.value === 'all' ? 'Todas as disciplinas' : discipline.options[discipline.selectedIndex].text;
+            const orderLabel = order.value === 'desc' ? 'Z–A' : 'A–Z';
+            const printTable = table.cloneNode(true);
+            printTable.className = 'repro-print-table';
+
+            printArea.classList.add('repro-print');
+            printArea.innerHTML = '';
+            const header = document.createElement('header');
+            header.className = 'repro-print-header';
+            const title = document.createElement('h1');
+            title.textContent = 'Relatório de Reprografia';
+            const filterSummary = document.createElement('p');
+            filterSummary.textContent = `Período: ${periodLabel} | Disciplina: ${disciplineLabel} | Ordem: ${orderLabel}`;
+            header.append(title, filterSummary);
+            printArea.appendChild(header);
+            printArea.appendChild(printTable);
+
+            if (document.getElementById('emptyStateRepro').classList.contains('hidden') === false) {
+                const emptyMessage = document.createElement('p');
+                emptyMessage.className = 'repro-print-empty';
+                emptyMessage.textContent = document.getElementById('emptyStateRepro').textContent.trim();
+                printArea.appendChild(emptyMessage);
+            }
+
+            const cleanup = () => {
+                printArea.classList.remove('repro-print');
+                window.removeEventListener('afterprint', cleanup);
+            };
+            window.addEventListener('afterprint', cleanup, { once: true });
+            window.print();
         }
 
         function openExamDetailModal(exam) {
@@ -985,15 +1143,25 @@
             currentView = view;
             document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active', 'text-slate-400'));
             document.getElementById(`tab-${view}`).classList.add('active');
+            document.getElementById('examFilters').classList.toggle('hidden', view !== 'exam' && view !== 'repro');
             document.getElementById('view-student-container').classList.toggle('hidden', view !== 'student');
             document.getElementById('view-exam-container').classList.toggle('hidden', view !== 'exam');
-            if (view === 'exam') renderExamCards();
+            document.getElementById('view-repro-container').classList.toggle('hidden', view !== 'repro');
+            if (view === 'exam' || view === 'repro') renderCurrentExamView();
         }
 
         async function loadCalendar() { 
             let query = window.supabaseClient.from('calendario_referencia_provas').select('*, disciplinas(nome)').order('data_prova', { ascending: false });
-            const { data } = await query; calendarData = data || [];
+            const { data, error } = await query;
+            if (error) {
+                console.error('Não foi possível carregar o calendário de provas:', error);
+                calendarData = [];
+            } else {
+                calendarData = data || [];
+            }
+
             if (document.getElementById("calTableBody")) renderCalendar();
+            if (currentView === 'repro') renderReproTable();
         }
 
         function openEditModal(request) {
