@@ -217,6 +217,20 @@ const SidebarComponent = {
         return './';
     },
 
+    getAppBaseUrl: function() {
+        const sidebarScript = Array.from(document.scripts).find(script => {
+            if (!script.src) return false;
+            return new URL(script.src, document.baseURI).pathname.endsWith('/sidebar.js');
+        });
+        return sidebarScript
+            ? new URL('.', sidebarScript.src).href
+            : new URL(this.getRelativePrefix(), window.location.href).href;
+    },
+
+    getAppUrl: function(path) {
+        return new URL(path, this.getAppBaseUrl()).href;
+    },
+
     updateUserUI: function(profile) {
         if (!profile) return;
         const initialsEl = document.getElementById('userInitials');
@@ -308,8 +322,14 @@ const SidebarComponent = {
         bottomNav.className = 'bottom-nav';
         bottomNav.innerHTML = config.map(item => {
             const isActive = activePage && item.link.includes(activePage);
-            return `<a href="${prefix}${item.link}" class="nav-item ${isActive ? 'active' : ''}"><i data-lucide="${item.icon}"></i><span>${item.label}</span></a>`;
+            return `<a href="${this.getAppUrl(item.link)}" class="nav-item ${isActive ? 'active' : ''}"><i data-lucide="${item.icon}"></i><span>${item.label}</span></a>`;
         }).join('') + `<button onclick="SidebarComponent.toggleMobileHub()" class="nav-item"><i data-lucide="more-horizontal"></i><span>Menu</span></button>`;
+        bottomNav.addEventListener('click', event => {
+            const link = event.target.closest('a.nav-item');
+            if (!link) return;
+            event.preventDefault();
+            window.location.assign(link.href);
+        });
         
         const existingNav = document.querySelector('.bottom-nav');
         if (existingNav) existingNav.remove();

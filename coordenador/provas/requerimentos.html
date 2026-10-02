@@ -89,6 +89,23 @@
             }
             main > header > div:last-child::-webkit-scrollbar { display: none; }
             .view-tab { flex: 0 0 auto; white-space: nowrap; font-size: 10px; }
+            #examFilters {
+                align-items: stretch;
+                padding: 16px 16px 0;
+                gap: 10px;
+            }
+            #examFilters > div {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+                gap: 8px;
+                width: 100%;
+            }
+            #examFilters select {
+                min-width: 0;
+                width: 100%;
+                padding: 9px 8px;
+                font-size: 9px;
+            }
             #view-student-container { flex-direction: column; }
             #view-student-container > aside {
                 width: 100%;
@@ -319,6 +336,33 @@
             </div>
 
             <div id="view-exam-container" class="hidden flex-1 flex flex-col overflow-hidden bg-slate-50/50 text-left">
+                <div class="flex flex-wrap items-center justify-between gap-3 px-8 pt-6 text-left" id="examFilters">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Filtrar e ordenar provas</p>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <label for="examPeriodFilter" class="sr-only">Filtrar por período</label>
+                        <select id="examPeriodFilter" onchange="renderExamCards()" class="min-w-[180px] px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 uppercase outline-none focus:ring-2 focus:ring-fmm-blue">
+                            <option value="all">Todos os períodos</option>
+                            <option value="1_BIMESTRE">1º Bimestre</option>
+                            <option value="2_BIMESTRE">2º Bimestre</option>
+                            <option value="3_BIMESTRE">3º Bimestre</option>
+                            <option value="4_BIMESTRE">4º Bimestre</option>
+                            <option value="1_TRIMESTRE">1º Trimestre</option>
+                            <option value="2_TRIMESTRE">2º Trimestre</option>
+                            <option value="3_TRIMESTRE">3º Trimestre</option>
+                            <option value="1_SEMESTRE">1º Semestre</option>
+                            <option value="2_SEMESTRE">2º Semestre</option>
+                        </select>
+                        <label for="examDisciplineFilter" class="sr-only">Filtrar por disciplina</label>
+                        <select id="examDisciplineFilter" onchange="renderExamCards()" class="min-w-[190px] px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 uppercase outline-none focus:ring-2 focus:ring-fmm-blue">
+                            <option value="all">Todas as disciplinas</option>
+                        </select>
+                        <label for="examSortOrder" class="sr-only">Ordenar disciplinas</label>
+                        <select id="examSortOrder" onchange="renderExamCards()" class="min-w-[170px] px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 uppercase outline-none focus:ring-2 focus:ring-fmm-blue">
+                            <option value="asc">Disciplina: A–Z</option>
+                            <option value="desc">Disciplina: Z–A</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
                     <div id="examCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
                     <div id="emptyStateExams" class="hidden py-24 flex flex-col items-center justify-center text-slate-300">
@@ -619,8 +663,34 @@
         function renderExamCards() {
             const grid = document.getElementById('examCardsGrid');
             grid.innerHTML = '';
+            const periodFilter = document.getElementById('examPeriodFilter').value;
+            const disciplineFilter = document.getElementById('examDisciplineFilter').value;
+            const sortDirection = document.getElementById('examSortOrder').value;
+
+            const disciplineSelect = document.getElementById('examDisciplineFilter');
+            const selectedDiscipline = disciplineSelect.value;
+            const disciplines = new Map();
+            calendarData.forEach(exam => {
+                const key = exam.sigla_disciplina || exam.disciplinas?.nome;
+                const name = exam.disciplinas?.nome || exam.sigla_disciplina;
+                if (key && name) disciplines.set(key, name);
+            });
+            disciplineSelect.innerHTML = '<option value="all">Todas as disciplinas</option>';
+            [...disciplines.entries()]
+                .sort((a, b) => a[1].localeCompare(b[1], 'pt-BR', { sensitivity: 'base' }))
+                .forEach(([key, name]) => {
+                    const option = document.createElement('option');
+                    option.value = key;
+                    option.textContent = name;
+                    disciplineSelect.appendChild(option);
+                });
+            disciplineSelect.value = disciplines.has(selectedDiscipline) ? selectedDiscipline : 'all';
             
-            const examStats = calendarData.map(exam => {
+            const examStats = calendarData.filter(exam => {
+                const disciplineKey = exam.sigla_disciplina || exam.disciplinas?.nome;
+                return (periodFilter === 'all' || exam.periodo_ref === periodFilter)
+                    && (disciplineFilter === 'all' || disciplineKey === disciplineFilter);
+            }).map(exam => {
                 const requestsForExam = [];
                 allRequests.forEach(req => {
                     req.provas_solicitadas.forEach((p, idx) => {
@@ -643,11 +713,22 @@
 
             if (examStats.length === 0) {
                 document.getElementById('emptyStateExams').classList.remove('hidden');
+                const hasFilters = periodFilter !== 'all' || disciplineFilter !== 'all';
+                document.getElementById('emptyStateExams').querySelector('p').innerText = hasFilters
+                    ? 'Nenhuma prova com solicitações ativas para estes filtros.'
+                    : 'Nenhuma prova com solicitações ativas.';
                 return;
             }
             document.getElementById('emptyStateExams').classList.add('hidden');
 
-            examStats.sort((a,b) => b.pending - a.pending);
+            examStats.sort((a, b) => {
+                const nameA = a.disciplinas?.nome || a.sigla_disciplina || '';
+                const nameB = b.disciplinas?.nome || b.sigla_disciplina || '';
+                const alphabeticalOrder = nameA.localeCompare(nameB, 'pt-BR', { sensitivity: 'base' });
+                const periodOrder = (a.periodo_ref || '').localeCompare(b.periodo_ref || '', 'pt-BR');
+                const dateOrder = (a.data_prova || '').localeCompare(b.data_prova || '');
+                return (sortDirection === 'desc' ? -alphabeticalOrder : alphabeticalOrder) || periodOrder || dateOrder;
+            });
 
             grid.innerHTML = examStats.map(exam => `
                 <div onclick='openExamDetailModal(${JSON.stringify(exam).replace(/'/g, "&apos;")})' class="exam-card bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex flex-col gap-5 text-left">
