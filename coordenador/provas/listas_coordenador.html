@@ -323,7 +323,7 @@
             console.log(`DEBUG: Turmas Autorizadas: ${turmasData.length}`);
 
             // 2. Carregar Matrículas (Paginação Crítica - Bypass do limite de 1000)
-            const allMats = await fetchTablePaginated('matriculas', 'ra_aluno, id_turma, status, alunos(nome_completo, status)', (q) => {
+            const allMats = await fetchTablePaginated('matriculas', 'ra_aluno, id_turma, status, alunos(nome_completo, status, prova_adaptada)', (q) => {
                 return q.eq('ano_letivo', 2026);
             });
 
@@ -411,14 +411,16 @@
                                 </div>
                                 <div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                                     ${relevantTurmas.map(t => {
-                                        const count = matriculasData.filter(m => m.id_turma === t.id).length;
+                                        const students = matriculasData.filter(m => m.id_turma === t.id);
+                                        const commonCount = students.filter(m => m.alunos?.prova_adaptada !== true).length;
+                                        const adaptedCount = students.length - commonCount;
                                         return `
                                             <label class="relative cursor-pointer group">
                                                 <input type="checkbox" class="peer sr-only checkbox-exam-item" data-exam-id="${exam.id}" data-turma-id="${t.id}">
                                                 <div class="p-4 bg-white border-2 border-slate-100 rounded-3xl transition-all group-hover:border-fmm-lime/50 peer-checked:border-fmm-blue peer-checked:bg-blue-50/50 text-left">
                                                     <div class="flex justify-between items-start mb-2">
                                                         <span class="text-sm font-black text-fmm-dark uppercase leading-tight">${t.nome}</span>
-                                                        <span class="px-2 py-0.5 bg-slate-100 text-slate-400 text-[8px] font-black rounded uppercase">${count} ATIVOS</span>
+                                                        <span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[8px] font-black rounded uppercase">${commonCount} COMUNS${adaptedCount ? ` · ${adaptedCount} ADAPTADOS` : ''}</span>
                                                     </div>
                                                     <button onclick="printSingle('${exam.id}', '${t.id}')" class="w-full mt-2 py-2.5 bg-white border border-slate-200 text-slate-500 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-fmm-blue hover:text-white hover:border-fmm-blue transition-all">
                                                         Imprimir Lista
@@ -467,20 +469,33 @@
             for (const item of items) {
                 const exam = examsData.find(e => e.id === item.examId);
                 const turma = turmasData.find(t => t.id === item.turmaId);
-                const alunos = matriculasData
+                const matriculasDaTurma = matriculasData
                     .filter(m => m.id_turma === item.turmaId)
-                    .map(m => ({ ra: m.ra_aluno, nome: m.alunos.nome_completo }))
-                    .sort((a, b) => a.nome.localeCompare(b.nome));
+                    .map(m => ({ ra: m.ra_aluno, nome: m.alunos.nome_completo, provaAdaptada: m.alunos?.prova_adaptada === true }));
+                const listas = [
+                    {
+                        alunos: matriculasDaTurma.filter(aluno => !aluno.provaAdaptada),
+                        nomeTurma: turma.nome,
+                        turmaNaLista: turma.nome
+                    },
+                    {
+                        alunos: matriculasDaTurma.filter(aluno => aluno.provaAdaptada),
+                        nomeTurma: `ADAPTADOS - ${turma.nome}`,
+                        turmaNaLista: 'ADAPTADOS'
+                    }
+                ].filter(lista => lista.alunos.length > 0);
 
                 const periodoFormatado = exam.periodo_ref.replace('_', 'º ');
                 const dataProva = new Date(exam.data_prova + 'T12:00:00').toLocaleDateString('pt-BR');
                 const nomeDisc = exam.disciplinas?.nome || exam.sigla_disciplina;
                 const tituloProva = `PROVA ${exam.tipo_prova} | ${periodoFormatado}`;
 
-                const sheet = document.createElement('div');
-                sheet.className = 'sheet';
+                for (const lista of listas) {
+                    const alunos = lista.alunos.sort((a, b) => a.nome.localeCompare(b.nome));
+                    const sheet = document.createElement('div');
+                    sheet.className = 'sheet';
 
-                let tableHtml = `
+                    let tableHtml = `
                     <table class="layout">
                         <colgroup>
                             <col style="width: 4%;" />
@@ -501,7 +516,7 @@
                             <tr class="r2"></tr>
                             <tr class="r3">
                                 <td class="s1" rowspan="2" colspan="2">${nomeDisc}</td>
-                                <td class="s1" rowspan="2">${turma.nome}</td>
+                                <td class="s1" rowspan="2">${lista.nomeTurma}</td>
                             </tr>
                             <tr class="r4"></tr>
                             <tr class="header-row r5">
@@ -516,25 +531,26 @@
                         <tbody>
                 `;
 
-                const totalLinhas = Math.max(50, alunos.length);
+                    const totalLinhas = Math.max(50, alunos.length);
                 
-                for (let i = 0; i < totalLinhas; i++) {
-                    const aluno = alunos[i];
-                    tableHtml += `
+                    for (let i = 0; i < totalLinhas; i++) {
+                        const aluno = alunos[i];
+                        tableHtml += `
                         <tr class="data-row">
                             <td class="s3">${aluno ? (i + 1) : ''}</td>
                             <td class="s3">${aluno ? aluno.ra : ''}</td>
                             <td class="s4" title="${aluno ? aluno.nome : ''}">${aluno ? aluno.nome : ''}</td>
-                            <td class="s3">${aluno ? turma.nome : ''}</td>
+                            <td class="s3">${aluno ? lista.turmaNaLista : ''}</td>
                             <td class="s-empty"></td>
                             <td class="s-empty"></td>
                         </tr>
                     `;
-                }
+                    }
 
-                tableHtml += `</tbody></table>`;
-                sheet.innerHTML = tableHtml;
-                printArea.appendChild(sheet);
+                    tableHtml += `</tbody></table>`;
+                    sheet.innerHTML = tableHtml;
+                    printArea.appendChild(sheet);
+                }
             }
         }
 

@@ -192,6 +192,13 @@
                                     <option value="Transferido">Transferido</option>
                                 </select>
                             </div>
+                            <div class="space-y-1.5 text-left">
+                                <label for="inProvaAdaptada" class="text-[11px] font-bold text-slate-400 uppercase ml-1">Sala Separada?</label>
+                                <select id="inProvaAdaptada" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-slate-600">
+                                    <option value="false">Não</option>
+                                    <option value="true">Sim</option>
+                                </select>
+                            </div>
                             <div class="space-y-1.5 hidden text-left" id="divDataTransf">
                                 <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Data da Transferência</label>
                                 <input type="date" id="inDataTransf" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue font-bold text-slate-600">
@@ -421,6 +428,7 @@
                     origem: document.getElementById('inOrigem').value,
                     status: status,
                     data_transferencia: dataTransf,
+                    prova_adaptada: document.getElementById('inProvaAdaptada').value === 'true',
                     url_foto: document.getElementById('inPhoto').value,
                     informacoes_responsaveis: respData
                 });
@@ -456,6 +464,7 @@
             document.getElementById('inOrigem').value = aluno.origem || 'FMM';
             document.getElementById('inStatus').value = aluno.status || 'Cursando';
             document.getElementById('inDataTransf').value = aluno.data_transferencia || '';
+            document.getElementById('inProvaAdaptada').value = aluno.prova_adaptada === true ? 'true' : 'false';
             document.getElementById('inPhoto').value = aluno.url_foto || '';
             
             window.toggleDataTransf();
@@ -482,6 +491,7 @@
             document.getElementById('studentModal').classList.add('hidden'); 
             document.getElementById('inRA').disabled = false;
             document.querySelectorAll('#studentModal input').forEach(i => i.value = '');
+            document.getElementById('inProvaAdaptada').value = 'false';
             document.getElementById('divDataTransf').classList.add('hidden');
             document.getElementById('modalTitle').innerText = "Novo Aluno";
             window.updatePhotoPreview();

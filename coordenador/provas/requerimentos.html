@@ -389,7 +389,13 @@
 
             <div id="view-repro-container" class="hidden flex-1 min-h-0 overflow-auto bg-white custom-scrollbar text-left">
                 <div class="min-w-[1100px] p-4 md:p-8 pb-24">
-                    <div class="flex justify-end mb-4 print:hidden">
+                    <div class="flex flex-wrap justify-end items-center gap-3 mb-4 print:hidden">
+                        <label for="reproSegmentFilter" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Séries:</label>
+                        <select id="reproSegmentFilter" onchange="applyReproSegmentFilter()" class="min-w-[150px] px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 uppercase outline-none focus:ring-2 focus:ring-fmm-blue">
+                            <option value="all">Todos</option>
+                            <option value="emt">EMT</option>
+                            <option value="ef">EF</option>
+                        </select>
                         <button type="button" onclick="downloadReproPdf()" class="inline-flex items-center justify-center gap-2 px-5 py-3 bg-fmm-dark text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg hover:bg-fmm-blue transition-colors">
                             <i data-lucide="download" class="w-4 h-4"></i> Baixar PDF
                         </button>
@@ -399,14 +405,14 @@
                             <tr class="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-wider">
                                 <th class="p-4 border border-slate-200">Disciplina</th>
                                 <th class="p-4 border border-slate-200">Período</th>
-                                <th class="p-4 border border-slate-200">1ª Série</th>
-                                <th class="p-4 border border-slate-200">2ª Série</th>
-                                <th class="p-4 border border-slate-200">3ª Série</th>
-                                <th class="p-4 border border-slate-200">5º Ano</th>
-                                <th class="p-4 border border-slate-200">6º Ano</th>
-                                <th class="p-4 border border-slate-200">7º Ano</th>
-                                <th class="p-4 border border-slate-200">8º Ano</th>
-                                <th class="p-4 border border-slate-200">9º Ano</th>
+                                <th data-repro-series="emt" class="p-4 border border-slate-200">1ª Série</th>
+                                <th data-repro-series="emt" class="p-4 border border-slate-200">2ª Série</th>
+                                <th data-repro-series="emt" class="p-4 border border-slate-200">3ª Série</th>
+                                <th data-repro-series="ef" class="p-4 border border-slate-200">5º Ano</th>
+                                <th data-repro-series="ef" class="p-4 border border-slate-200">6º Ano</th>
+                                <th data-repro-series="ef" class="p-4 border border-slate-200">7º Ano</th>
+                                <th data-repro-series="ef" class="p-4 border border-slate-200">8º Ano</th>
+                                <th data-repro-series="ef" class="p-4 border border-slate-200">9º Ano</th>
                             </tr>
                         </thead>
                         <tbody id="reproTableBody" class="divide-y divide-slate-100 text-xs font-bold text-slate-600"></tbody>
@@ -835,6 +841,7 @@
                 tbody.innerHTML = '';
                 emptyState.textContent = 'Nenhuma prova encontrada para os filtros selecionados.';
                 emptyState.classList.remove('hidden');
+                applyReproSegmentFilter();
                 return;
             }
 
@@ -874,9 +881,17 @@
                     <tr class="hover:bg-slate-50/70">
                         <td class="p-4 border border-slate-100 font-black text-fmm-dark uppercase">${exam.discipline}</td>
                         <td class="p-4 border border-slate-100 uppercase">${exam.period.replace('_', ' ')}</td>
-                        ${seriesCells.map(count => `<td class="p-4 border border-slate-100 text-center">${count}</td>`).join('')}
+                        ${seriesCells.map((count, index) => `<td data-repro-series="${index < 3 ? 'emt' : 'ef'}" class="p-4 border border-slate-100 text-center">${count}</td>`).join('')}
                     </tr>`;
             }).join('');
+            applyReproSegmentFilter();
+        }
+
+        function applyReproSegmentFilter() {
+            const segment = document.getElementById('reproSegmentFilter').value;
+            document.querySelectorAll('#view-repro-container [data-repro-series]').forEach(cell => {
+                cell.hidden = segment !== 'all' && cell.dataset.reproSeries !== segment;
+            });
         }
 
         function downloadReproPdf() {
@@ -885,11 +900,14 @@
             const period = document.getElementById('examPeriodFilter');
             const discipline = document.getElementById('examDisciplineFilter');
             const order = document.getElementById('examSortOrder');
+            const segment = document.getElementById('reproSegmentFilter');
             const periodLabel = period.value === 'all' ? 'Todos os períodos' : period.options[period.selectedIndex].text;
             const disciplineLabel = discipline.value === 'all' ? 'Todas as disciplinas' : discipline.options[discipline.selectedIndex].text;
             const orderLabel = order.value === 'desc' ? 'Z–A' : 'A–Z';
+            const segmentLabel = segment.options[segment.selectedIndex].text;
             const printTable = table.cloneNode(true);
             printTable.className = 'repro-print-table';
+            printTable.querySelectorAll('[hidden]').forEach(cell => cell.remove());
 
             printArea.classList.add('repro-print');
             printArea.innerHTML = '';
@@ -898,7 +916,7 @@
             const title = document.createElement('h1');
             title.textContent = 'Relatório de Reprografia';
             const filterSummary = document.createElement('p');
-            filterSummary.textContent = `Período: ${periodLabel} | Disciplina: ${disciplineLabel} | Ordem: ${orderLabel}`;
+            filterSummary.textContent = `Período: ${periodLabel} | Disciplina: ${disciplineLabel} | Ordem: ${orderLabel} | Séries: ${segmentLabel}`;
             header.append(title, filterSummary);
             printArea.appendChild(header);
             printArea.appendChild(printTable);
