@@ -193,9 +193,6 @@
             main > *:not(#printArea) { display: none !important; }
             #printArea { display: block !important; width: 100%; color: #000; font-family: Arial, Helvetica, sans-serif; }
             #printArea.repro-print { page: repro-page; }
-            .repro-print-header { margin-bottom: 12px; }
-            .repro-print-header h1 { margin: 0 0 4px; font-size: 16pt; font-weight: 900; text-transform: uppercase; }
-            .repro-print-header p { margin: 0; font-size: 8pt; color: #475569; }
             .repro-print-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 8pt; }
             .repro-print-table th,
             .repro-print-table td { border: 1px solid #334155; padding: 5px 4px; text-align: center; }
@@ -205,8 +202,6 @@
             .repro-print-table th { background: #e2e8f0 !important; font-weight: 900; text-transform: uppercase; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
             .repro-print-table th:first-child,
             .repro-print-table td:first-child { text-align: left; }
-            .repro-print-section-title { margin: 14px 0 6px; font-size: 10pt; font-weight: 900; text-transform: uppercase; }
-            .repro-print-empty { margin-top: 24px; text-align: center; font-size: 10pt; }
             .repro-print-page { page-break-after: always; break-after: page; }
             .repro-print-page:last-child { page-break-after: auto; break-after: auto; }
 
@@ -1120,18 +1115,6 @@
         function downloadReproPdf() {
             const printArea = document.getElementById('printArea');
             const table = document.querySelector('#view-repro-container table');
-            const period = document.getElementById('examPeriodFilter');
-            const order = document.getElementById('examSortOrder');
-            const segment = document.getElementById('reproSegmentFilter');
-            const periodLabel = period.value === 'all' ? 'Todos os períodos' : period.options[period.selectedIndex].text;
-            const selectedNames = reproDisciplineOptions
-                .filter(item => selectedReproDisciplines.has(item.key))
-                .map(item => item.name);
-            const disciplineLabel = selectedNames.length === reproDisciplineOptions.length
-                ? 'Todas as disciplinas'
-                : selectedNames.length > 0 ? selectedNames.join(', ') : 'Nenhuma disciplina';
-            const orderLabel = order.value === 'desc' ? 'Z–A' : 'A–Z';
-            const segmentLabel = segment.options[segment.selectedIndex].text;
             const adaptedTable = document.querySelector('#view-repro-container section table').cloneNode(true);
             const printTables = [table.cloneNode(true), adaptedTable];
             printTables.forEach((printTable, index) => {
@@ -1145,35 +1128,12 @@
 
             printArea.classList.add('repro-print');
             printArea.innerHTML = '';
-            const header = document.createElement('header');
-            header.className = 'repro-print-header';
-            const title = document.createElement('h1');
-            title.textContent = 'Relatório de Reprografia';
-            const filterSummary = document.createElement('p');
-            filterSummary.textContent = `Período: ${periodLabel} | Disciplina: ${disciplineLabel} | Ordem: ${orderLabel} | Séries: ${segmentLabel}`;
-            header.append(title, filterSummary);
-            printArea.appendChild(header);
-            const commonPage = document.createElement('section');
-            commonPage.className = 'repro-print-page';
-            const commonTitle = document.createElement('h2');
-            commonTitle.className = 'repro-print-section-title';
-            commonTitle.textContent = 'Quantitativo de Provas Regulares';
-            commonPage.append(commonTitle, printTables[0]);
-            printArea.appendChild(commonPage);
-            const adaptedPage = document.createElement('section');
-            adaptedPage.className = 'repro-print-page';
-            const adaptedTitle = document.createElement('h2');
-            adaptedTitle.className = 'repro-print-section-title';
-            adaptedTitle.textContent = 'Quantitativo de Provas Adaptadas';
-            adaptedPage.append(adaptedTitle, printTables[1]);
-            printArea.appendChild(adaptedPage);
-
-            if (document.getElementById('emptyStateRepro').classList.contains('hidden') === false) {
-                const emptyMessage = document.createElement('p');
-                emptyMessage.className = 'repro-print-empty';
-                emptyMessage.textContent = document.getElementById('emptyStateRepro').textContent.trim();
-                printArea.appendChild(emptyMessage);
-            }
+            printTables.forEach(printTable => {
+                const page = document.createElement('section');
+                page.className = 'repro-print-page';
+                page.appendChild(printTable);
+                printArea.appendChild(page);
+            });
 
             const cleanup = () => {
                 printArea.classList.remove('repro-print');
