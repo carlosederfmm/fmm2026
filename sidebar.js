@@ -185,7 +185,8 @@ const SidebarComponent = {
             { label: 'Mapa de Notas', icon: 'grid', link: 'coordenador/resultados/mapa_coordenador.html', roles: ['diretor', 'coordenador', 'orientador'] },
             { label: 'Boletim Individual', icon: 'user', link: 'coordenador/resultados/boletim_coordenador.html', roles: ['diretor', 'coordenador'] }, 
             { label: 'Recuperação', icon: 'file-warning', link: 'coordenador/resultados/recuperacao_coordenador.html', roles: ['coordenador'] },
-            { label: 'Lançar Notas (Fund)', icon: 'book-open', link: 'coordenador/resultados/lancarnotas.html', roles: ['coordenador'] }
+            { label: 'Lançar Notas (Fund)', icon: 'book-open', link: 'coordenador/resultados/lancarnotas.html', roles: ['coordenador'] },
+            { label: 'Conselho', icon: 'clipboard-list', link: 'coordenador/resultados/conselho_coordenador.html', roles: ['coordenador'] }
         ],
         sistema: [
             { label: 'Grade Horária', icon: 'calendar-range', link: 'coordenador/sistema/grade_coordenador.html', roles: ['diretor', 'coordenador'] },

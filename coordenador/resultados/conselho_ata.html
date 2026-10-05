@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ata de Conselho - Sistema</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="container-atas">
+    <div class="page-ata">
+
+        <!-- CABEÇALHO DA INSTITUIÇÃO E TÍTULOS -->
+        <div class="page-ata-header">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+                <div style="text-align: center; flex-grow: 1;">
+                    <h1 class="titulo-ata" data-field="titulo-ata" style="margin: 0; font-size: 13px; font-weight: bold;"></h1>
+                </div>
+            </div>
+
+            <!-- TABELA DADOS DO ALUNO -->
+            <table class="tbl-aluno" style="width: 100%; border-collapse: collapse; margin-bottom: 6px;">
+                <tr>
+                    <td class="lbl-aluno" style="font-weight: bold; font-size: 8.5px; padding: 2px 4px; width: 110px;">NOME DO ALUNO:</td>
+                    <td class="val-aluno-nome" data-field="aluno-nome" style="font-weight: bold; font-size: 10px; padding: 2px 4px;"></td>
+                    <td class="lbl-aluno-turma" data-field="aluno-turma" style="font-weight: bold; font-size: 9px; padding: 2px 4px; text-align: right; width: 120px;"></td>
+                </tr>
+            </table>
+
+            <!-- NOTAS BNCC / BÁSICAS -->
+            <div data-field="tabela-notas-base"></div>
+
+            <!-- NOTAS TÉCNICAS (DIVIDIDAS POR SEMESTRE) -->
+            <div class="container-notas-tec" data-field="tabela-notas-tec"></div>
+        </div>
+
+        <!-- CONTEÚDO PRINCIPAL (DIVIDIDO EM 3 COLUNAS) -->
+        <div class="page-ata-content">
+            <div class="bottom-container">
+                
+                <!-- COLUNA 1: DIFICULDADES E PONTUAÇÃO PERDIDA -->
+                <div class="col-span-5 col-wrapper">
+                    <div data-field="box-dificuldades-pontuacao"></div>
+                </div>
+
+                <!-- COLUNA 2: PROPOSTAS DE INTERVENÇÃO E RESULTADOS FINAIS -->
+                <div class="col-span-4 col-wrapper">
+                    <table class="tbl-propostas">
+                        <tr class="header-bg">
+                            <th>PROPOSTAS DE INTERVENÇÃO AO ALUNO, PAIS E ESCOLA.</th>
+                        </tr>
+                        <tr>
+                            <td class="box-propostas-cell" data-field="box-propostas"></td>
+                        </tr>
+                    </table>
+
+                    <table class="tbl-resultados" style="margin-top: 6px;">
+                        <tr class="header-bg">
+                            <th>RESULTADOS FINAIS</th>
+                        </tr>
+                        <tr>
+                            <td class="box-resultados-cell" data-field="box-resultados"></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- COLUNA 3: SETOR DE ORIENTAÇÃO ESCOLAR E OBSERVAÇÕES -->
+                <div class="col-span-3 col-wrapper">
+                    <table class="tbl-soe">
+                        <tr class="header-bg">
+                            <th>SETOR DE ORIENTAÇÃO ESCOLAR:</th>
+                        </tr>
+                        <tr>
+                            <td class="box-soe-cell" data-field="box-soe"></td>
+                        </tr>
+                    </table>
+
+                    <table class="tbl-observacoes" style="width: 100%; margin-top: 6px; border-collapse: collapse; border: 1px solid #000;">
+                        <tr class="header-bg">
+                            <th style="border: 1px solid #000; padding: 2px; font-size: 7.5px; text-align: center;">OBSERVAÇÕES</th>
+                        </tr>
+                        <tr>
+                            <td class="box-obs-cell" data-field="box-observacoes" style="padding: 4px; font-size: 8px; vertical-align: top;"></td>
+                        </tr>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- RODAPÉ - ASSINATURAS -->
+        <div class="page-ata-footer">
+            <div class="signatures-container">
+                <div class="signature-col">
+                    <div class="signature-line"></div>
+                    COORDENADOR (A)
+                </div>
+                <div class="signature-col">
+                    <div class="signature-line"></div>
+                    DIRETOR
+                </div>
+                <div class="signature-col">
+                    <div class="signature-line"></div>
+                    RESPONSÁVEL PELO ALUNO (A)
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,414 @@
+/* Configurações globais de impressão */
+@page {
+    size: A4 landscape;
+    margin: 0;
+}
+
+@media print {
+    html,
+    body {
+        height: auto !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: block !important;
+    }
+
+    body {
+        background: transparent !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .page-ata {
+        margin: 0 !important;
+        box-shadow: none !important;
+        width: 297mm !important;
+        height: 209.5mm !important;
+        page-break-after: always;
+        break-after: page;
+        page-break-inside: auto;
+        break-inside: auto;
+    }
+
+    .page-ata:last-child {
+        page-break-after: avoid !important;
+        break-after: avoid-page !important;
+    }
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* Container de renderização temporária para PDF */
+.pdf-render-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -9999;
+    width: 297mm;
+    height: auto;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible;
+}
+
+.pdf-render-container #container-atas {
+    width: 297mm;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.pdf-render-container .page-ata {
+    margin: 0 !important;
+    box-shadow: none !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+}
+
+body.is-exporting {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    overflow-x: hidden !important;
+}
+
+html:has(body.is-exporting) {
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: hidden !important;
+}
+
+body.is-exporting .pdf-render-container,
+body.is-exporting .pdf-render-container #container-atas {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    transform: none !important;
+    box-sizing: border-box !important;
+    left: 0 !important;
+    right: auto !important;
+}
+
+body.is-exporting .pdf-render-container .page-ata {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+}
+
+/* Fundo da tela no estilo leitor de PDF */
+body {
+    background-color: #525659;
+    color: #000000;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-size: 10px;
+    margin: 0;
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Folha A4 Paisagem com dimensões e proporções fixas */
+.page-ata {
+    width: 297mm;
+    height: 209.5mm;
+    max-height: 209.5mm;
+    padding: 10mm;
+    margin: 0 auto 20px auto;
+    background-color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    box-sizing: border-box;
+    overflow: hidden;
+    position: relative;
+    page-break-after: always;
+    break-after: page;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* ========== SEÇÃO 1: CABEÇALHO (DINÂMICO) ========== */
+.page-ata-header {
+    flex: 0 0 auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* ========== SEÇÃO 2: CONTEÚDO/TABELAS (DINÂMICO - OCUPA ESPAÇO RESTANTE) ========== */
+.page-ata-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* ========== SEÇÃO 3: ASSINATURAS (DINÂMICO) ========== */
+.page-ata-footer {
+    flex: 0 0 auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+.page-ata:last-child {
+    page-break-after: avoid !important;
+    break-after: avoid-page !important;
+}
+
+.titulo-ata {
+    text-align: center;
+    font-weight: bold;
+    font-size: 14px;
+    line-height: 20px;
+    margin-bottom: 12px;
+}
+
+/* Regras gerais de tabelas */
+table {
+    border-collapse: collapse;
+    border: 1px solid #000000;
+    border-spacing: 0;
+}
+
+td, th {
+    border: 1px solid #000000;
+}
+
+th {
+    padding: 2px 4px;
+    font-size: 7.5px;
+    text-align: center;
+}
+
+.header-bg {
+    background-color: #d1d5db;
+}
+
+/* Tabela de Dados do Aluno */
+.tbl-aluno {
+    width: 100%;
+    margin-bottom: 12px;
+    font-size: 11px;
+}
+
+.tbl-aluno td.lbl-aluno {
+    font-size: 8.5px;
+    padding: 2px 4px 2px 10px;
+    background-color: #d1d5db
+}
+
+.lbl-aluno-nome {
+    font-weight: bold;
+    width: 128px;
+}
+
+.val-aluno-nome {
+    background-color: #ffffff;
+    text-transform: uppercase;
+    padding-left: 8px;
+}
+
+.lbl-aluno-turma {
+    text-align: center;
+    font-weight: bold;
+    background-color: #d1d5db
+}
+
+/* Tabelas de Notas */
+.tbl-notas-base, .tbl-notas-tec {
+    width: 100%;
+    margin-bottom: 2px;
+    font-size: 8px;
+    line-height: 1;
+}
+
+.tbl-notas-tec {
+    width: 55%;
+}
+
+.container-notas-tec {
+    margin-top: 2px;
+}
+
+/* Grid Inferior de Observações e Pareceres */
+.bottom-container {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 12px;
+    width: 100%;
+    height: 100%;
+    line-height: 1.25;
+    overflow: hidden;
+}
+
+.col-span-5 {
+    grid-column: span 5 / span 5;
+}
+
+.col-span-4 {
+    grid-column: span 4 / span 4;
+}
+
+.col-span-3 {
+    grid-column: span 3 / span 3;
+}
+
+.col-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-height: 0;
+    max-height: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Células e Estruturas das Tabelas Inferiores */
+.tbl-dificuldades {
+    width: 100%;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.tbl-dificuldades td, .box-dificuldades-cell {
+    vertical-align: top;
+    font-size: 1px;
+    padding-left: 8px;
+    padding-bottom: 8px;
+    padding-top: 4px;
+}
+
+.tbl-pontuacao {
+    width: 100%;
+    flex-shrink: 0;
+}
+
+.tbl-pontuacao td, .box-pontuacao-cell {
+    font-size: 10px;
+    padding-left: 8px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+.tbl-propostas {
+    width: 100%;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.tbl-propostas td, .box-propostas-cell {
+    padding: 6px;
+    padding-left: 8px;
+    padding-bottom: 8px;
+    padding-top: 4px;
+    vertical-align: top;
+    font-size: 10px;
+}
+
+.tbl-resultados {
+    width: 100%;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.tbl-resultados td, .box-resultados-cell {
+    padding: 6px;
+    padding-left: 8px;
+    padding-bottom: 8px;
+    padding-top: 4px;
+    vertical-align: top;
+    font-size: 10px;
+}
+
+.tbl-soe {
+    width: 100%;
+    flex: 0 0 auto;
+    overflow: hidden;
+}
+
+.tbl-soe td, .box-soe-cell {
+    padding: 2.5%;
+    padding-left: 8px;
+    padding-bottom: 8px;
+    padding-top: 4px;
+    vertical-align: top;
+    font-size: 10px;
+}
+
+.tbl-observacoes {
+    width: 100%;
+    height: 100%;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.tbl-observacoes tr.header-bg {
+    height: 1px; /* Força o cabeçalho a ter apenas a altura mínima da fonte/padding */
+}
+
+.tbl-observacoes td, .box-obs-cell {
+    padding: 4px 8px;
+    vertical-align: top;
+    font-size: 8px;
+    border: 1px solid #000;
+    height: 100%; /* Expande a célula branca para ocupar todo o espaço restante */
+}
+
+/* Bloco de Assinaturas */
+.signatures-container {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 20px;
+    padding-left: 32px;
+    padding-right: 32px;
+    font-size: 11px;
+    font-weight: bold;
+    width: 100%;
+    gap: 8px;
+}
+
+.signature-col {
+    text-align: center;
+    width: 33.333333%;
+}
+
+.signature-line {
+    border-top: 1px solid #000000;
+    width: 80%;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 4px;
+}
+
+/* Expande a estrutura de dificuldades para ocupar 100% da altura da coluna */
+[data-field="box-dificuldades-pontuacao"],
+[data-field="box-dificuldades-pontuacao"] > table {
+    height: 100%;
+}
+
+/* Força a célula principal das Dificuldades a preencher todo o espaço vertical restante */
+[data-field="box-dificuldades-pontuacao"] > table > tbody > tr:nth-child(2) > td {
+    height: 100%;
+}
+
+/* Opcional: distribui melhor o espaçamento entre os 19 itens da lista */
+[data-field="box-dificuldades-pontuacao"] td div {
+    margin-bottom: 2.5px !important;
+    line-height: 1.25;
+}
+
+/* Distribui o espaçamento e ajusta o tamanho da fonte dos 19 itens */
+[data-field="box-dificuldades-pontuacao"] td div {
+    font-size: 9.5px !important; /* Altere para 9px, 9.5px ou 10px conforme a preferência */
+    margin-bottom: 2.5px !important;
+    line-height: 1.25;
+}
