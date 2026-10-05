@@ -207,6 +207,8 @@
             .repro-print-table td:first-child { text-align: left; }
             .repro-print-section-title { margin: 14px 0 6px; font-size: 10pt; font-weight: 900; text-transform: uppercase; }
             .repro-print-empty { margin-top: 24px; text-align: center; font-size: 10pt; }
+            .repro-print-page { page-break-after: always; break-after: page; }
+            .repro-print-page:last-child { page-break-after: auto; break-after: auto; }
 
             .print-page {
                 page-break-after: always;
@@ -1056,14 +1058,20 @@
             filterSummary.textContent = `Período: ${periodLabel} | Disciplina: ${disciplineLabel} | Ordem: ${orderLabel} | Séries: ${segmentLabel}`;
             header.append(title, filterSummary);
             printArea.appendChild(header);
+            const commonPage = document.createElement('section');
+            commonPage.className = 'repro-print-page';
             const commonTitle = document.createElement('h2');
             commonTitle.className = 'repro-print-section-title';
-            commonTitle.textContent = 'Quantitativo de Provas Comuns';
-            printArea.append(commonTitle, printTables[0]);
+            commonTitle.textContent = 'Quantitativo de Provas Regulares';
+            commonPage.append(commonTitle, printTables[0]);
+            printArea.appendChild(commonPage);
+            const adaptedPage = document.createElement('section');
+            adaptedPage.className = 'repro-print-page';
             const adaptedTitle = document.createElement('h2');
             adaptedTitle.className = 'repro-print-section-title';
             adaptedTitle.textContent = 'Quantitativo de Provas Adaptadas';
-            printArea.append(adaptedTitle, printTables[1]);
+            adaptedPage.append(adaptedTitle, printTables[1]);
+            printArea.appendChild(adaptedPage);
 
             if (document.getElementById('emptyStateRepro').classList.contains('hidden') === false) {
                 const emptyMessage = document.createElement('p');
