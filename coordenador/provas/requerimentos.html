@@ -193,15 +193,18 @@
             main > *:not(#printArea) { display: none !important; }
             #printArea { display: block !important; width: 100%; color: #000; font-family: Arial, Helvetica, sans-serif; }
             #printArea.repro-print { page: repro-page; }
-            .repro-print-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 10pt; }
+            .repro-print-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 9pt; }
             .repro-print-table th,
             .repro-print-table td { border: 1px solid #334155; padding: 5px 4px; text-align: center; }
+            .repro-print-table td.repro-quantity { padding: 4px 2px; font-size: 18pt; font-weight: 900; white-space: nowrap; }
             .repro-adapted-print-table { font-size: 7pt; }
             .repro-adapted-print-table th,
-            .repro-adapted-print-table td { padding: 4px 3px; }
+            .repro-adapted-print-table td { padding: 3px 2px; }
+            .repro-adapted-print-table td.repro-quantity { font-size: 13pt; }
+            .repro-print-table thead th { overflow-wrap: anywhere; }
             .repro-print-table th { background: #e2e8f0 !important; font-weight: 900; text-transform: uppercase; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
             .repro-print-table th:first-child,
-            .repro-print-table td:first-child { text-align: left; }
+            .repro-print-table td:first-child { text-align: left; overflow-wrap: anywhere; }
             .repro-print-page { page-break-after: always; break-after: page; }
             .repro-print-page:last-child { page-break-after: auto; break-after: auto; }
 
@@ -1119,11 +1122,28 @@
             const printTables = [table.cloneNode(true), adaptedTable];
             printTables.forEach((printTable, index) => {
                 printTable.className = 'repro-print-table';
+                printTable.querySelectorAll('[hidden]').forEach(cell => cell.remove());
+                printTable.querySelectorAll('thead tr:last-child th').forEach(cell => {
+                    cell.colSpan = 1;
+                });
+                const colgroup = document.createElement('colgroup');
+                const columnCount = Math.max(2, ...[...printTable.querySelectorAll('thead tr')].map(row =>
+                    [...row.cells].reduce((total, cell) => total + cell.colSpan, 0)
+                ));
+                const labelColumns = index === 1 ? [22, 10] : [25, 12];
+                for (let column = 0; column < columnCount; column++) {
+                    const col = document.createElement('col');
+                    const width = labelColumns[column] ?? (100 - labelColumns[0] - labelColumns[1]) / (columnCount - 2);
+                    col.style.width = `${width}%`;
+                    colgroup.appendChild(col);
+                }
+                printTable.prepend(colgroup);
+                printTable.querySelectorAll('tbody tr').forEach(row => {
+                    [...row.cells].slice(2).forEach(cell => cell.classList.add('repro-quantity'));
+                });
                 if (index === 1) {
                     printTable.classList.add('repro-adapted-print-table');
-                    printTable.style.fontSize = `${Math.max(6, Math.min(8.5, 28 / Math.max(1, REPRO_PROOF_TYPES.length)))}pt`;
                 }
-                printTable.querySelectorAll('[hidden]').forEach(cell => cell.remove());
             });
 
             printArea.classList.add('repro-print');
