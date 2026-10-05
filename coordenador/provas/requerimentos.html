@@ -428,28 +428,19 @@
                         <h2 class="mb-4 text-sm font-black text-amber-800 uppercase tracking-widest">Quantitativo de Provas Adaptadas</h2>
                         <table class="w-full border-collapse text-left">
                             <thead>
-                                <tr class="bg-amber-50 text-[10px] font-black text-amber-800 uppercase tracking-wider">
+                                <tr id="reproAdaptedSeriesGroupHeaderRow" class="bg-amber-50 text-[10px] font-black text-amber-800 uppercase tracking-wider">
                                     <th rowspan="2" class="p-3 border border-amber-200">Disciplina</th>
                                     <th rowspan="2" class="p-3 border border-amber-200">Período</th>
-                                    <th data-repro-series="emt" colspan="3" class="p-3 border border-amber-200">1ª Série</th>
-                                    <th data-repro-series="emt" colspan="3" class="p-3 border border-amber-200">2ª Série</th>
-                                    <th data-repro-series="emt" colspan="3" class="p-3 border border-amber-200">3ª Série</th>
-                                    <th data-repro-series="ef" colspan="3" class="p-3 border border-amber-200">5º Ano</th>
-                                    <th data-repro-series="ef" colspan="3" class="p-3 border border-amber-200">6º Ano</th>
-                                    <th data-repro-series="ef" colspan="3" class="p-3 border border-amber-200">7º Ano</th>
-                                    <th data-repro-series="ef" colspan="3" class="p-3 border border-amber-200">8º Ano</th>
-                                    <th data-repro-series="ef" colspan="3" class="p-3 border border-amber-200">9º Ano</th>
+                                    <th data-repro-series="emt" colspan="1" class="p-3 border border-amber-200">1ª Série</th>
+                                    <th data-repro-series="emt" colspan="1" class="p-3 border border-amber-200">2ª Série</th>
+                                    <th data-repro-series="emt" colspan="1" class="p-3 border border-amber-200">3ª Série</th>
+                                    <th data-repro-series="ef" colspan="1" class="p-3 border border-amber-200">5º Ano</th>
+                                    <th data-repro-series="ef" colspan="1" class="p-3 border border-amber-200">6º Ano</th>
+                                    <th data-repro-series="ef" colspan="1" class="p-3 border border-amber-200">7º Ano</th>
+                                    <th data-repro-series="ef" colspan="1" class="p-3 border border-amber-200">8º Ano</th>
+                                    <th data-repro-series="ef" colspan="1" class="p-3 border border-amber-200">9º Ano</th>
                                 </tr>
-                                <tr class="bg-amber-50/70 text-[9px] font-bold text-amber-700">
-                                    <th data-repro-series="emt" class="p-2 border border-amber-200">Regular</th><th data-repro-series="emt" class="p-2 border border-amber-200">Adaptada</th><th data-repro-series="emt" class="p-2 border border-amber-200">Ampliada</th>
-                                    <th data-repro-series="emt" class="p-2 border border-amber-200">Regular</th><th data-repro-series="emt" class="p-2 border border-amber-200">Adaptada</th><th data-repro-series="emt" class="p-2 border border-amber-200">Ampliada</th>
-                                    <th data-repro-series="emt" class="p-2 border border-amber-200">Regular</th><th data-repro-series="emt" class="p-2 border border-amber-200">Adaptada</th><th data-repro-series="emt" class="p-2 border border-amber-200">Ampliada</th>
-                                    <th data-repro-series="ef" class="p-2 border border-amber-200">Regular</th><th data-repro-series="ef" class="p-2 border border-amber-200">Adaptada</th><th data-repro-series="ef" class="p-2 border border-amber-200">Ampliada</th>
-                                    <th data-repro-series="ef" class="p-2 border border-amber-200">Regular</th><th data-repro-series="ef" class="p-2 border border-amber-200">Adaptada</th><th data-repro-series="ef" class="p-2 border border-amber-200">Ampliada</th>
-                                    <th data-repro-series="ef" class="p-2 border border-amber-200">Regular</th><th data-repro-series="ef" class="p-2 border border-amber-200">Adaptada</th><th data-repro-series="ef" class="p-2 border border-amber-200">Ampliada</th>
-                                    <th data-repro-series="ef" class="p-2 border border-amber-200">Regular</th><th data-repro-series="ef" class="p-2 border border-amber-200">Adaptada</th><th data-repro-series="ef" class="p-2 border border-amber-200">Ampliada</th>
-                                    <th data-repro-series="ef" class="p-2 border border-amber-200">Regular</th><th data-repro-series="ef" class="p-2 border border-amber-200">Adaptada</th><th data-repro-series="ef" class="p-2 border border-amber-200">Ampliada</th>
-                                </tr>
+                                <tr id="reproAdaptedTypeHeaderRow" class="bg-amber-50/70 text-[9px] font-bold text-amber-700"></tr>
                             </thead>
                             <tbody id="reproAdaptedTableBody" class="divide-y divide-amber-100 text-xs font-bold text-slate-600"></tbody>
                         </table>
@@ -598,7 +589,7 @@
         let editingCalId = null;
 
         const REPRO_SERIES = ['1ª Série', '2ª Série', '3ª Série', '5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano'];
-        const REPRO_PROOF_TYPES = ['Regular', 'Adaptada', 'Ampliada'];
+        let REPRO_PROOF_TYPES = [];
 
         function normalizeSeries(value) {
             return (value || '').trim().toLocaleLowerCase('pt-BR').replace(/[ºª°]/g, '').replace(/\s+/g, ' ');
@@ -622,8 +613,82 @@
                     : [];
             }
 
+            try {
+                await loadReproProofTypes();
+            } catch (error) {
+                console.error(error);
+                alert(error.message);
+                return;
+            }
             lucide.createIcons();
             await loadRequests();
+        }
+
+        async function loadReproProofTypes() {
+            const values = new Set();
+            const pageSize = 1000;
+            const { count, error: countError } = await window.supabaseClient
+                .from('alunos')
+                .select('ra', { count: 'exact', head: true });
+            if (countError) {
+                console.error('Não foi possível contar os alunos para ler alunos.tipo_prova:', countError);
+                throw new Error('Não foi possível determinar o total de alunos para carregar os tipos de prova.');
+            }
+
+            let from = 0;
+            while (from < count) {
+                const { data, error } = await window.supabaseClient
+                    .from('alunos')
+                    .select('ra, tipo_prova')
+                    .order('ra', { ascending: true })
+                    .range(from, from + pageSize - 1);
+
+                if (error) {
+                    console.error('Não foi possível carregar alunos.tipo_prova:', error);
+                    throw new Error('Não foi possível carregar os tipos de prova cadastrados nos alunos.');
+                }
+                if (!data || data.length === 0) {
+                    throw new Error(`A leitura de alunos.tipo_prova parou inesperadamente na linha ${from + 1} de ${count}.`);
+                }
+
+                data.forEach(aluno => {
+                    if (typeof aluno.tipo_prova === 'string' && aluno.tipo_prova.length > 0) {
+                        values.add(aluno.tipo_prova);
+                    }
+                });
+
+                from += data.length;
+            }
+
+            REPRO_PROOF_TYPES = [...values].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+            renderAdaptedProofTypeHeaders();
+        }
+
+        function renderAdaptedProofTypeHeaders() {
+            const headerRow = document.getElementById('reproAdaptedTypeHeaderRow');
+            headerRow.replaceChildren();
+            const valuesPerSeries = Math.max(REPRO_PROOF_TYPES.length, 1);
+            document.querySelectorAll('#reproAdaptedSeriesGroupHeaderRow [data-repro-series]').forEach(header => {
+                header.colSpan = valuesPerSeries;
+            });
+            REPRO_SERIES.forEach((series, seriesIndex) => {
+                const segment = seriesIndex < 3 ? 'emt' : 'ef';
+                if (REPRO_PROOF_TYPES.length === 0) {
+                    const header = document.createElement('th');
+                    header.dataset.reproSeries = segment;
+                    header.className = 'p-2 border border-amber-200';
+                    header.textContent = 'Sem tipo';
+                    headerRow.appendChild(header);
+                    return;
+                }
+                REPRO_PROOF_TYPES.forEach(type => {
+                    const header = document.createElement('th');
+                    header.dataset.reproSeries = segment;
+                    header.className = 'p-2 border border-amber-200';
+                    header.textContent = type;
+                    headerRow.appendChild(header);
+                });
+            });
         }
 
         function getDriveDirect(url) {
@@ -911,10 +976,9 @@
                         if (String(prova.id_calendario) === String(exam.id) && prova.status === 'Deferido') {
                             const group = groupedExams.get(groupKey);
                             if (request.alunos?.prova_adaptada === true) {
-                                const proofType = REPRO_PROOF_TYPES.includes(request.alunos?.tipo_prova)
-                                    ? request.alunos.tipo_prova
-                                    : 'Adaptada';
-                                group.adaptedCounts[studentSeries][proofType]++;
+                                const proofType = request.alunos?.tipo_prova || 'Adaptada';
+                                const enumType = REPRO_PROOF_TYPES.find(type => type === proofType);
+                                if (enumType) group.adaptedCounts[studentSeries][enumType]++;
                             } else {
                                 group.counts[studentSeries]++;
                             }
@@ -932,7 +996,9 @@
                             : ['—'];
                     }
                     return countsKey === 'adaptedCounts'
-                        ? REPRO_PROOF_TYPES.map(type => String(exam[countsKey][seriesKey][type]))
+                        ? (REPRO_PROOF_TYPES.length > 0
+                            ? REPRO_PROOF_TYPES.map(type => String(exam[countsKey][seriesKey][type]))
+                            : ['—'])
                         : [String(exam[countsKey][seriesKey])];
                 }).flat();
                 return `
@@ -973,7 +1039,10 @@
             const printTables = [table.cloneNode(true), adaptedTable];
             printTables.forEach((printTable, index) => {
                 printTable.className = 'repro-print-table';
-                if (index === 1) printTable.classList.add('repro-adapted-print-table');
+                if (index === 1) {
+                    printTable.classList.add('repro-adapted-print-table');
+                    printTable.style.fontSize = `${Math.max(3, 16 / REPRO_PROOF_TYPES.length)}pt`;
+                }
                 printTable.querySelectorAll('[hidden]').forEach(cell => cell.remove());
             });
 
