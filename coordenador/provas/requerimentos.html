@@ -193,12 +193,12 @@
             main > *:not(#printArea) { display: none !important; }
             #printArea { display: block !important; width: 100%; color: #000; font-family: Arial, Helvetica, sans-serif; }
             #printArea.repro-print { page: repro-page; }
-            .repro-print-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 8pt; }
+            .repro-print-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 10pt; }
             .repro-print-table th,
             .repro-print-table td { border: 1px solid #334155; padding: 5px 4px; text-align: center; }
-            .repro-adapted-print-table { font-size: 5.5pt; }
+            .repro-adapted-print-table { font-size: 7pt; }
             .repro-adapted-print-table th,
-            .repro-adapted-print-table td { padding: 3px 2px; }
+            .repro-adapted-print-table td { padding: 4px 3px; }
             .repro-print-table th { background: #e2e8f0 !important; font-weight: 900; text-transform: uppercase; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
             .repro-print-table th:first-child,
             .repro-print-table td:first-child { text-align: left; }
@@ -1085,9 +1085,9 @@
                     }
                     return countsKey === 'adaptedCounts'
                         ? (REPRO_PROOF_TYPES.length > 0
-                            ? REPRO_PROOF_TYPES.map(type => String(exam[countsKey][seriesKey][type]))
+                            ? REPRO_PROOF_TYPES.map(type => exam[countsKey][seriesKey][type] || '-')
                             : ['—'])
-                        : [String(exam[countsKey][seriesKey])];
+                        : [exam[countsKey][seriesKey] || '-'];
                 }).flat();
                 return `
                     <tr class="hover:bg-slate-50/70">
@@ -1121,7 +1121,7 @@
                 printTable.className = 'repro-print-table';
                 if (index === 1) {
                     printTable.classList.add('repro-adapted-print-table');
-                    printTable.style.fontSize = `${Math.max(3, 16 / REPRO_PROOF_TYPES.length)}pt`;
+                    printTable.style.fontSize = `${Math.max(6, Math.min(8.5, 28 / Math.max(1, REPRO_PROOF_TYPES.length)))}pt`;
                 }
                 printTable.querySelectorAll('[hidden]').forEach(cell => cell.remove());
             });
