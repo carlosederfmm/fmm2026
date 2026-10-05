@@ -199,6 +199,15 @@
                                     <option value="true">Sim</option>
                                 </select>
                             </div>
+                            <div class="space-y-1.5 text-left">
+                                <label for="inTipoProva" class="text-[11px] font-bold text-slate-400 uppercase ml-1">Tipo de Prova</label>
+                                <select id="inTipoProva" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-slate-600">
+                                    <option value="">Não definido</option>
+                                    <option value="Regular">Regular</option>
+                                    <option value="Adaptada">Adaptada</option>
+                                    <option value="Ampliada">Ampliada</option>
+                                </select>
+                            </div>
                             <div class="space-y-1.5 hidden text-left" id="divDataTransf">
                                 <label class="text-[11px] font-bold text-slate-400 uppercase ml-1">Data da Transferência</label>
                                 <input type="date" id="inDataTransf" class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-fmm-blue font-bold text-slate-600">
@@ -429,6 +438,7 @@
                     status: status,
                     data_transferencia: dataTransf,
                     prova_adaptada: document.getElementById('inProvaAdaptada').value === 'true',
+                    tipo_prova: document.getElementById('inTipoProva').value || null,
                     url_foto: document.getElementById('inPhoto').value,
                     informacoes_responsaveis: respData
                 });
@@ -465,6 +475,7 @@
             document.getElementById('inStatus').value = aluno.status || 'Cursando';
             document.getElementById('inDataTransf').value = aluno.data_transferencia || '';
             document.getElementById('inProvaAdaptada').value = aluno.prova_adaptada === true ? 'true' : 'false';
+            document.getElementById('inTipoProva').value = aluno.tipo_prova || '';
             document.getElementById('inPhoto').value = aluno.url_foto || '';
             
             window.toggleDataTransf();
@@ -492,6 +503,7 @@
             document.getElementById('inRA').disabled = false;
             document.querySelectorAll('#studentModal input').forEach(i => i.value = '');
             document.getElementById('inProvaAdaptada').value = 'false';
+            document.getElementById('inTipoProva').value = '';
             document.getElementById('divDataTransf').classList.add('hidden');
             document.getElementById('modalTitle').innerText = "Novo Aluno";
             window.updatePhotoPreview();

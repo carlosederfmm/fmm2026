@@ -199,9 +199,13 @@
             .repro-print-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 8pt; }
             .repro-print-table th,
             .repro-print-table td { border: 1px solid #334155; padding: 5px 4px; text-align: center; }
+            .repro-adapted-print-table { font-size: 5.5pt; }
+            .repro-adapted-print-table th,
+            .repro-adapted-print-table td { padding: 3px 2px; }
             .repro-print-table th { background: #e2e8f0 !important; font-weight: 900; text-transform: uppercase; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
             .repro-print-table th:first-child,
             .repro-print-table td:first-child { text-align: left; }
+            .repro-print-section-title { margin: 14px 0 6px; font-size: 10pt; font-weight: 900; text-transform: uppercase; }
             .repro-print-empty { margin-top: 24px; text-align: center; font-size: 10pt; }
 
             .print-page {
@@ -420,6 +424,36 @@
                     <div id="emptyStateRepro" class="hidden py-20 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">
                         Nenhuma prova encontrada para os filtros selecionados.
                     </div>
+                    <section class="mt-10">
+                        <h2 class="mb-4 text-sm font-black text-amber-800 uppercase tracking-widest">Quantitativo de Provas Adaptadas</h2>
+                        <table class="w-full border-collapse text-left">
+                            <thead>
+                                <tr class="bg-amber-50 text-[10px] font-black text-amber-800 uppercase tracking-wider">
+                                    <th rowspan="2" class="p-3 border border-amber-200">Disciplina</th>
+                                    <th rowspan="2" class="p-3 border border-amber-200">Período</th>
+                                    <th data-repro-series="emt" colspan="3" class="p-3 border border-amber-200">1ª Série</th>
+                                    <th data-repro-series="emt" colspan="3" class="p-3 border border-amber-200">2ª Série</th>
+                                    <th data-repro-series="emt" colspan="3" class="p-3 border border-amber-200">3ª Série</th>
+                                    <th data-repro-series="ef" colspan="3" class="p-3 border border-amber-200">5º Ano</th>
+                                    <th data-repro-series="ef" colspan="3" class="p-3 border border-amber-200">6º Ano</th>
+                                    <th data-repro-series="ef" colspan="3" class="p-3 border border-amber-200">7º Ano</th>
+                                    <th data-repro-series="ef" colspan="3" class="p-3 border border-amber-200">8º Ano</th>
+                                    <th data-repro-series="ef" colspan="3" class="p-3 border border-amber-200">9º Ano</th>
+                                </tr>
+                                <tr class="bg-amber-50/70 text-[9px] font-bold text-amber-700">
+                                    <th data-repro-series="emt" class="p-2 border border-amber-200">Regular</th><th data-repro-series="emt" class="p-2 border border-amber-200">Adaptada</th><th data-repro-series="emt" class="p-2 border border-amber-200">Ampliada</th>
+                                    <th data-repro-series="emt" class="p-2 border border-amber-200">Regular</th><th data-repro-series="emt" class="p-2 border border-amber-200">Adaptada</th><th data-repro-series="emt" class="p-2 border border-amber-200">Ampliada</th>
+                                    <th data-repro-series="emt" class="p-2 border border-amber-200">Regular</th><th data-repro-series="emt" class="p-2 border border-amber-200">Adaptada</th><th data-repro-series="emt" class="p-2 border border-amber-200">Ampliada</th>
+                                    <th data-repro-series="ef" class="p-2 border border-amber-200">Regular</th><th data-repro-series="ef" class="p-2 border border-amber-200">Adaptada</th><th data-repro-series="ef" class="p-2 border border-amber-200">Ampliada</th>
+                                    <th data-repro-series="ef" class="p-2 border border-amber-200">Regular</th><th data-repro-series="ef" class="p-2 border border-amber-200">Adaptada</th><th data-repro-series="ef" class="p-2 border border-amber-200">Ampliada</th>
+                                    <th data-repro-series="ef" class="p-2 border border-amber-200">Regular</th><th data-repro-series="ef" class="p-2 border border-amber-200">Adaptada</th><th data-repro-series="ef" class="p-2 border border-amber-200">Ampliada</th>
+                                    <th data-repro-series="ef" class="p-2 border border-amber-200">Regular</th><th data-repro-series="ef" class="p-2 border border-amber-200">Adaptada</th><th data-repro-series="ef" class="p-2 border border-amber-200">Ampliada</th>
+                                    <th data-repro-series="ef" class="p-2 border border-amber-200">Regular</th><th data-repro-series="ef" class="p-2 border border-amber-200">Adaptada</th><th data-repro-series="ef" class="p-2 border border-amber-200">Ampliada</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reproAdaptedTableBody" class="divide-y divide-amber-100 text-xs font-bold text-slate-600"></tbody>
+                        </table>
+                    </section>
                 </div>
             </div>
         </div>
@@ -564,6 +598,7 @@
         let editingCalId = null;
 
         const REPRO_SERIES = ['1ª Série', '2ª Série', '3ª Série', '5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano'];
+        const REPRO_PROOF_TYPES = ['Regular', 'Adaptada', 'Ampliada'];
 
         function normalizeSeries(value) {
             return (value || '').trim().toLocaleLowerCase('pt-BR').replace(/[ºª°]/g, '').replace(/\s+/g, ' ');
@@ -602,7 +637,7 @@
 
         async function loadRequests() {
             const statusFilter = document.getElementById('filterStatus').value;
-            let query = window.supabaseClient.from('justificativas_ausencia').select(`*, alunos!inner(nome_completo, url_foto, turmas!inner(nome, nivel, serie))`).order('criado_em', { ascending: false });
+            let query = window.supabaseClient.from('justificativas_ausencia').select(`*, alunos!inner(nome_completo, url_foto, prova_adaptada, tipo_prova, turmas!inner(nome, nivel, serie))`).order('criado_em', { ascending: false });
             if (statusFilter !== 'all') query = query.eq('status', statusFilter);
             if (userLevels.length > 0) query = query.in('nivel_aluno', userLevels);
 
@@ -711,8 +746,8 @@
                                     <div class="flex items-center gap-2">
                                         <span class="status-badge ${statusClasses[p.status]}">${p.status}</span>
                                         <div class="flex border-l border-slate-200 ml-1 pl-1">
-                                            <button onclick="updateExamStatus('${r.id}', ${idx}, 'Indeferido')" class="p-1 hover:bg-red-50 text-slate-300 hover:text-red-500 transition-all"><i data-lucide="x" class="w-4 h-4"></i></button>
-                                            <button onclick="updateExamStatus('${r.id}', ${idx}, 'Deferido')" class="p-1 hover:bg-green-50 text-slate-300 hover:text-fmm-green transition-all"><i data-lucide="check" class="w-4 h-4"></i></button>
+                                            <button onclick="updateExamStatus('${r.id}', ${idx}, 'Indeferido')" class="p-1 hover:bg-red-50 text-slate-300 hover:text-red-500 transition-all" aria-label="Indeferir"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+                                            <button onclick="updateExamStatus('${r.id}', ${idx}, 'Deferido')" class="p-1 hover:bg-green-50 text-slate-300 hover:text-fmm-green transition-all" aria-label="Deferir"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"></path></svg></button>
                                         </div>
                                     </div>
                                 </div>`).join('')}
@@ -771,26 +806,29 @@
             grid.innerHTML = '';
             const periodFilter = document.getElementById('examPeriodFilter').value;
             const disciplineFilter = document.getElementById('examDisciplineFilter').value;
-            const examStats = getFilteredCalendarExams().map(exam => {
+            const examStats = getFilteredCalendarExams().flatMap(exam => {
                 const requestsForExam = [];
                 allRequests.forEach(req => {
                     req.provas_solicitadas.forEach((p, idx) => {
-                        if (p.id_calendario === exam.id) {
+                        if (String(p.id_calendario) === String(exam.id)) {
                             requestsForExam.push({ ...p, reqId: req.id, aluno: req.alunos, ra: req.aluno_ra, anexo: req.anexo_url, examIndex: idx });
                         }
                     });
                 });
 
-                if (requestsForExam.length === 0) return null;
-
-                return {
-                    ...exam,
-                    requests: requestsForExam,
-                    pending: requestsForExam.filter(r => r.status === 'Pendente').length,
-                    approved: requestsForExam.filter(r => r.status === 'Deferido').length,
-                    rejected: requestsForExam.filter(r => r.status === 'Indeferido').length
-                };
-            }).filter(e => e !== null);
+                return [false, true].map(provaAdaptada => {
+                    const groupedRequests = requestsForExam.filter(request => (request.aluno?.prova_adaptada === true) === provaAdaptada);
+                    if (groupedRequests.length === 0) return null;
+                    return {
+                        ...exam,
+                        provaAdaptada,
+                        requests: groupedRequests,
+                        pending: groupedRequests.filter(r => r.status === 'Pendente').length,
+                        approved: groupedRequests.filter(r => r.status === 'Deferido').length,
+                        rejected: groupedRequests.filter(r => r.status === 'Indeferido').length
+                    };
+                }).filter(Boolean);
+            });
 
             if (examStats.length === 0) {
                 document.getElementById('emptyStateExams').classList.remove('hidden');
@@ -819,6 +857,7 @@
                         <div class="flex flex-wrap gap-1 mt-2 text-left">
                             <span class="serie-tag bg-fmm-dark text-white border-none">${exam.tipo_prova}</span>
                             ${(exam.series || []).map(s => `<span class="serie-tag text-left">${s}</span>`).join('')}
+                            <span class="serie-tag ${exam.provaAdaptada ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-slate-100 text-slate-600'}">${exam.provaAdaptada ? 'PROVA ADAPTADA' : 'LISTA REGULAR'}</span>
                         </div>
                     </div>
                     <div class="pt-4 border-t border-slate-50 flex justify-between items-center text-left">
@@ -834,11 +873,13 @@
 
         function renderReproTable() {
             const tbody = document.getElementById('reproTableBody');
+            const adaptedTbody = document.getElementById('reproAdaptedTableBody');
             const emptyState = document.getElementById('emptyStateRepro');
             const exams = getFilteredCalendarExams();
 
             if (exams.length === 0) {
                 tbody.innerHTML = '';
+                adaptedTbody.innerHTML = '';
                 emptyState.textContent = 'Nenhuma prova encontrada para os filtros selecionados.';
                 emptyState.classList.remove('hidden');
                 applyReproSegmentFilter();
@@ -854,7 +895,11 @@
                     groupedExams.set(groupKey, {
                         discipline,
                         period: exam.periodo_ref || '',
-                        counts: Object.fromEntries(REPRO_SERIES.map(series => [normalizeSeries(series), 0]))
+                        counts: Object.fromEntries(REPRO_SERIES.map(series => [normalizeSeries(series), 0])),
+                        adaptedCounts: Object.fromEntries(REPRO_SERIES.map(series => [
+                            normalizeSeries(series),
+                            Object.fromEntries(REPRO_PROOF_TYPES.map(type => [type, 0]))
+                        ]))
                     });
                 }
                 const allowedSeries = new Set(getSeriesForPeriod(exam.periodo_ref).map(normalizeSeries));
@@ -864,26 +909,45 @@
                     if (!allowedSeries.has(studentSeries) || (configuredSeries.size > 0 && !configuredSeries.has(studentSeries))) return;
                     request.provas_solicitadas.forEach(prova => {
                         if (String(prova.id_calendario) === String(exam.id) && prova.status === 'Deferido') {
-                            groupedExams.get(groupKey).counts[studentSeries]++;
+                            const group = groupedExams.get(groupKey);
+                            if (request.alunos?.prova_adaptada === true) {
+                                const proofType = REPRO_PROOF_TYPES.includes(request.alunos?.tipo_prova)
+                                    ? request.alunos.tipo_prova
+                                    : 'Adaptada';
+                                group.adaptedCounts[studentSeries][proofType]++;
+                            } else {
+                                group.counts[studentSeries]++;
+                            }
                         }
                     });
                 });
             });
 
-            tbody.innerHTML = [...groupedExams.values()].map(exam => {
+            const renderRows = (countsKey) => [...groupedExams.values()].map(exam => {
                 const seriesCells = REPRO_SERIES.map(series => {
                     const seriesKey = normalizeSeries(series);
-                    return getSeriesForPeriod(exam.period).some(periodSeries => normalizeSeries(periodSeries) === seriesKey)
-                        ? String(exam.counts[seriesKey])
-                        : '—';
-                });
+                    if (!getSeriesForPeriod(exam.period).some(periodSeries => normalizeSeries(periodSeries) === seriesKey)) {
+                        return countsKey === 'adaptedCounts'
+                            ? REPRO_PROOF_TYPES.map(() => '—')
+                            : ['—'];
+                    }
+                    return countsKey === 'adaptedCounts'
+                        ? REPRO_PROOF_TYPES.map(type => String(exam[countsKey][seriesKey][type]))
+                        : [String(exam[countsKey][seriesKey])];
+                }).flat();
                 return `
                     <tr class="hover:bg-slate-50/70">
                         <td class="p-4 border border-slate-100 font-black text-fmm-dark uppercase">${exam.discipline}</td>
                         <td class="p-4 border border-slate-100 uppercase">${exam.period.replace('_', ' ')}</td>
-                        ${seriesCells.map((count, index) => `<td data-repro-series="${index < 3 ? 'emt' : 'ef'}" class="p-4 border border-slate-100 text-center">${count}</td>`).join('')}
+                        ${seriesCells.map((count, index) => {
+                            const seriesIndex = countsKey === 'adaptedCounts' ? Math.floor(index / REPRO_PROOF_TYPES.length) : index;
+                            const segment = seriesIndex < 3 ? 'emt' : 'ef';
+                            return `<td data-repro-series="${segment}" class="p-4 border border-slate-100 text-center">${count}</td>`;
+                        }).join('')}
                     </tr>`;
             }).join('');
+            tbody.innerHTML = renderRows('counts');
+            adaptedTbody.innerHTML = renderRows('adaptedCounts');
             applyReproSegmentFilter();
         }
 
@@ -905,9 +969,13 @@
             const disciplineLabel = discipline.value === 'all' ? 'Todas as disciplinas' : discipline.options[discipline.selectedIndex].text;
             const orderLabel = order.value === 'desc' ? 'Z–A' : 'A–Z';
             const segmentLabel = segment.options[segment.selectedIndex].text;
-            const printTable = table.cloneNode(true);
-            printTable.className = 'repro-print-table';
-            printTable.querySelectorAll('[hidden]').forEach(cell => cell.remove());
+            const adaptedTable = document.querySelector('#view-repro-container section table').cloneNode(true);
+            const printTables = [table.cloneNode(true), adaptedTable];
+            printTables.forEach((printTable, index) => {
+                printTable.className = 'repro-print-table';
+                if (index === 1) printTable.classList.add('repro-adapted-print-table');
+                printTable.querySelectorAll('[hidden]').forEach(cell => cell.remove());
+            });
 
             printArea.classList.add('repro-print');
             printArea.innerHTML = '';
@@ -919,7 +987,14 @@
             filterSummary.textContent = `Período: ${periodLabel} | Disciplina: ${disciplineLabel} | Ordem: ${orderLabel} | Séries: ${segmentLabel}`;
             header.append(title, filterSummary);
             printArea.appendChild(header);
-            printArea.appendChild(printTable);
+            const commonTitle = document.createElement('h2');
+            commonTitle.className = 'repro-print-section-title';
+            commonTitle.textContent = 'Quantitativo de Provas Comuns';
+            printArea.append(commonTitle, printTables[0]);
+            const adaptedTitle = document.createElement('h2');
+            adaptedTitle.className = 'repro-print-section-title';
+            adaptedTitle.textContent = 'Quantitativo de Provas Adaptadas';
+            printArea.append(adaptedTitle, printTables[1]);
 
             if (document.getElementById('emptyStateRepro').classList.contains('hidden') === false) {
                 const emptyMessage = document.createElement('p');
@@ -939,8 +1014,9 @@
         function openExamDetailModal(exam) {
             currentExamOpen = exam;
             const modal = document.getElementById('examDetailModal');
-            document.getElementById('examModalTitle').innerText = `${exam.disciplinas?.nome || exam.sigla_disciplina} - ${exam.tipo_prova}`;
-            document.getElementById('examModalSubtitle').innerText = `Data: ${new Date(exam.data_prova + 'T12:00:00').toLocaleDateString('pt-BR')} â€¢ Matriz: ${exam.matriz} â€¢ PerÃ­odo: ${exam.periodo_ref.replace('_', ' ')}`;
+            const groupLabel = exam.provaAdaptada ? 'Lista de Prova Adaptada' : 'Lista Regular';
+            document.getElementById('examModalTitle').innerText = `${exam.disciplinas?.nome || exam.sigla_disciplina} - ${exam.tipo_prova} (${exam.provaAdaptada ? 'ADAPTADA' : 'REGULAR'})`;
+            document.getElementById('examModalSubtitle').innerText = `${groupLabel} • Data: ${new Date(exam.data_prova + 'T12:00:00').toLocaleDateString('pt-BR')} • Matriz: ${exam.matriz} • Período: ${exam.periodo_ref.replace('_', ' ')}`;
             
             const tbody = document.getElementById('examDetailTableBody');
             const statusClasses = { 'Pendente': 'status-pending', 'Deferido': 'status-approved', 'Indeferido': 'status-rejected' };
@@ -958,8 +1034,8 @@
                     <td class="p-5 text-center"><span class="status-badge ${statusClasses[r.status]} text-center">${r.status}</span></td>
                     <td class="p-5 text-right">
                         <div class="flex justify-end gap-2 text-right">
-                            <button onclick="updateExamStatus('${r.reqId}', ${r.examIndex}, 'Indeferido')" class="w-9 h-9 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all flex items-center justify-center shadow-sm"><i data-lucide="x" class="w-4 h-4"></i></button>
-                            <button onclick="updateExamStatus('${r.reqId}', ${r.examIndex}, 'Deferido')" class="w-9 h-9 bg-green-50 hover:bg-fmm-green text-fmm-green hover:text-white rounded-xl transition-all flex items-center justify-center shadow-sm"><i data-lucide="check" class="w-4 h-4"></i></button>
+                            <button onclick="updateExamStatus('${r.reqId}', ${r.examIndex}, 'Indeferido')" class="w-9 h-9 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all flex items-center justify-center shadow-sm" aria-label="Indeferir"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+                            <button onclick="updateExamStatus('${r.reqId}', ${r.examIndex}, 'Deferido')" class="w-9 h-9 bg-green-50 hover:bg-fmm-green text-fmm-green hover:text-white rounded-xl transition-all flex items-center justify-center shadow-sm" aria-label="Deferir"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"></path></svg></button>
                         </div>
                     </td>
                 </tr>`).join('');
@@ -1041,13 +1117,13 @@
                         <img src="../../assets/logo-fmm-color.png" alt="FMM Logo">
                         <div class="doc-title text-right">
                             <h1>Lista de Assinatura</h1>
-                            <p>Segunda Chamada de Avaliação — Pág. ${p + 1}/${totalPages}</p>
+                            <p>Segunda Chamada ${currentExamOpen.provaAdaptada ? 'Adaptada' : 'Regular'} — Pág. ${p + 1}/${totalPages}</p>
                         </div>
                     </div>
                     <div class="print-info-grid">
                         <div class="info-box text-left">
                             <label>Prova / Componente Curricular</label>
-                            <span>${nomeProva} - ${currentExamOpen.tipo_prova}</span>
+                            <span>${nomeProva} - ${currentExamOpen.tipo_prova} (${currentExamOpen.provaAdaptada ? 'PROVA ADAPTADA' : 'LISTA REGULAR'})</span>
                         </div>
                         <div class="info-box text-left">
                             <label>Data da Aplicação</label>
@@ -1130,7 +1206,8 @@
                 allRequests.forEach(r => {
                     r.provas_solicitadas.forEach((p, idx) => {
                         // Converte ambos para String para garantir a comparação exata do ID da prova
-                        if (String(p.id_calendario) === String(currentExamOpen.id)) {
+                        if (String(p.id_calendario) === String(currentExamOpen.id)
+                            && (r.alunos?.prova_adaptada === true) === currentExamOpen.provaAdaptada) {
                             updatedRequests.push({ 
                                 ...p, 
                                 reqId: r.id, 
