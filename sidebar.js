@@ -64,10 +64,14 @@ const SidebarComponent = {
             position: absolute;
             right: -14px;
             top: 80px;
+            width: 28px;
+            height: 28px;
+            padding: 0 !important;
+            line-height: 1;
+            box-sizing: border-box;
             background-color: #c8d400;
             color: #003c5b;
-            border-radius: 9999px;
-            padding: 4px;
+            border-radius: 50%;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             z-index: 100;
             cursor: pointer;
@@ -76,6 +80,7 @@ const SidebarComponent = {
             align-items: center;
             justify-content: center;
             transition: transform 0.2s ease;
+            flex-shrink: 0;
         }
         .sidebar-toggle-btn:hover { transform: scale(1.1); }
         .sidebar-toggle-btn:active { transform: scale(0.9); }

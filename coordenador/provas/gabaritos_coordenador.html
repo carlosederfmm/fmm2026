@@ -77,6 +77,9 @@
                             <option value="2_SEMESTRE">2º Semestre</option>
                         </optgroup>
                     </select>
+                    <select id="filterTipoProva" onchange="renderTable()" class="bg-slate-50 border border-slate-200 text-slate-600 px-4 py-2 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-fmm-blue cursor-pointer" aria-label="Tipo de prova">
+                        <option value="">Todos os tipos</option>
+                    </select>
                     <button onclick="loadData()" class="p-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-500 transition-all">
                         <i data-lucide="rotate-cw" class="w-4 h-4"></i>
                     </button>
@@ -200,6 +203,7 @@
                 vinculos = vincData || [];
                 gabaritos = gabData || [];
 
+                updateTipoProvaFilter();
                 renderTable();
             } catch (err) {
                 console.error(err);
@@ -208,13 +212,28 @@
             }
         }
 
+        function updateTipoProvaFilter() {
+            const select = document.getElementById('filterTipoProva');
+            const selectedTipo = select.value;
+            const tipos = [...new Set(calendarItems.map(item => item.tipo_prova).filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+            select.innerHTML = '<option value="">Todos os tipos</option>' +
+                tipos.map(tipo => `<option value="${tipo}">${tipo}</option>`).join('');
+
+            // Keeps the selected type after refreshing data or saving an assignment.
+            if (tipos.includes(selectedTipo)) select.value = selectedTipo;
+        }
+
         function renderTable() {
             const body = document.getElementById('gabaritosTableBody');
             const empty = document.getElementById('emptyState');
+            const tipoProva = document.getElementById('filterTipoProva').value;
             
             // Expandir e organizar por série
             let flattenedData = [];
             calendarItems.forEach(item => {
+                if (tipoProva && item.tipo_prova !== tipoProva) return;
                 (item.series || []).forEach(serie => {
                     flattenedData.push({ ...item, serie_especifica: serie });
                 });
