@@ -32,7 +32,7 @@ var dataProvider = null;
 // CONFIGURAÇÕES GERAIS E TEXTOS DE CONTINGÊNCIA
 // ============================================================
 
-const ATA_TEMPLATE_URL = 'conselho_ata.html?v=20261006-3';
+const ATA_TEMPLATE_URL = 'conselho_ata.html?v=20261007-1';
 
 // ============================================================
 // TEXTOS PADRÃO DAS TABELAS (checklists numerados)
@@ -1159,7 +1159,7 @@ function fecharModal() {
 }
 
 // ============================================================
-// GERAÇÃO DE PDF NATIVO (UTILIZANDO CLASSE CSS DEDICADA)
+// PREPARAÇÃO DA VISUALIZAÇÃO E IMPRESSÃO NATIVA DO NAVEGADOR
 // ============================================================
 async function confirmarImpressao() {
     const parametros = obterParametrosImpressao();
@@ -1170,9 +1170,15 @@ async function confirmarImpressao() {
     const rasParaImprimir = [...state.selecionados];
     if (!rasParaImprimir.length) return;
 
-    mostrarLoading('Compilando PDF nativo...');
-    document.body.classList.add('is-exporting');
-    let tempContainer = null;
+    const janelaImpressao = window.open('', '_blank');
+    if (!janelaImpressao) {
+        toast('O navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente novamente.', 'error');
+        return;
+    }
+
+    janelaImpressao.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Preparando atas...</title></head><body style="font:16px system-ui,sans-serif;padding:32px;color:#003c5b">Preparando as atas para impressão...</body></html>');
+    janelaImpressao.document.close();
+    mostrarLoading('Preparando as atas para impressão...');
     try {
         await recarregarAlunosDoContexto(periodoInformado, parametros.anoLetivo);
         const templateResponse = await fetch(ATA_TEMPLATE_URL, { cache: 'no-store' });
@@ -1181,9 +1187,6 @@ async function confirmarImpressao() {
 
         const parser = new DOMParser();
         const docTemplate = parser.parseFromString(templateHTML, 'text/html');
-
-        const headStyles = Array.from(docTemplate.head.querySelectorAll('style, link[rel="stylesheet"]'));
-
         const containerAtas = docTemplate.getElementById('container-atas');
         if (!containerAtas) throw new Error("container-atas não encontrado em ata.html");
         
@@ -1193,6 +1196,7 @@ async function confirmarImpressao() {
 
         rasParaImprimir.forEach((ra) => {
             const aluno = state.alunos.find(a => a.ra === ra);
+            if (!aluno) throw new Error(`Não foi possível localizar os dados do aluno de RA ${ra} para gerar a ata.`);
             const clone = modeloAta.cloneNode(true);
 
             const periodoAta = formatarPeriodo(periodoInformado || aluno.periodo || '');
@@ -1217,110 +1221,46 @@ async function confirmarImpressao() {
             containerAtas.appendChild(clone);
         });
 
-        tempContainer = document.createElement('div');
-        tempContainer.className = 'pdf-render-container';
-
-        headStyles.forEach(node => tempContainer.appendChild(node.cloneNode(true)));
-
-        try {
-            const cssResponse = await fetch('../../assets/css/conselho_style.css?v=20261006-3', { cache: 'no-store' });
-            if (cssResponse.ok) {
-                const cssText = await cssResponse.text();
-                const styleTag = document.createElement('style');
-                styleTag.textContent = cssText;
-                tempContainer.appendChild(styleTag);
-            }
-        } catch (err) {
-            console.warn('Injeção direta do style.css falhou:', err);
-        }
-
-        tempContainer.appendChild(containerAtas);
-        document.body.appendChild(tempContainer);
-
-        if (document.fonts?.ready) {
-            await document.fonts.ready;
-        }
-        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-
-        containerAtas.style.margin = '0';
-        containerAtas.style.padding = '0';
-        containerAtas.querySelectorAll('.page-ata').forEach((page) => {
-            page.style.margin = '0';
-            page.style.boxShadow = 'none';
-        });
-
         const paginasAta = Array.from(containerAtas.querySelectorAll('.page-ata'));
         if (!paginasAta.length) {
             throw new Error('Nenhuma página de ata foi preparada para exportação.');
         }
 
-        const JsPdf = window.jspdf && window.jspdf.jsPDF
-            ? window.jspdf.jsPDF
-            : window.jsPDF;
-        if (!JsPdf) {
-            throw new Error('A biblioteca jsPDF não foi carregada.');
-        }
-
-        const pdf = new JsPdf({
-            unit: 'mm',
-            format: 'a4',
-            orientation: 'landscape',
-            compress: true
-        });
-
-        for (let indice = 0; indice < paginasAta.length; indice += 1) {
-            const paginaAta = paginasAta[indice];
-            const canvas = await html2canvas(paginaAta, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                backgroundColor: '#ffffff',
-                scrollX: 0,
-                scrollY: 0,
-                windowWidth: Math.ceil(paginaAta.getBoundingClientRect().width),
-                windowHeight: Math.ceil(paginaAta.getBoundingClientRect().height)
-            });
-
-            const imagem = canvas.toDataURL('image/jpeg', 0.98);
-            if (indice > 0) {
-                pdf.addPage('a4', 'landscape');
-            }
-            pdf.addImage(imagem, 'JPEG', 0, 0, 297, 210, undefined, 'FAST');
-        }
-
-        const pdfBlob = pdf.output('blob');
         const nomeArquivo = obterNomeArquivoAta(
-            paginasAta.map((_, indice) => state.alunos.find(a => a.ra === rasParaImprimir[indice])),
+            rasParaImprimir.map((ra) => state.alunos.find(a => a.ra === ra)),
             state.turmaAtual?.nome,
             periodoInformado
         );
 
-        const pdfUrl = URL.createObjectURL(pdfBlob);
-        const abaPdf = window.open(pdfUrl, '_blank');
+        const cssResponse = await fetch('../../assets/css/conselho_style.css?v=20261007-1', { cache: 'no-store' });
+        if (!cssResponse.ok) throw new Error('Não foi possível carregar os estilos da ata para impressão.');
+        const cssText = await cssResponse.text();
 
-        const linkDownload = document.createElement('a');
-        linkDownload.href = pdfUrl;
-        linkDownload.download = nomeArquivo;
-        linkDownload.style.display = 'none';
-        document.body.appendChild(linkDownload);
-        linkDownload.click();
-        linkDownload.remove();
+        const docImpressao = janelaImpressao.document;
+        docImpressao.open();
+        docImpressao.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body></body></html>');
+        docImpressao.close();
+        docImpressao.title = nomeArquivo.replace(/\.pdf$/i, '');
 
-        if (!abaPdf) {
-            toast(`PDF gerado e baixado como "${nomeArquivo}".`, 'success');
-            return;
+        const styleTag = docImpressao.createElement('style');
+        styleTag.textContent = cssText;
+        docImpressao.head.appendChild(styleTag);
+        docImpressao.body.appendChild(containerAtas);
+
+        if (docImpressao.fonts?.ready) {
+            await docImpressao.fonts.ready;
         }
+        await new Promise(resolve => janelaImpressao.requestAnimationFrame(() => janelaImpressao.requestAnimationFrame(resolve)));
 
-        toast(`${rasParaImprimir.length} ata(s) gerada(s) como "${nomeArquivo}".`, 'success');
+        janelaImpressao.focus();
+        janelaImpressao.print();
+        toast(`${rasParaImprimir.length} ata(s) preparadas para impressão ou salvamento como PDF.`, 'success');
 
     } catch(e) {
-        toast('Erro ao gerar PDF: ' + e.message, 'error');
+        if (!janelaImpressao.closed) janelaImpressao.close();
+        toast('Erro ao preparar as atas para impressão: ' + e.message, 'error');
         console.error(e);
     } finally {
-        if (tempContainer?.parentNode) {
-            tempContainer.parentNode.removeChild(tempContainer);
-        }
-        document.body.classList.remove('is-exporting');
         ocultarLoading();
     }
 }

@@ -1,39 +1,79 @@
-/* Configurações globais de impressão */
+/* Impressão em A4 paisagem, com uma página por ata. */
 @page {
     size: A4 landscape;
     margin: 0;
 }
 
 @media print {
-    html,
-    body {
+    html, body {
+        width: 297mm !important;
+        min-width: 297mm !important;
         height: auto !important;
         min-height: 0 !important;
         margin: 0 !important;
         padding: 0 !important;
         display: block !important;
+        overflow: visible !important;
     }
 
     body {
-        background: transparent !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+        background: #ffffff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    #container-atas {
+        display: block !important;
+        width: 297mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
 
     .page-ata {
         margin: 0 !important;
-        box-shadow: none !important;
         width: 297mm !important;
-        height: 209.5mm !important;
-        page-break-after: always;
-        break-after: page;
-        page-break-inside: auto;
-        break-inside: auto;
+        height: 210mm !important;
+        min-height: 210mm !important;
+        max-height: 210mm !important;
+        padding: 10mm !important;
+        box-shadow: none !important;
+        overflow: hidden !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+
+    .page-ata-footer {
+        flex: 0 0 auto !important;
+        overflow: visible !important;
+    }
+
+    .page-ata table {
+        border-collapse: collapse !important;
+        border-spacing: 0 !important;
+    }
+
+    .page-ata th,
+    .page-ata td {
+        border: 1px solid #000000 !important;
+    }
+
+    .page-ata .signature-line {
+        border-top: 1px solid #000000 !important;
     }
 
     .page-ata:last-child {
         page-break-after: avoid !important;
         break-after: avoid-page !important;
+    }
+
+    .page-ata,
+    .page-ata *,
+    .page-ata *::before,
+    .page-ata *::after {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
 }
 
@@ -41,63 +81,6 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-}
-
-/* Container de renderização temporária para PDF */
-.pdf-render-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: -9999;
-    width: 297mm;
-    height: auto;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: visible;
-}
-
-.pdf-render-container #container-atas {
-    width: 297mm;
-    margin: 0 !important;
-    padding: 0 !important;
-}
-
-.pdf-render-container .page-ata {
-    margin: 0 !important;
-    box-shadow: none !important;
-    page-break-inside: auto !important;
-    break-inside: auto !important;
-}
-
-body.is-exporting {
-    display: block !important;
-    height: auto !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    background: #ffffff !important;
-    overflow-x: hidden !important;
-}
-
-html:has(body.is-exporting) {
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow-x: hidden !important;
-}
-
-body.is-exporting .pdf-render-container,
-body.is-exporting .pdf-render-container #container-atas {
-    margin-top: 0 !important;
-    padding-top: 0 !important;
-    transform: none !important;
-    box-sizing: border-box !important;
-    left: 0 !important;
-    right: auto !important;
-}
-
-body.is-exporting .pdf-render-container .page-ata {
-    page-break-inside: auto !important;
-    break-inside: auto !important;
 }
 
 /* Fundo da tela no estilo leitor de PDF */
@@ -118,8 +101,8 @@ body {
 /* Folha A4 Paisagem com dimensões e proporções fixas */
 .page-ata {
     width: 297mm;
-    height: 209.5mm;
-    max-height: 209.5mm;
+    height: 210mm;
+    max-height: 210mm;
     padding: 10mm;
     margin: 0 auto 20px auto;
     background-color: #ffffff;

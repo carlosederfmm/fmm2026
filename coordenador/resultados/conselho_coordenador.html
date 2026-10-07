@@ -12,9 +12,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../../assets/js/supabase_client.js"></script>
     <script src="../../sidebar.js"></script>
-    <script src="../../assets/js/conselho_app.js?v=20261006-4"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="../../assets/js/conselho_app.js?v=20261007-1"></script>
     <style>
         :root {
             --bg: #f8fafc;
@@ -337,13 +335,6 @@
         #loading-text { color: var(--ink-muted); font-size: 13px; font-weight: 800; }
 
         .hidden { display: none !important; }
-
-        body.is-exporting > :not(#loading-overlay):not(.pdf-render-container) {
-            visibility: hidden !important;
-        }
-        body.is-exporting .pdf-render-container {
-            visibility: visible !important;
-        }
 
         /* ---------- Toasts ---------- */
         #toast-container {
