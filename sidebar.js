@@ -185,8 +185,9 @@ const SidebarComponent = {
             { label: 'Mapa de Notas', icon: 'grid', link: 'coordenador/resultados/mapa_coordenador.html', roles: ['diretor', 'coordenador', 'orientador'] },
             { label: 'Boletim Individual', icon: 'user', link: 'coordenador/resultados/boletim_coordenador.html', roles: ['diretor', 'coordenador'] }, 
             { label: 'Recuperação', icon: 'file-warning', link: 'coordenador/resultados/recuperacao_coordenador.html', roles: ['coordenador'] },
-            { label: 'Lançar Notas (Fund)', icon: 'book-open', link: 'coordenador/resultados/lancarnotas.html', roles: ['coordenador'] },
-            { label: 'Conselho', icon: 'clipboard-list', link: 'coordenador/resultados/conselho_coordenador.html', roles: ['coordenador'] }
+            { label: 'Lançar Notas', icon: 'book-open', link: 'coordenador/resultados/lancarnotas.html', roles: ['coordenador'] },
+            { label: 'Conselho', icon: 'clipboard-list', link: 'coordenador/resultados/conselho_coordenador.html', roles: ['coordenador'] },
+            { label: 'Preencher Conselho', icon: 'clipboard-pen-line', link: 'coordenador/resultados/preenchimento_conselho_coordenador.html', roles: ['coordenador'] }
         ],
         sistema: [
             { label: 'Grade Horária', icon: 'calendar-range', link: 'coordenador/sistema/grade_coordenador.html', roles: ['diretor', 'coordenador'] },
@@ -366,7 +367,7 @@ const SidebarComponent = {
     },
 
     buildLink: function(item, activePage, prefix) {
-        const isActive = activePage && item.link && item.link.includes(activePage);
+        const isActive = activePage && item.link && item.link.split('/').pop() === activePage;
         const activeClass = isActive ? 'sidebar-item-active text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-white/5';
         return `<a href="${prefix}${item.link || '#'}" class="sidebar-item flex items-center px-8 py-3 text-[13px] ${activeClass} transition-all relative text-left">
             <i data-lucide="${item.icon}" class="w-4 h-4 flex-shrink-0 ${isActive ? 'text-[#c8d400]' : ''}"></i>
@@ -376,7 +377,7 @@ const SidebarComponent = {
 
     buildAccordion: function(title, id, iconName, items, activePage, prefix) {
         if (!items.length) return '';
-        const isActive = activePage && items.some(i => i.link.includes(activePage));
+        const isActive = activePage && items.some(i => i.link.split('/').pop() === activePage);
         return `<div class="category-group border-b border-white/5"><button onclick="SidebarComponent.toggleCategory('${id}', this)" class="w-full flex items-center justify-between px-6 py-4 hover:bg-white/5 group text-left"><div class="flex items-center gap-3"><i data-lucide="${iconName}" class="w-4 h-4 text-slate-400 group-hover:text-white"></i><span class="sidebar-text text-[10px] font-black text-slate-300 uppercase tracking-widest">${title}</span></div><i data-lucide="chevron-down" class="chevron-icon w-3.5 h-3.5 text-slate-500 transition-transform ${isActive ? 'rotate-180' : ''}" id="icon-${id}"></i></button><div id="${id}" class="category-content ${isActive ? 'open' : ''}" style="max-height: ${isActive ? 'none' : '0'}">${items.map(item => this.buildLink(item, activePage, prefix)).join('')}</div></div>`;
     },
 

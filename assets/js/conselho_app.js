@@ -32,7 +32,7 @@ var dataProvider = null;
 // CONFIGURAÇÕES GERAIS E TEXTOS DE CONTINGÊNCIA
 // ============================================================
 
-const ATA_TEMPLATE_URL = 'conselho_ata.html';
+const ATA_TEMPLATE_URL = 'conselho_ata.html?v=20261006-3';
 
 // ============================================================
 // TEXTOS PADRÃO DAS TABELAS (checklists numerados)
@@ -297,13 +297,7 @@ class SupabaseProvider extends DataProvider {
   }
 
   async getAlunosParaPreenchimento(idTurma, opcoes = {}) {
-    const alunos = await this.getAlunos(idTurma, opcoes);
-    return alunos.filter((aluno) => (
-      String(aluno.statusMatricula || '').trim().toUpperCase() === 'CURSANDO'
-      && [...(aluno.notasBasicas || []), ...(aluno.notasTecnicas || [])]
-        .some((nota) => nota.nota !== null && nota.nota !== undefined && nota.nota !== ''
-          && Number.isFinite(Number(nota.nota)) && Number(nota.nota) < 6)
-    ));
+    return this.getAlunos(idTurma, opcoes);
   }
 
   async salvarPreenchimento({ idTurma, periodo, anoLetivo, padraoDificuldades, padraoPropostas, alunos }) {
@@ -672,6 +666,26 @@ function setField(root, field, value) {
     el.innerHTML = value;
 }
 
+function centralizarRotulosAta(pagina) {
+    const seletores = [
+        '.tbl-aluno .lbl-aluno',
+        '.tbl-aluno .lbl-aluno-turma',
+        '[data-field="box-dificuldades-pontuacao"] > table > tbody > tr:first-child > th',
+        '.tbl-propostas > tbody > tr:first-child > th',
+        '.tbl-resultados > tbody > tr:first-child > th',
+        '.tbl-soe > tbody > tr:first-child > th',
+        '.tbl-observacoes > tbody > tr:first-child > th'
+    ];
+
+    pagina.querySelectorAll(seletores.join(',')).forEach((rotulo) => {
+        rotulo.style.setProperty('text-align', 'center', 'important');
+        rotulo.style.setProperty('vertical-align', 'middle', 'important');
+    });
+
+    pagina.querySelector('.tbl-aluno .val-aluno-nome')
+        ?.style.setProperty('vertical-align', 'middle', 'important');
+}
+
 function gerarHTMLChecklist(stringNumeros, listaTextos, alunoObj = {}) {
     const str = stringNumeros ? String(stringNumeros).trim() : '';
     const numeros = (str && str.match(/\d+/g))
@@ -729,7 +743,7 @@ function gerarDificuldadesComPontuacao(stringNumeros, listaTextos, extraItem19 =
     let html = '<table style="width: 100%; border-collapse: collapse; font-size: 8px;">';
     
     // Cabeçalho da tabela
-    html += '<tr style="background-color: #d1d5db; border: 1px solid #000;"><th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold;">DIFICULDADES APRESENTADAS PELO ALUNO</th></tr>';
+    html += '<tr style="background-color: #d1d5db; border: 1px solid #000;"><th style="border: 1px solid #000; padding: 3px; text-align: center !important; vertical-align: middle !important; font-weight: bold;">DIFICULDADES APRESENTADAS PELO ALUNO</th></tr>';
     
     // 19 Linhas de Dificuldades
     let conteudoDificuldades = '';
@@ -1165,7 +1179,7 @@ async function confirmarImpressao() {
     let tempContainer = null;
     try {
         await recarregarAlunosDoContexto(periodoInformado, parametros.anoLetivo);
-        const templateResponse = await fetch(ATA_TEMPLATE_URL);
+        const templateResponse = await fetch(ATA_TEMPLATE_URL, { cache: 'no-store' });
         if (!templateResponse.ok) throw new Error("Não foi possível carregar o arquivo ata.html");
         const templateHTML = await templateResponse.text();
 
@@ -1202,6 +1216,7 @@ async function confirmarImpressao() {
             setField(clone, 'box-resultados', gerarHTMLChecklist(aluno.resultados, textosFichas.resultados, aluno));
             setField(clone, 'box-soe', gerarHTMLChecklist(aluno.soe, textosFichas.soe, aluno));
             setField(clone, 'box-observacoes', escHtml(aluno.observacoes || ''));
+            centralizarRotulosAta(clone);
 
             containerAtas.appendChild(clone);
         });
@@ -1212,7 +1227,7 @@ async function confirmarImpressao() {
         headStyles.forEach(node => tempContainer.appendChild(node.cloneNode(true)));
 
         try {
-            const cssResponse = await fetch('../../assets/css/conselho_style.css');
+            const cssResponse = await fetch('../../assets/css/conselho_style.css?v=20261006-3', { cache: 'no-store' });
             if (cssResponse.ok) {
                 const cssText = await cssResponse.text();
                 const styleTag = document.createElement('style');

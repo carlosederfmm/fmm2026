@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Preenchimento do Conselho | SME FMM</title>
+  <title>Preencher Conselho | SME FMM</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../../assets/js/supabase_client.js"></script>
   <script src="../../sidebar.js"></script>
-  <script src="../../assets/js/conselho_app.js"></script>
+  <script src="../../assets/js/conselho_app.js?v=20261006-4"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     :root { --bg:#f8fafc; --panel:#fff; --line:#e2e8f0; --text:#003c5b; --muted:#64748b; --accent:#00638f; --danger:#b91c1c; }
@@ -31,8 +31,6 @@
     .toolbar select { width:100%; min-width:0; }
     .toolbar select { min-height:46px; padding:12px 14px; font-size:14px; }
     .toolbar button { min-height:46px; }
-    .back-link { display:inline-flex; gap:8px; align-items:center; justify-content:center; min-height:38px; padding:8px 12px; border:1px solid #cbd5e1; border-radius:10px; color:var(--text); background:#fff; text-decoration:none; font-size:11px; font-weight:800; white-space:nowrap; }
-    .back-link:hover { text-decoration:underline; }
     label { display:flex; flex-direction:column; gap:6px; color:var(--muted); font-size:11px; font-weight:700; }
     select, input, textarea, button { font:inherit; }
     select, input, textarea { color:var(--text); background:#fff; border:1px solid #cbd5e1; border-radius:10px; padding:10px 12px; }
@@ -86,12 +84,11 @@
         <div class="page-title">
           <span class="title-accent" aria-hidden="true"></span>
           <div>
-            <h1>Preenchimento de fichas</h1>
-            <p>Resultados · Selecione período e turma para revisar alunos cursando com notas abaixo de 6</p>
+            <h1>Preencher Conselho</h1>
+            <p>Resultados · Preencha fichas existentes ou crie novas para a turma</p>
           </div>
         </div>
         <div class="page-actions">
-          <a class="back-link" href="conselho_coordenador.html"><i data-lucide="arrow-left" class="h-4 w-4"></i> Painel do Conselho</a>
           <button id="save" disabled><i data-lucide="save" class="mr-2 inline h-4 w-4"></i>Salvar fichas</button>
         </div>
       </header>

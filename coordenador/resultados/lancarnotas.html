@@ -86,8 +86,14 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f4f6; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; border: 3px solid #f1f4f6; }
 
-        .top-bar-select { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; color: #003c5b; outline: none; transition: all 0.2s; min-width: 160px; }
+        .top-bar-select { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; color: #003c5b; outline: none; transition: all 0.2s; min-width: 140px; }
         .top-bar-select:focus { border-color: #35b5a8; background: white; box-shadow: 0 0 0 4px rgba(53, 181, 168, 0.1); }
+        .grade-dirty { border-color: #f59e0b; background: #fffbeb; }
+        @media (max-width: 1100px) {
+            body { overflow: auto; }
+            #app-view { min-height: 100dvh; overflow: visible; }
+            #app-view > header { height: auto; min-height: 80px; flex-wrap: wrap; gap: 12px; padding: 14px 18px; }
+        }
     </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden text-left bg-fmm-bg">
@@ -98,57 +104,51 @@
     <!-- TELA DO APLICATIVO MASTER (Notas) -->
     <main class="flex-1 flex flex-col min-w-0 overflow-hidden relative" id="app-view">
         
-        <header class="bg-white h-20 border-b flex items-center justify-between px-8 z-30 shadow-sm flex-shrink-0">
-            <div class="flex items-center gap-6">
+        <header class="bg-white border-b flex flex-col items-stretch gap-3 px-6 py-3 z-30 shadow-sm flex-shrink-0">
+            <div class="flex items-center justify-between gap-4">
                 <div class="flex flex-col text-left">
                     <h1 class="text-base font-black text-fmm-dark tracking-tight flex items-center gap-2 leading-none">
                         <span class="w-2 h-4 bg-fmm-teal rounded-full"></span>
-                        Master Lançamento
-                        <span class="ml-2 text-xs font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md uppercase tracking-wider">1º Bimestre</span>
+                        Lançamento de Notas
+                        <span id="level-badge" class="ml-2 text-xs font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md uppercase tracking-wider">Fundamental</span>
                     </h1>
                 </div>
-
-                <div class="h-8 w-px bg-slate-100 hidden md:block"></div>
-
-                <!-- SELETOR DE MODO -->
-                <div class="flex items-center bg-slate-100 p-1 rounded-xl">
-                    <button onclick="setMode('TURMA')" id="btn-mode-turma" class="px-4 py-1.5 text-xs font-bold rounded-lg bg-white shadow-sm text-fmm-dark transition-all">Por Turma</button>
-                    <button onclick="setMode('ALUNO')" id="btn-mode-aluno" class="px-4 py-1.5 text-xs font-bold rounded-lg text-slate-500 hover:text-fmm-dark transition-all">Por Aluno</button>
-                </div>
-
-                <!-- FILTROS: MODO TURMA -->
-                <div id="filters-turma" class="flex items-center gap-3 ml-2 transition-all">
-                    <select id="selectTurma" onchange="loadGradeTable()" class="top-bar-select">
-                        <option value="">Selecione a Turma (EF)...</option>
-                    </select>
-                    <select id="selectDisc" onchange="loadGradeTable()" class="top-bar-select w-56">
-                        <option value="">Selecione a Disciplina...</option>
-                    </select>
-                </div>
-
-                <!-- FILTROS: MODO ALUNO -->
-                <div id="filters-aluno" class="hidden relative items-center ml-2 transition-all">
-                    <div class="relative">
-                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
-                        <input type="text" id="search-aluno" oninput="handleStudentSearch(this.value)" placeholder="Buscar aluno por nome..." class="top-bar-select w-80 pl-9 font-normal">
-                        
-                        <!-- Dropdown de Resultados -->
-                        <div id="search-results" class="hidden absolute top-full mt-2 w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-64 overflow-y-auto z-50 py-2">
-                            <!-- Resultados injetados aqui -->
-                        </div>
+                <div class="flex items-center gap-3">
+                    <div id="sync-status" class="hidden items-center gap-2 px-3 py-1.5 bg-fmm-teal/10 rounded-full border border-fmm-teal/20">
+                        <i data-lucide="refresh-ccw" class="w-3.5 h-3.5 text-fmm-teal"></i>
+                        <span id="pending-count" class="text-[9px] font-black text-fmm-teal uppercase">0 pendentes</span>
+                    </div>
+                    <button id="save-edits" onclick="savePendingEdits()" disabled class="inline-flex items-center gap-2 bg-fmm-blue text-white px-4 py-2 rounded-xl text-xs font-black disabled:opacity-40 disabled:cursor-not-allowed hover:bg-fmm-dark transition-colors">
+                        <i data-lucide="save" class="w-4 h-4"></i> Salvar edições
+                    </button>
+                    <div id="counter-badge" class="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
+                        <i data-lucide="users" id="counter-icon" class="w-4 h-4 text-slate-400"></i>
+                        <span id="student-count" class="text-sm font-black text-fmm-dark">00</span>
                     </div>
                 </div>
             </div>
-
-            <div class="flex items-center gap-4">
-                <div id="sync-status" class="hidden items-center gap-2 px-3 py-1.5 bg-fmm-teal/10 rounded-full border border-fmm-teal/20 animate-pulse">
-                    <i data-lucide="refresh-ccw" class="w-3.5 h-3.5 text-fmm-teal"></i>
-                    <span class="text-[9px] font-black text-fmm-teal uppercase">Salvando...</span>
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="flex items-center bg-slate-100 p-1 rounded-xl shrink-0">
+                    <button onclick="setMode('TURMA')" id="btn-mode-turma" class="px-3 py-2 text-xs font-bold rounded-lg bg-white shadow-sm text-fmm-dark transition-all">Por Turma</button>
+                    <button onclick="setMode('ALUNO')" id="btn-mode-aluno" class="px-3 py-2 text-xs font-bold rounded-lg text-slate-500 hover:text-fmm-dark transition-all">Por Aluno</button>
                 </div>
-
-                <div id="counter-badge" class="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
-                    <i data-lucide="users" id="counter-icon" class="w-4 h-4 text-slate-400"></i>
-                    <span id="student-count" class="text-sm font-black text-fmm-dark">00</span>
+                <select id="selectNivel" onchange="onLevelChange()" class="top-bar-select" aria-label="Nível de ensino">
+                    <option value="EF">Ensino Fundamental</option>
+                    <option value="EMT">Ensino Médio</option>
+                </select>
+                <select id="selectAno" onchange="onFilterChange()" class="top-bar-select" aria-label="Ano letivo"></select>
+                <select id="selectPeriodo" onchange="onFilterChange()" class="top-bar-select" aria-label="Período"></select>
+                <div id="filters-turma" class="flex flex-wrap items-center gap-2">
+                    <select id="selectTurma" onchange="onClassChange()" class="top-bar-select"><option value="">Selecione a turma</option></select>
+                    <select id="selectDisc" onchange="onDisciplineChange()" class="top-bar-select"><option value="">Selecione a disciplina</option></select>
+                </div>
+                <div id="filters-aluno" class="hidden relative items-center">
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                        <input type="text" id="search-aluno" oninput="handleStudentSearch(this.value)" placeholder="Buscar aluno por nome..." class="top-bar-select w-64 pl-9 font-normal">
+                        <div id="search-results" class="hidden absolute top-full mt-2 w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-64 overflow-y-auto z-50 py-2">
+                        </div>
+                    </div>
                 </div>
             </div>
         </header>
@@ -210,12 +210,55 @@
         let currentMode = 'TURMA'; // 'TURMA' | 'ALUNO'
         let globalMatriculas = [];
         let globalNotas = [];
-        let allDisciplinas = [];
         let currentDiscSigla = '';
         let selectedMatricula = null;
-        let saveTimers = {};
         let searchTimeout = null;
         let currentUser = null;
+        let allTurmas = [];
+        let allDisciplinas = [];
+        let catalogDisciplinas = [];
+        let pendingEdits = new Map();
+        let isSaving = false;
+        let previousLevelCode = 'EF';
+        let lastFilters = null;
+        const PAGE_SIZE = 1000;
+        const ID_BATCH_SIZE = 50;
+        const EF_DISCIPLINES = ['ARTE', 'CIENCIAS', 'EDUCACAO FISICA', 'FILOSOFIA', 'GEOGRAFIA', 'HISTORIA', 'LINGUA INGLESA', 'LINGUA PORTUGUESA', 'MATEMATICA'];
+
+        function normalizeText(value) {
+            return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
+        }
+
+        async function fetchAllRows(queryFactory) {
+            const rows = [];
+            for (let offset = 0; ; offset += PAGE_SIZE) {
+                const { data, error } = await queryFactory().range(offset, offset + PAGE_SIZE - 1);
+                if (error) throw error;
+                rows.push(...(data || []));
+                if (!data || data.length < PAGE_SIZE) return rows;
+            }
+        }
+
+        function getLevelCode() { return document.getElementById('selectNivel').value; }
+        function getPeriodValue() { return document.getElementById('selectPeriodo').value; }
+        function getYearValue() { return Number(document.getElementById('selectAno').value); }
+        function isFundamental() { return getLevelCode() === 'EF'; }
+        function getGradeTable() { return isFundamental() ? 'notas_fundamental' : 'notas_basica'; }
+        function getGradeFinalField() { return isFundamental() ? 'nb' : 'nt'; }
+        function getRecoveryField() { return isFundamental() ? 'rb' : 'rt'; }
+        function getRecoveryLabel() { return isFundamental() ? 'Recup. (RB)' : 'Recup. (RT)'; }
+        function isActiveEnrollment(matricula) {
+            const status = matricula.status || matricula.alunos?.status || '';
+            return ['CURSANDO', 'ATIVO'].includes(String(status).trim().toUpperCase());
+        }
+        function getPeriodLabel() {
+            const [number, type] = getPeriodValue().split('_');
+            return `${number}º ${type === 'BIMESTRE' ? 'Bimestre' : 'Trimestre'}`;
+        }
 
         // Utilitário de Toast
         function showToastUnified(title, text, type = 'info') {
@@ -282,6 +325,8 @@
 
         // ------------------ ALTERNAR MODO (TURMA / ALUNO) ------------------
         function setMode(mode) {
+            if (isSaving) return;
+            if (pendingEdits.size && !confirmDiscardPending()) return;
             currentMode = mode;
             const btnTurma = document.getElementById('btn-mode-turma');
             const btnAluno = document.getElementById('btn-mode-aluno');
@@ -308,8 +353,8 @@
                 filtersAluno.classList.remove('flex');
                 
                 counterIcon.setAttribute('data-lucide', 'users');
-                emptyTitle.innerText = "Selecione Turma e Disciplina";
-                emptySubtitle.innerText = "Os alunos do Ensino Fundamental aparecerão aqui.";
+                emptyTitle.innerText = "Selecione turma e disciplina";
+                emptySubtitle.innerText = `Os alunos do ${isFundamental() ? 'Ensino Fundamental' : 'Ensino Médio'} aparecerão aqui.`;
                 
                 loadGradeTable();
             } else {
@@ -322,44 +367,199 @@
                 
                 counterIcon.setAttribute('data-lucide', 'book-open');
                 emptyTitle.innerText = "Busque um Aluno";
-                emptySubtitle.innerText = "Digite o nome na barra superior para ver o boletim.";
+                emptySubtitle.innerText = `Digite o nome de um aluno do ${isFundamental() ? 'Ensino Fundamental' : 'Ensino Médio'}.`;
                 document.getElementById('search-aluno').value = '';
                 document.getElementById('search-results').classList.add('hidden');
             }
             lucide.createIcons();
         }
 
-        // ------------------ SISTEMA MASTER (FILTROS GLOBAIS) ------------------
+        function periodsForLevel() {
+            const term = isFundamental() ? 'BIMESTRE' : 'TRIMESTRE';
+            const count = isFundamental() ? 4 : 3;
+            return Array.from({ length:count }, (_, index) => `${index + 1}_${term}`);
+        }
+
+        function populatePeriods() {
+            const select = document.getElementById('selectPeriodo');
+            const selected = select.value;
+            select.innerHTML = periodsForLevel().map((period, index) =>
+                `<option value="${period}">${index + 1}º ${isFundamental() ? 'Bimestre' : 'Trimestre'}</option>`
+            ).join('');
+            if (periodsForLevel().includes(selected)) select.value = selected;
+            document.querySelector('#level-badge').textContent = isFundamental() ? 'Ensino Fundamental' : 'Ensino Médio';
+        }
+
+        function populateYears() {
+            const currentYear = new Date().getFullYear();
+            const select = document.getElementById('selectAno');
+            select.innerHTML = Array.from({ length:6 }, (_, index) => currentYear - 3 + index)
+                .map(year => `<option value="${year}">${year}</option>`).join('');
+            select.value = String(currentYear);
+        }
+
+        function matchingDisciplines(turma) {
+            const series = normalizeText(turma?.serie);
+            return catalogDisciplinas.filter(discipline => {
+                const applicable = !Array.isArray(discipline.series) || !discipline.series.length
+                    || discipline.series.some(item => normalizeText(item) === series);
+                if (!applicable) return false;
+                return isFundamental()
+                    ? discipline.tipo !== 'Técnica' && EF_DISCIPLINES.includes(normalizeText(discipline.nome))
+                    : discipline.tipo === 'BCC';
+            }).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+        }
+
+        function populateClasses() {
+            const select = document.getElementById('selectTurma');
+            const level = getLevelCode();
+            const classes = allTurmas.filter(turma => level === 'EF'
+                ? String(turma.nivel || '').startsWith('EF')
+                : turma.nivel === 'EMT');
+            select.innerHTML = '<option value="">Selecione a turma</option>' + classes
+                .map(turma => `<option value="${escapeHtml(turma.id)}">${escapeHtml(turma.nome)}${turma.serie ? ` (${escapeHtml(turma.serie)})` : ''}</option>`)
+                .join('');
+            populateDisciplines();
+        }
+
+        function populateDisciplines() {
+            const select = document.getElementById('selectDisc');
+            const turma = allTurmas.find(item => String(item.id) === String(document.getElementById('selectTurma').value));
+            const disciplines = turma ? matchingDisciplines(turma) : [];
+            select.innerHTML = '<option value="">Selecione a disciplina</option>' + disciplines
+                .map(discipline => `<option value="${escapeHtml(discipline.sigla)}">${escapeHtml(discipline.nome)} (${escapeHtml(discipline.sigla)})</option>`)
+                .join('');
+            allDisciplinas = disciplines;
+        }
+
         async function populateSelectors() {
-            const selectT = document.getElementById('selectTurma');
-            const selectD = document.getElementById('selectDisc');
-
-            const { data: turmas } = await window.supabaseClient.from('turmas').select('id, nome, serie').like('nivel', 'EF%').order('nome');
-            const { data: disciplinas } = await window.supabaseClient.from('disciplinas').select('sigla, nome').order('nome');
-
-            if (turmas) {
-                selectT.innerHTML = '<option value="">Selecione a Turma (EF)...</option>' + turmas.map(t => `<option value="${t.id}">${t.nome} (${t.serie || ''})</option>`).join('');
+            try {
+                const [turmas, disciplinas] = await Promise.all([
+                    fetchAllRows(() => window.supabaseClient.from('turmas').select('id, nome, serie, nivel').order('nome')),
+                    fetchAllRows(() => window.supabaseClient.from('disciplinas').select('sigla, nome, tipo, series').order('nome'))
+                ]);
+                allTurmas = turmas;
+                catalogDisciplinas = disciplinas;
+                populateYears();
+                populatePeriods();
+                populateClasses();
+                rememberFilters();
+                lucide.createIcons();
+            } catch (error) {
+                console.error('Falha ao carregar filtros de lançamento de notas:', error);
+                showToastUnified('Erro ao carregar filtros', error.message, 'error');
             }
-            if (disciplinas) {
-                // Remove acentos e padroniza para maiúsculo para garantir o match perfeito
-                const normalizeString = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
-                
-                const allowedNames = [
-                    'ARTE', 'CIENCIAS', 'EDUCACAO FISICA', 'FILOSOFIA',
-                    'GEOGRAFIA', 'HISTORIA', 'LINGUA INGLESA',
-                    'LINGUA PORTUGUESA', 'MATEMATICA'
-                ];
+        }
 
-                // Filtra as disciplinas vindas do banco
-                const disciplinasEF = disciplinas.filter(d => allowedNames.includes(normalizeString(d.nome)));
-
-                allDisciplinas = disciplinasEF;
-                selectD.innerHTML = '<option value="">Selecione a Disciplina...</option>' + disciplinasEF.map(d => `<option value="${d.sigla}">${d.nome} (${d.sigla})</option>`).join('');
+        function onLevelChange() {
+            if (pendingEdits.size && !confirmDiscardPending()) {
+                document.getElementById('selectNivel').value = previousLevelCode;
+                return;
             }
+            previousLevelCode = getLevelCode();
+            populatePeriods();
+            populateClasses();
+            resetLoadedTable();
+            rememberFilters();
+            if (currentMode === 'ALUNO') document.getElementById('search-aluno').value = '';
+        }
+
+        async function onFilterChange() {
+            if (!acceptFilterChange()) return;
+            if (currentMode === 'TURMA') loadGradeTable();
+            else if (selectedMatricula) {
+                const selected = selectedMatricula;
+                try {
+                    let query = window.supabaseClient.from('matriculas')
+                        .select('id, id_turma, ra_aluno, turmas!inner(nome, nivel)')
+                        .eq('ra_aluno', selected.ra)
+                        .eq('ano_letivo', getYearValue())
+                        .limit(1);
+                    query = isFundamental() ? query.like('turmas.nivel', 'EF%') : query.eq('turmas.nivel', 'EMT');
+                    const { data, error } = await query.maybeSingle();
+                    if (error) throw error;
+                    if (!data) {
+                        selectedMatricula = null;
+                        resetLoadedTable();
+                        showToastUnified('Matrícula não encontrada', 'Este aluno não possui matrícula no nível e ano selecionados.', 'info');
+                        return;
+                    }
+                    await selectStudent(data.id, selected.nome, data.ra_aluno, data.turmas.nome, data.id_turma);
+                } catch (error) {
+                    console.error('Falha ao carregar a matrícula do aluno para os filtros selecionados:', error);
+                    showToastUnified('Erro ao carregar aluno', error.message, 'error');
+                }
+            }
+        }
+
+        function onClassChange() {
+            if (!acceptFilterChange()) return;
+            populateDisciplines();
+            rememberFilters();
+            loadGradeTable();
+        }
+
+        function onDisciplineChange() {
+            if (!acceptFilterChange()) return;
+            loadGradeTable();
+        }
+
+        function captureFilters() {
+            return {
+                level:document.getElementById('selectNivel').value,
+                year:document.getElementById('selectAno').value,
+                period:document.getElementById('selectPeriodo').value,
+                turma:document.getElementById('selectTurma').value,
+                discipline:document.getElementById('selectDisc').value
+            };
+        }
+
+        function rememberFilters() { lastFilters = captureFilters(); }
+
+        function restoreFilters() {
+            if (!lastFilters) return;
+            document.getElementById('selectNivel').value = lastFilters.level;
+            document.getElementById('selectAno').value = lastFilters.year;
+            populatePeriods();
+            document.getElementById('selectPeriodo').value = lastFilters.period;
+            populateClasses();
+            document.getElementById('selectTurma').value = lastFilters.turma;
+            populateDisciplines();
+            document.getElementById('selectDisc').value = lastFilters.discipline;
+            previousLevelCode = lastFilters.level;
+        }
+
+        function acceptFilterChange() {
+            if (pendingEdits.size && !confirmDiscardPending()) {
+                restoreFilters();
+                return false;
+            }
+            previousLevelCode = getLevelCode();
+            rememberFilters();
+            return true;
+        }
+
+        function confirmDiscardPending() {
+            if (!pendingEdits.size) return true;
+            if (!confirm('Há edições não salvas. Deseja descartá-las e continuar?')) return false;
+            pendingEdits.clear();
+            updatePendingUI();
+            return true;
+        }
+
+        function resetLoadedTable() {
+            document.getElementById('table-wrapper').classList.add('hidden');
+            document.getElementById('empty-view').classList.remove('hidden');
+            document.getElementById('student-header').classList.add('hidden');
+            globalMatriculas = [];
+            globalNotas = [];
+            selectedMatricula = null;
+            document.getElementById('student-count').innerText = '00';
         }
 
         // ------------------ LÓGICA MODO ALUNO (PESQUISA INDIVIDUAL) ------------------
         function handleStudentSearch(term) {
+            if (isSaving) return;
             const resultsContainer = document.getElementById('search-results');
             
             if (searchTimeout) clearTimeout(searchTimeout);
@@ -371,39 +571,48 @@
 
             searchTimeout = setTimeout(async () => {
                 try {
-                    const { data, error } = await window.supabaseClient
+                    let query = window.supabaseClient
                         .from('matriculas')
-                        .select('id, ra_aluno, turmas!inner(nome, nivel), alunos!inner(nome_completo)')
-                        .ilike('turmas.nivel', 'EF%')
+                        .select('id, ra_aluno, id_turma, status, turmas!inner(nome, serie, nivel), alunos!inner(nome_completo, status)')
                         .ilike('alunos.nome_completo', `%${term}%`)
-                        .eq('ano_letivo', 2026)
+                        .eq('ano_letivo', getYearValue())
                         .limit(8);
+                    query = getLevelCode() === 'EF' ? query.like('turmas.nivel', 'EF%') : query.eq('turmas.nivel', 'EMT');
+                    const { data, error } = await query;
 
                     if (error) throw error;
 
                     if (data && data.length > 0) {
                         resultsContainer.innerHTML = data.map(m => `
-                            <div onclick="selectStudent('${m.id}', '${m.alunos.nome_completo}', '${m.ra_aluno}', '${m.turmas.nome}')" class="px-4 py-3 hover:bg-slate-50 cursor-pointer flex flex-col transition-colors border-b border-slate-50 last:border-0">
-                                <span class="text-sm font-bold text-fmm-dark truncate">${m.alunos.nome_completo}</span>
+                            <button type="button" data-matricula="${escapeHtml(m.id)}" data-name="${escapeHtml(m.alunos?.nome_completo)}" data-ra="${escapeHtml(m.ra_aluno)}" data-class="${escapeHtml(m.turmas?.nome)}" data-class-id="${escapeHtml(m.id_turma)}" class="w-full px-4 py-3 text-left hover:bg-slate-50 cursor-pointer flex flex-col transition-colors border-b border-slate-50 last:border-0">
+                                <span class="text-sm font-bold text-fmm-dark truncate">${escapeHtml(m.alunos?.nome_completo)}</span>
                                 <div class="flex items-center gap-2 mt-1">
-                                    <span class="text-[10px] font-bold text-slate-400 uppercase">RA: ${m.ra_aluno}</span>
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase">RA: ${escapeHtml(m.ra_aluno)}</span>
                                     <span class="w-1 h-1 bg-slate-300 rounded-full"></span>
-                                    <span class="text-[10px] font-bold text-fmm-teal uppercase">${m.turmas.nome}</span>
+                                    <span class="text-[10px] font-bold text-fmm-teal uppercase">${escapeHtml(m.turmas?.nome)}</span>
                                 </div>
-                            </div>
+                            </button>
                         `).join('');
+                        resultsContainer.querySelectorAll('button[data-matricula]').forEach(button => {
+                            button.addEventListener('click', () => selectStudent(
+                                button.dataset.matricula, button.dataset.name, button.dataset.ra, button.dataset.class, button.dataset.classId
+                            ));
+                        });
                         resultsContainer.classList.remove('hidden');
                     } else {
                         resultsContainer.innerHTML = `<div class="px-4 py-4 text-center text-xs font-bold text-slate-400 uppercase">Nenhum aluno encontrado</div>`;
                         resultsContainer.classList.remove('hidden');
                     }
                 } catch(err) {
-                    console.error("Erro na busca:", err);
+                    console.error('Erro ao buscar alunos para lançamento:', err);
+                    showToastUnified('Erro na busca', err.message, 'error');
                 }
             }, 500);
         }
 
-        async function selectStudent(matId, nome, ra, turma) {
+        async function selectStudent(matId, nome, ra, turma, turmaId = '') {
+            if (isSaving) return;
+            if (pendingEdits.size && !confirmDiscardPending()) return;
             document.getElementById('search-results').classList.add('hidden');
             document.getElementById('search-aluno').value = nome;
             document.getElementById('empty-view').classList.add('hidden');
@@ -415,16 +624,18 @@
             document.getElementById('sh-ra').innerText = `RA: ${ra}`;
             document.getElementById('sh-turma').innerText = turma;
             
-            selectedMatricula = { id: matId, nome, ra, turma };
+            selectedMatricula = { id: matId, nome, ra, turma, turmaId };
 
             try {
-                const { data: notas } = await window.supabaseClient
-                    .from('notas_fundamental')
+                globalNotas = await fetchAllRows(() => window.supabaseClient
+                    .from(getGradeTable())
                     .select('*')
                     .eq('id_matricula', matId)
-                    .eq('periodo', '1_BIMESTRE');
-
-                globalNotas = notas || [];
+                    .eq('periodo', getPeriodValue())
+                    .order('sigla_disciplina'));
+                const selectedClass = allTurmas.find(item => String(item.id) === String(turmaId))
+                    || allTurmas.find(item => String(item.nome) === String(turma));
+                allDisciplinas = selectedClass ? matchingDisciplines(selectedClass) : [];
                 document.getElementById('student-count').innerText = allDisciplinas.length.toString().padStart(2, '0');
 
                 renderStudentTable();
@@ -432,54 +643,59 @@
                 document.getElementById('table-wrapper').classList.remove('hidden');
             } catch (err) {
                 console.error(err);
-                showToastUnified("Erro", "Falha ao carregar boletim do aluno.", "error");
+                showToastUnified('Erro', `Falha ao carregar notas: ${err.message}`, 'error');
             } finally {
                 document.getElementById('loading-overlay').classList.add('hidden');
             }
         }
 
         function renderStudentTable() {
+            renderGradesTable(allDisciplinas, [selectedMatricula]);
+        }
+
+        function renderGradesTable(disciplines, students) {
             const header = document.getElementById('tableHeader');
             const body = document.getElementById('tableBody');
-
-            header.innerHTML = `
-                <tr>
-                    <th class="px-8 py-6 sticky-intersect border-r border-white/5 min-w-[300px] text-white text-[10px] font-black uppercase tracking-widest">Disciplina</th>
-                    <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 1 (P1)</th>
-                    <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 2 (P2)</th>
-                    <th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">M. Parcial</th>
-                    <th class="text-center py-6 sticky-header bg-orange-600 text-white text-[10px] font-black uppercase">Recup (RB)</th>
-                    <th class="text-center py-6 sticky-header bg-fmm-teal text-white text-[10px] font-black uppercase tracking-widest">Bimestral</th>
-                </tr>
-            `;
-
-            if (allDisciplinas.length === 0) {
-                body.innerHTML = `<tr><td colspan="6" class="px-8 py-20 text-center text-slate-300 italic font-medium">Nenhuma disciplina cadastrada no sistema.</td></tr>`;
+            const finalField = getGradeFinalField();
+            const recoveryField = getRecoveryField();
+            const termName = isFundamental() ? 'Bimestral' : 'Trimestral';
+            header.innerHTML = `<tr>
+                <th class="px-8 py-6 sticky-intersect border-r border-white/5 min-w-[300px] text-white text-[10px] font-black uppercase tracking-widest">${currentMode === 'TURMA' ? 'Aluno' : 'Disciplina'}</th>
+                <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 1 (P1)</th>
+                <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 2 (P2)</th>
+                <th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">M. Parcial</th>
+                <th class="text-center py-6 sticky-header bg-orange-600 text-white text-[10px] font-black uppercase">${getRecoveryLabel()}</th>
+                <th class="text-center py-6 sticky-header bg-fmm-teal text-white text-[10px] font-black uppercase tracking-widest">${termName}</th>
+            </tr>`;
+            if (!students.length || !disciplines.length) {
+                body.innerHTML = `<tr><td colspan="6" class="px-8 py-20 text-center text-slate-300 italic font-medium">${disciplines.length ? 'Nenhum aluno ativo encontrado nesta turma.' : 'Nenhuma disciplina disponível para esta turma.'}</td></tr>`;
                 return;
             }
-
-            body.innerHTML = allDisciplinas.map(disc => {
-                const n = globalNotas.find(x => x.sigla_disciplina === disc.sigla) || { p1: 0, p2: 0, rb: 0, nb: 0 };
-                const mp = (Number(n.p1 || 0) + Number(n.p2 || 0)) / 2;
-                const matId = selectedMatricula.id;
-
-                return `
-                <tr class="group transition-colors hover:bg-slate-50/50 text-left">
-                    <td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100">
-                        <div class="flex flex-col text-left">
-                            <span class="text-sm font-extrabold text-fmm-dark truncate">${disc.nome}</span>
-                            <span class="text-[10px] text-slate-400 font-bold uppercase">${disc.sigla}</span>
-                        </div>
-                    </td>
-                    <td class="px-4 text-center">${renderInput(matId, disc.sigla, 'p1', n.p1)}</td>
-                    <td class="px-4 text-center">${renderInput(matId, disc.sigla, 'p2', n.p2)}</td>
-                    <td class="px-4 text-center font-bold bg-slate-50 text-slate-400" id="mp-display-${matId}-${disc.sigla}">${mp.toFixed(1)}</td>
-                    <td class="px-4 text-center">${renderInput(matId, disc.sigla, 'rb', n.rb, mp >= 6)}</td>
-                    <td class="px-6 text-center">
-                        <span id="nb-display-${matId}-${disc.sigla}" class="font-black text-base ${n.nb < 6 ? 'text-red-600' : 'text-fmm-teal'}">
-                            ${Number(n.nb || 0).toFixed(1)}
-                        </span>
-                    </td>
+            const selectedDiscipline = disciplines.find(discipline =>
+                normalizeText(discipline.sigla) === normalizeText(currentDiscSigla)
+            );
+            if (currentMode === 'TURMA' && !selectedDiscipline) {
+                body.innerHTML = '<tr><td colspan="6" class="px-8 py-20 text-center text-slate-300 italic font-medium">A disciplina selecionada não está disponível para esta turma.</td></tr>';
+                return;
+            }
+            const dataRows = currentMode === 'TURMA'
+                ? students.map(student => ({ student, discipline:selectedDiscipline }))
+                : disciplines.map(discipline => ({ student:students[0], discipline }));
+            body.innerHTML = dataRows.map(({ student, discipline }) => {
+                const matId = student.id;
+                const note = globalNotas.find(item => String(item.id_matricula) === String(matId)
+                    && normalizeText(item.sigla_disciplina) === normalizeText(discipline.sigla)) || {};
+                const average = (Number(note.p1 || 0) + Number(note.p2 || 0)) / 2;
+                const leftCell = currentMode === 'TURMA'
+                    ? `<div class="flex items-center gap-4 text-left"><div class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-400">${escapeHtml(student.alunos?.nome_completo?.charAt(0) || '?')}</div><div class="flex flex-col text-left"><span class="text-sm font-extrabold truncate max-w-[220px]">${escapeHtml(student.alunos?.nome_completo || '')}</span><span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${escapeHtml(student.ra_aluno)}</span></div></div>`
+                    : `<div class="flex flex-col text-left"><span class="text-sm font-extrabold">${escapeHtml(discipline.nome)}</span><span class="text-[10px] text-slate-400 font-bold uppercase">${escapeHtml(discipline.sigla)}</span></div>`;
+                return `<tr class="group transition-colors hover:bg-slate-50/50 text-left">
+                    <td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100">${leftCell}</td>
+                    <td class="px-4 text-center">${renderInput(matId, discipline.sigla, 'p1', note.p1)}</td>
+                    <td class="px-4 text-center">${renderInput(matId, discipline.sigla, 'p2', note.p2)}</td>
+                    <td data-average class="px-4 text-center font-bold bg-slate-50 text-slate-400">${average.toFixed(1)}</td>
+                    <td class="px-4 text-center">${renderInput(matId, discipline.sigla, recoveryField, note[recoveryField], average >= 6)}</td>
+                    <td class="px-6 text-center"><span class="font-black text-base ${Number(note[finalField] || 0) < 6 ? 'text-red-600' : 'text-fmm-teal'}">${Number(note[finalField] || 0).toFixed(1)}</span></td>
                 </tr>`;
             }).join('');
         }
@@ -488,61 +704,56 @@
         async function loadGradeTable() {
             if (currentMode !== 'TURMA') return;
 
+            if (pendingEdits.size && !confirmDiscardPending()) {
+                restoreFilters();
+                return;
+            }
             const turmaId = document.getElementById('selectTurma').value;
-            currentDiscSigla = document.getElementById('selectDisc').value;
+            const selectedDiscSigla = document.getElementById('selectDisc').value;
+            rememberFilters();
 
-            if (!turmaId || !currentDiscSigla) {
-                document.getElementById('table-wrapper').classList.add('hidden');
-                document.getElementById('empty-view').classList.remove('hidden');
+            if (!turmaId || !selectedDiscSigla) {
+                resetLoadedTable();
                 return;
             }
 
+            currentDiscSigla = selectedDiscSigla;
             document.getElementById('empty-view').classList.add('hidden');
             document.getElementById('loading-overlay').classList.remove('hidden');
             document.getElementById('table-wrapper').classList.add('hidden');
 
             try {
-                let { data: matriculas, error: matErr } = await window.supabaseClient.from('matriculas')
-                    .select('id, ra_aluno, alunos!inner(nome_completo, status)')
+                const matriculas = await fetchAllRows(() => window.supabaseClient.from('matriculas')
+                    .select('id, ra_aluno, status, alunos!inner(nome_completo, status)')
                     .eq('id_turma', turmaId)
-                    .eq('ano_letivo', 2026);
+                    .eq('ano_letivo', getYearValue())
+                    .order('id'));
 
-                if (matErr || !matriculas || matriculas.length === 0) {
-                    const { data: fallbackAlunos } = await window.supabaseClient.from('alunos')
-                        .select('ra, nome_completo, status')
-                        .eq('id_turma', turmaId)
-                        .in('status', ['ATIVO', 'CURSANDO']);
-
-                    if (fallbackAlunos && fallbackAlunos.length > 0) {
-                        matriculas = fallbackAlunos.map(a => ({ id: null, ra_aluno: a.ra, alunos: { nome_completo: a.nome_completo, status: a.status } }));
-                    } else {
-                        matriculas = [];
-                    }
-                } else {
-                    matriculas = matriculas.filter(m => (m.alunos?.status || '').toUpperCase() === 'CURSANDO' || (m.alunos?.status || '').toUpperCase() === 'ATIVO');
-                }
-
-                globalMatriculas = matriculas.sort((a, b) => a.alunos.nome_completo.localeCompare(b.alunos.nome_completo));
+                globalMatriculas = matriculas.filter(isActiveEnrollment)
+                    .sort((a, b) => (a.alunos?.nome_completo || '').localeCompare(b.alunos?.nome_completo || '', 'pt-BR'));
                 document.getElementById('student-count').innerText = globalMatriculas.length.toString().padStart(2, '0');
 
-                const idList = globalMatriculas.map(m => m.id).filter(id => id !== null);
-                if (idList.length > 0) {
-                    const { data: notas } = await window.supabaseClient.from('notas_fundamental')
+                const idList = globalMatriculas.map(m => m.id).filter(Boolean);
+                const noteBatches = [];
+                const requests = [];
+                for (let start = 0; start < idList.length; start += ID_BATCH_SIZE) {
+                    const ids = idList.slice(start, start + ID_BATCH_SIZE);
+                    requests.push(fetchAllRows(() => window.supabaseClient.from(getGradeTable())
                         .select('*')
                         .eq('sigla_disciplina', currentDiscSigla)
-                        .eq('periodo', '1_BIMESTRE')
-                        .in('id_matricula', idList);
-                    globalNotas = notas || [];
-                } else {
-                    globalNotas = [];
+                        .eq('periodo', getPeriodValue())
+                        .in('id_matricula', ids)
+                        .order('id_matricula')));
                 }
+                noteBatches.push(...(await Promise.all(requests)).flat());
+                globalNotas = noteBatches;
 
                 renderTurmaTable();
                 document.getElementById('table-wrapper').classList.remove('hidden');
 
             } catch (error) {
                 console.error("Erro ao carregar matriz:", error);
-                showToastUnified("Erro Crítico", "Falha ao buscar os alunos desta turma.", "error");
+                showToastUnified('Erro ao carregar turma', error.message, 'error');
             } finally {
                 document.getElementById('loading-overlay').classList.add('hidden');
                 lucide.createIcons();
@@ -550,151 +761,122 @@
         }
 
         function renderTurmaTable() {
-            const header = document.getElementById('tableHeader');
-            const body = document.getElementById('tableBody');
-
-            header.innerHTML = `
-                <tr>
-                    <th class="px-8 py-6 sticky-intersect border-r border-white/5 min-w-[300px] text-white text-[10px] font-black uppercase tracking-widest">Aluno</th>
-                    <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 1 (P1)</th>
-                    <th class="text-center py-6 sticky-header text-white text-[10px] font-black uppercase">Prova 2 (P2)</th>
-                    <th class="text-center py-6 sticky-header bg-slate-800 text-white text-[10px] font-black uppercase">M. Parcial</th>
-                    <th class="text-center py-6 sticky-header bg-orange-600 text-white text-[10px] font-black uppercase">Recup (RB)</th>
-                    <th class="text-center py-6 sticky-header bg-fmm-teal text-white text-[10px] font-black uppercase tracking-widest">Bimestral</th>
-                </tr>
-            `;
-
-            if (globalMatriculas.length === 0) {
-                body.innerHTML = `<tr><td colspan="6" class="px-8 py-20 text-center text-slate-300 italic font-medium">Nenhum aluno ativo encontrado nesta turma.</td></tr>`;
-                return;
-            }
-
-            body.innerHTML = globalMatriculas.map(m => {
-                const n = globalNotas.find(x => x.id_matricula === m.id) || { p1: 0, p2: 0, rb: 0, nb: 0 };
-                const mp = (Number(n.p1 || 0) + Number(n.p2 || 0)) / 2;
-
-                return `
-                <tr class="group transition-colors hover:bg-slate-50/50 text-left">
-                    <td class="px-8 py-5 font-bold text-fmm-dark sticky-col border-r border-slate-100">
-                        <div class="flex items-center gap-4 text-left">
-                            <div class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-400 border-2 border-white shadow-sm flex-shrink-0">
-                                ${m.alunos.nome_completo.charAt(0)}
-                            </div>
-                            <div class="flex flex-col text-left">
-                                <span class="text-sm font-extrabold truncate max-w-[220px]">${m.alunos.nome_completo}</span>
-                                <span class="text-[10px] text-slate-400 font-bold uppercase">RA: ${m.ra_aluno}</span>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-4 text-center">${renderInput(m.id, currentDiscSigla, 'p1', n.p1)}</td>
-                    <td class="px-4 text-center">${renderInput(m.id, currentDiscSigla, 'p2', n.p2)}</td>
-                    <td class="px-4 text-center font-bold bg-slate-50 text-slate-400" id="mp-display-${m.id}-${currentDiscSigla}">${mp.toFixed(1)}</td>
-                    <td class="px-4 text-center">${renderInput(m.id, currentDiscSigla, 'rb', n.rb, mp >= 6)}</td>
-                    <td class="px-6 text-center">
-                        <span id="nb-display-${m.id}-${currentDiscSigla}" class="font-black text-base ${n.nb < 6 ? 'text-red-600' : 'text-fmm-teal'}">
-                            ${Number(n.nb || 0).toFixed(1)}
-                        </span>
-                    </td>
-                </tr>`;
-            }).join('');
+            renderGradesTable(allDisciplinas, globalMatriculas);
         }
 
         // ------------------ COMPONENTES COMPARTILHADOS (INPUT & SAVE) ------------------
         function renderInput(matId, sigla, field, val, disabled = false) {
-            const isLow = val < 6 && val !== '' && val !== 0;
-            const inputId = `in-${matId}-${sigla}-${field}`;
-            return `
-                <input type="text" 
-                       id="${inputId}"
-                       value="${val === 0 ? '0' : (val || '')}" 
-                       ${disabled ? 'disabled' : ''} 
-                       oninput="handleInput(this, '${matId}', '${sigla}', '${field}')" 
-                       class="grade-input ${isLow ? 'grade-low' : 'grade-ok'}" 
-                       placeholder="-">
-            `;
+            const numericValue = val === null || val === undefined || val === '' ? 0 : Number(val);
+            const displayValue = Number.isFinite(numericValue) ? String(numericValue) : '0';
+            const isLow = numericValue < 6 && numericValue > 0;
+            return `<input type="text" inputmode="decimal"
+                data-matricula="${escapeHtml(matId)}" data-discipline="${escapeHtml(sigla)}"
+                data-field="${field}" data-period="${escapeHtml(getPeriodValue())}"
+                data-original="${displayValue}" value="${displayValue}"
+                ${disabled || !matId ? 'disabled' : ''}
+                oninput="handleInput(this)"
+                class="grade-input ${isLow ? 'grade-low' : 'grade-ok'}" placeholder="-"
+                aria-label="${escapeHtml(`${field.toUpperCase()} ${sigla}`)}">`;
         }
 
-        function handleInput(el, matId, sigla, field) {
-            const valStr = el.value.replace(',', '.');
-            
-            if (valStr !== '' && (isNaN(valStr) || valStr < 0 || valStr > 10)) { 
-                el.classList.add('ring-2', 'ring-red-500'); 
-                return; 
-            }
-            el.classList.remove('ring-2', 'ring-red-500');
-            
-            const val = valStr === '' ? 0 : parseFloat(valStr);
-            const timerKey = `${matId}-${sigla}-${field}`;
-            
-            if (saveTimers[timerKey]) clearTimeout(saveTimers[timerKey]);
-            
-            document.getElementById('sync-status').classList.remove('hidden');
-            
-            saveTimers[timerKey] = setTimeout(() => { saveData(matId, sigla, field, val); }, 700);
+        function updatePendingUI() {
+            const count = pendingEdits.size;
+            const status = document.getElementById('sync-status');
+            status.classList.toggle('hidden', count === 0);
+            document.getElementById('pending-count').textContent = `${count} edição(ões) pendente(s)`;
+            document.getElementById('save-edits').disabled = count === 0 || isSaving;
         }
 
-        async function saveData(matId, sigla, field, val) {
-            if (!matId || matId === 'null') {
-                showToastUnified("Erro de Integridade", "Aluno sem Matrícula Válida. Impossível salvar.", "error");
-                document.getElementById('sync-status').classList.add('hidden');
+        function handleInput(input) {
+            const normalized = input.value.trim().replace(',', '.');
+            if (normalized !== '' && (!Number.isFinite(Number(normalized)) || Number(normalized) < 0 || Number(normalized) > 10)) {
+                input.classList.add('ring-2', 'ring-red-500');
+                input.setAttribute('aria-invalid', 'true');
                 return;
             }
-
-            try {
-                // Como não somos o app isolado, devemos confiar na conexão global
-                // Para contornar eventuais problemas de row-level security (RLS), o portal FMM 
-                // usa o role/privilegio de auth definido no login original.
-                const payload = { 
-                    id_matricula: matId, 
-                    sigla_disciplina: sigla, 
-                    periodo: '1_BIMESTRE',
-                    [field]: val 
-                };
-
-                const { data, error } = await window.supabaseClient
-                    .from('notas_fundamental')
-                    .upsert(payload, { onConflict: 'id_matricula,sigla_disciplina,periodo' })
-                    .select()
-                    .single();
-
-                if (error) throw error;
-
-                // Atualizar Display da Bimestral (nb)
-                const nbDisplay = document.getElementById(`nb-display-${matId}-${sigla}`);
-                if (nbDisplay && data.nb !== undefined) {
-                    nbDisplay.innerText = Number(data.nb).toFixed(1);
-                    nbDisplay.className = `font-black text-base ${data.nb < 6 ? 'text-red-600' : 'text-fmm-teal'}`;
-                }
-
-                // Cálculo Front-end da Parcial
-                if (field === 'p1' || field === 'p2') {
-                    const p1Input = document.getElementById(`in-${matId}-${sigla}-p1`).value;
-                    const p2Input = document.getElementById(`in-${matId}-${sigla}-p2`).value;
-                    
-                    const mp = (Number(p1Input.replace(',','.')||0) + Number(p2Input.replace(',','.')||0)) / 2;
-                    document.getElementById(`mp-display-${matId}-${sigla}`).innerText = mp.toFixed(1);
-                    
-                    const rbInput = document.getElementById(`in-${matId}-${sigla}-rb`);
-                    if (rbInput) {
-                        if (mp >= 6) {
-                            rbInput.disabled = true;
-                            rbInput.value = '';
-                            rbInput.classList.remove('grade-low');
-                            rbInput.classList.add('grade-ok');
-                        } else {
-                            rbInput.disabled = false;
-                        }
-                    }
-                }
-
-                showToastUnified("Sincronizado", "Nota guardada na nuvem com sucesso.", "success");
-
-            } catch (err) {
-                console.error("Erro no Upsert SQL:", err);
-                showToastUnified("Falha de Sincronização", "Ocorreu um erro ao gravar a nota.", "error");
-            } finally {
-                document.getElementById('sync-status').classList.add('hidden');
+            input.classList.remove('ring-2', 'ring-red-500');
+            input.removeAttribute('aria-invalid');
+            const value = normalized === '' ? 0 : Number(normalized);
+            const rowKey = `${input.dataset.matricula}|${normalizeText(input.dataset.discipline)}|${input.dataset.period}`;
+            const key = `${rowKey}|${input.dataset.field}`;
+            const original = Number(input.dataset.original || 0);
+            if (value === original) {
+                pendingEdits.delete(key);
+                input.classList.remove('grade-dirty');
+            } else {
+                pendingEdits.set(key, {
+                    key, rowKey, matId:input.dataset.matricula, sigla:input.dataset.discipline,
+                    periodo:input.dataset.period, field:input.dataset.field, value
+                });
+                input.classList.add('grade-dirty');
             }
+            const row = input.closest('tr');
+            const p1 = Number(row.querySelector('[data-field="p1"]').value.replace(',', '.') || 0);
+            const p2 = Number(row.querySelector('[data-field="p2"]').value.replace(',', '.') || 0);
+            const averageCell = row.querySelector('[data-average]');
+            const average = (p1 + p2) / 2;
+            averageCell.textContent = average.toFixed(1);
+            const recoveryInput = row.querySelector(`[data-field="${getRecoveryField()}"]`);
+            recoveryInput.disabled = average >= 6;
+            updatePendingUI();
+        }
+
+        async function savePendingEdits() {
+            if (isSaving || !pendingEdits.size) return;
+            const pending = [...pendingEdits.values()];
+            const grouped = new Map();
+            pending.forEach(edit => {
+                const record = grouped.get(edit.rowKey) || {
+                    id_matricula:edit.matId, sigla_disciplina:edit.sigla, periodo:edit.periodo, editKeys:[]
+                };
+                record[edit.field] = edit.value;
+                record.editKeys.push(edit.key);
+                grouped.set(edit.rowKey, record);
+            });
+            const records = [...grouped.values()];
+            const savedKeys = new Set();
+            isSaving = true;
+            updatePendingUI();
+            document.querySelectorAll('#selectNivel,#selectAno,#selectPeriodo,#selectTurma,#selectDisc').forEach(select => select.disabled = true);
+            document.getElementById('loading-overlay').classList.remove('hidden');
+            document.getElementById('table-wrapper').classList.add('opacity-60', 'pointer-events-none');
+            try {
+                const table = getGradeTable();
+                for (let offset = 0; offset < records.length; offset += 100) {
+                    const batch = records.slice(offset, offset + 100);
+                    const payload = batch.map(({ editKeys, ...record }) => record);
+                    const { data, error } = await window.supabaseClient.from(table)
+                        .upsert(payload, { onConflict:'id_matricula,sigla_disciplina,periodo' })
+                        .select('*');
+                    if (error) throw error;
+                    batch.forEach(record => record.editKeys.forEach(key => savedKeys.add(key)));
+                    (data || []).forEach(saved => {
+                        const index = globalNotas.findIndex(note => String(note.id_matricula) === String(saved.id_matricula)
+                            && normalizeText(note.sigla_disciplina) === normalizeText(saved.sigla_disciplina));
+                        if (index === -1) globalNotas.push(saved);
+                        else globalNotas[index] = saved;
+                    });
+                }
+                savedKeys.forEach(key => pendingEdits.delete(key));
+                renderCurrentTable();
+                showToastUnified('Edições salvas', `${savedKeys.size} campo(s) de nota foram salvos.`, 'success');
+            } catch (error) {
+                console.error('Falha ao salvar as notas pendentes:', error);
+                savedKeys.forEach(key => pendingEdits.delete(key));
+                renderCurrentTable();
+                showToastUnified('Erro ao salvar', `${error.message} ${pendingEdits.size} edição(ões) continuam pendentes.`, 'error');
+            } finally {
+                isSaving = false;
+                document.querySelectorAll('#selectNivel,#selectAno,#selectPeriodo,#selectTurma,#selectDisc').forEach(select => select.disabled = false);
+                document.getElementById('loading-overlay').classList.add('hidden');
+                document.getElementById('table-wrapper').classList.remove('opacity-60', 'pointer-events-none');
+                updatePendingUI();
+            }
+        }
+
+        function renderCurrentTable() {
+            if (currentMode === 'TURMA') renderTurmaTable();
+            else if (selectedMatricula) renderStudentTable();
         }
 
         // Fechar dropdown de pesquisa ao clicar fora

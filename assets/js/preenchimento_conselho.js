@@ -76,7 +76,7 @@
       state.alunos = await state.provider.getAlunosParaPreenchimento($('turma').value, { periodo:$('periodo').value, anoLetivo:Number($('ano').value) });
       renderStudents();
       $('save').disabled = $('apply-pattern').disabled = state.alunos.length === 0;
-      setStatus(`${state.alunos.length} aluno(s) encontrado(s).`);
+      setStatus(`${state.alunos.length} aluno(s) carregado(s). As fichas deste período e ano serão atualizadas ou criadas ao salvar.`);
     } catch (error) {
       $('students').innerHTML = `<tr><td colspan="4" class="empty-state error">${esc(error.message)}</td></tr>`;
       setStatus(error.message, true);

@@ -193,6 +193,18 @@ th {
     background-color: #d1d5db;
 }
 
+/* Centraliza os rótulos das seções da ata no eixo horizontal e vertical. */
+.tbl-aluno td.lbl-aluno,
+.tbl-aluno td.lbl-aluno-turma,
+[data-field="box-dificuldades-pontuacao"] > table > tbody > tr:first-child > th,
+.tbl-propostas > tbody > tr:first-child > th,
+.tbl-resultados > tbody > tr:first-child > th,
+.tbl-soe > tbody > tr:first-child > th,
+.tbl-observacoes > tbody > tr:first-child > th {
+    text-align: center !important;
+    vertical-align: middle !important;
+}
+
 /* Tabela de Dados do Aluno */
 .tbl-aluno {
     width: 100%;
@@ -215,6 +227,7 @@ th {
     background-color: #ffffff;
     text-transform: uppercase;
     padding-left: 8px;
+    vertical-align: middle !important;
 }
 
 .lbl-aluno-turma {
