@@ -7,8 +7,9 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="../../assets/js/supabase_client.js"></script>
-  <script src="../../sidebar.js"></script>
+  <script src="../../sidebar.js?v=20261007-1"></script>
   <script src="../../assets/js/conselho_app.js?v=20261006-4"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -31,12 +32,27 @@
     .toolbar select { width:100%; min-width:0; }
     .toolbar select { min-height:46px; padding:12px 14px; font-size:14px; }
     .toolbar button { min-height:46px; }
+    .import-panel { display:flex; flex-wrap:wrap; align-items:end; gap:12px; }
+    .import-file-field { flex:1 1 300px; min-width:0; }
+    .import-file-row { display:flex; align-items:center; gap:8px; }
+    .import-panel input[type="file"] { width:100%; min-width:0; min-height:42px; padding:8px; }
+    .remove-import-file { display:grid; width:42px; height:42px; flex:0 0 42px; place-items:center; padding:0; color:#dc2626; background:#fef2f2; border:1px solid #fecaca; border-radius:10px; }
+    .remove-import-file:hover:not(:disabled) { color:#fff; background:#dc2626; border-color:#dc2626; }
+    .import-preview { width:100%; min-width:0; overflow:auto; border:1px solid var(--line); border-radius:12px; }
+    .import-preview table { width:max-content; min-width:100%; border-collapse:collapse; }
+    .import-preview th { position:static; min-width:120px; padding:12px; border-right:1px solid white; text-align:center; white-space:nowrap; }
+    .import-preview th:last-child { border-right:0; }
+    .import-preview .header-valid { color:#166534; background:#dcfce7; }
+    .import-preview .header-invalid { color:#991b1b; background:#fee2e2; }
+    .import-preview .header-extra { color:#475569; background:#e2e8f0; }
+    .import-preview-caption { width:100%; margin:0; font-size:11px; font-weight:700; }
+    #import-status { white-space:pre-line; }
     label { display:flex; flex-direction:column; gap:6px; color:var(--muted); font-size:11px; font-weight:700; }
     select, input, textarea, button { font:inherit; }
     select, input, textarea { color:var(--text); background:#fff; border:1px solid #cbd5e1; border-radius:10px; padding:10px 12px; }
     select:focus, input:focus, textarea:focus { outline:2px solid rgba(0,99,143,.2); border-color:var(--accent); }
     button { color:#fff; background:var(--accent); border:0; border-radius:10px; padding:10px 16px; cursor:pointer; font-size:12px; font-weight:800; transition:background .15s,transform .15s; }
-    button:hover:not(:disabled) { background:#003c5b; transform:translateY(-1px); }
+    button:hover:not(:disabled) { color:#fff; background:#003c5b; transform:translateY(-1px); }
     button:disabled { opacity:.5; cursor:not-allowed; }
     .panel { border:1px solid var(--line); border-radius:18px; background:var(--panel); padding:20px; margin-bottom:16px; box-shadow:0 4px 10px rgba(15,23,42,.04); }
     .pattern { display:grid; grid-template-columns:160px minmax(220px,1fr) minmax(180px,1fr) auto; gap:16px; align-items:center; }
@@ -84,19 +100,34 @@
         <div class="page-title">
           <span class="title-accent" aria-hidden="true"></span>
           <div>
-            <h1>Preencher Conselho</h1>
-            <p>Resultados · Preencha fichas existentes ou crie novas para a turma</p>
+            <h1><b>Preencher Conselho</b></h1>
+            <p>Resultados · Preencha fichas existentes ou crie novas para uma ou mais turmas</p>
           </div>
         </div>
         <div class="page-actions">
           <button id="save" disabled><i data-lucide="save" class="mr-2 inline h-4 w-4"></i>Salvar fichas</button>
         </div>
       </header>
-      <section class="panel toolbar" aria-label="Filtros de turma">
+      <section class="panel toolbar" aria-label="Filtros de etapa e turma">
+        <label>Etapa<select id="etapa" disabled><option>Carregando...</option></select></label>
         <label>Turma<select id="turma" disabled><option>Carregando...</option></select></label>
         <label>Período<select id="periodo" disabled><option>Carregando...</option></select></label>
         <label>Ano letivo<select id="ano" disabled><option>Carregando...</option></select></label>
+        <label>Matrícula<select id="matricula-filtro" disabled></select></label>
+        <label>Notas<select id="notas-filtro" disabled></select></label>
         <button id="load" disabled><i data-lucide="users-round" class="mr-2 inline h-4 w-4"></i>Carregar alunos</button>
+      </section>
+      <section class="panel import-panel" aria-label="Importação de fichas por planilha">
+        <label class="import-file-field">Importar planilha (Excel ou CSV)
+          <span class="import-file-row">
+            <input id="council-import-file" type="file" accept=".xlsx,.xls,.csv">
+            <button id="remove-import-file" type="button" class="remove-import-file" aria-label="Remover arquivo anexado" title="Remover arquivo" disabled><i data-lucide="trash-2" class="h-5 w-5"></i></button>
+          </span>
+        </label>
+        <button id="validate-import" type="button" disabled><i data-lucide="file-check-2" class="mr-2 inline h-4 w-4"></i>Conferir colunas</button>
+        <button id="apply-import" type="button" disabled><i data-lucide="file-up" class="mr-2 inline h-4 w-4"></i>Aplicar à tabela</button>
+        <div id="import-preview" class="import-preview hidden" aria-live="polite"></div>
+        <p id="import-status" role="status" aria-live="polite" class="status w-full mb-0">Carregue os alunos antes de importar. Cabeçalhos obrigatórios: RA, Período, Dificuldades, Propostas e Descrição do Item 19.</p>
       </section>
       <section class="panel pattern" aria-label="Padrão de preenchimento">
         <div class="pattern-heading"><div class="eyebrow">Preenchimento em lote</div><strong>Padrão da turma</strong></div>
@@ -106,11 +137,11 @@
       </section>
       <div id="status" role="status" aria-live="polite" class="status">Carregue a lista para começar.</div>
       <section class="table-wrap" aria-label="Alunos para preenchimento">
-        <table><thead><tr><th>Aluno</th><th>Dificuldades</th><th>Propostas</th><th>Descrição do item 19</th></tr></thead><tbody id="students"><tr><td colspan="4" class="empty-state">Carregue os alunos da turma selecionada para preencher as fichas.</td></tr></tbody></table>
+        <table><thead><tr><th>Aluno</th><th>Turma</th><th>Dificuldades</th><th>Propostas</th><th>Descrição do item 19</th></tr></thead><tbody id="students"><tr><td colspan="5" class="empty-state">Carregue os alunos para preencher as fichas.</td></tr></tbody></table>
       </section>
       <p class="table-scroll-hint">Em telas menores, deslize a tabela horizontalmente para acessar todos os campos.</p>
     </div>
   </main>
-  <script src="../../assets/js/preenchimento_conselho.js"></script>
+  <script src="../../assets/js/preenchimento_conselho.js?v=20261007-5"></script>
 </body>
 </html>

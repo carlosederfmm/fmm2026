@@ -79,6 +79,10 @@ const SidebarComponent = {
         }
         .sidebar-toggle-btn:hover { transform: scale(1.1); }
         .sidebar-toggle-btn:active { transform: scale(0.9); }
+        #sidebar-container .sidebar-toggle-btn:hover {
+            background-color: #c8d400;
+            color: #003c5b;
+        }
     `,
 
     bottomNavConfig: {

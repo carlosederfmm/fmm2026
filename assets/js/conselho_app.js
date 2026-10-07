@@ -228,17 +228,15 @@ class SupabaseProvider extends DataProvider {
   }
 
   async getAlunos(idTurma, opcoes = {}) {
-    if (!idTurma) return [];
-
     const periodo = opcoes.periodo || '';
     const anoLetivo = Number(opcoes.anoLetivo) || new Date().getFullYear();
     const alunos = await this._buscarPaginado(() => {
       let query = this.getPublicClient()
         .from('alunos')
         .select('ra, nome_completo, id_turma, status, laudo, nome_busca')
-        .eq('id_turma', idTurma)
         .order('nome_completo', { ascending: true })
         .order('ra', { ascending: true });
+      if (idTurma) query = query.eq('id_turma', idTurma);
       return query;
     });
 
@@ -277,10 +275,8 @@ class SupabaseProvider extends DataProvider {
       const ra = String(aluno.ra);
       const candidatas = matriculasPorRa.get(ra) || [];
       const mesmaTurma = candidatas.filter((item) => String(item.id_turma || '') === String(aluno.id_turma || ''));
-      const matricula = mesmaTurma.find((item) => String(item.status || '').toUpperCase() === 'CURSANDO')
-        || mesmaTurma[0]
-        || candidatas.find((item) => String(item.status || '').toUpperCase() === 'CURSANDO')
-        || candidatas[0];
+      const matricula = mesmaTurma.find((item) => String(item.status || '').trim().toUpperCase() === 'CURSANDO')
+        || mesmaTurma[0];
       const turmaReuniao = reunioesPorTurma.get(String(aluno.id_turma));
       const conselho = turmaReuniao
         ? conselhoPorChave.get(`${turmaReuniao.id}:${ra}`)
