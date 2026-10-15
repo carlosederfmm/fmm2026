@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico Escolar | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="../../assets/js/supabase_client.js"></script>
+    <script src="../../sidebar.js?v=20261008-1"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { fmm: { dark: '#003c5b', blue: '#00638f', green: '#80a51b', lime: '#c8d400', bg: '#f8fafc' } }
+                }
+            }
+        };
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+        @media (max-width: 767px) { body { overflow: auto; } }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden text-left text-slate-700">
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 shadow-2xl relative z-20"></aside>
+
+    <main class="flex-1 flex min-w-0 flex-col overflow-hidden bg-slate-50">
+        <header class="bg-white min-h-20 border-b border-slate-100 flex flex-col gap-2 px-4 py-4 shadow-sm sm:px-6 md:flex-row md:items-center md:justify-between md:px-8">
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="w-1.5 h-6 rounded-full bg-fmm-lime"></span>
+                    <h1 class="text-xl font-bold text-fmm-dark">Histórico Escolar</h1>
+                </div>
+                <p class="mt-1 text-xs text-slate-400">Consulte os alunos para preparar seus históricos escolares.</p>
+            </div>
+            <div class="inline-flex items-center gap-2 self-start rounded-xl bg-fmm-blue/10 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-fmm-blue md:self-auto">
+                <i data-lucide="info" class="h-4 w-4"></i>
+                Consulta de históricos
+            </div>
+        </header>
+
+        <div class="flex-1 min-h-0 overflow-y-auto p-4 custom-scrollbar sm:p-6 md:p-8">
+            <section class="rounded-[28px] border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
+                <div class="mb-5 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-fmm-dark">
+                    <i data-lucide="sliders-horizontal" class="h-4 w-4 text-fmm-blue"></i>
+                    Filtros da consulta
+                </div>
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                    <label class="block">
+                        <span class="mb-1.5 ml-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400">Ano letivo</span>
+                        <select id="filterAno" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-bold text-slate-600 outline-none transition focus:border-fmm-blue focus:ring-2 focus:ring-fmm-blue/10 sm:text-sm">
+                            <option value="2026" selected>2026</option>
+                            <option>2025</option>
+                            <option>2024</option>
+                        </select>
+                    </label>
+                    <label class="block">
+                        <span class="mb-1.5 ml-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400">Turma (3ª série)</span>
+                        <select id="filterTurma" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-bold text-slate-600 outline-none transition focus:border-fmm-blue focus:ring-2 focus:ring-fmm-blue/10 sm:text-sm">
+                            <option value="">Todas as turmas</option>
+                        </select>
+                    </label>
+                    <label class="block">
+                        <span class="mb-1.5 ml-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400">Origem</span>
+                        <select id="filterOrigem" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-bold text-slate-600 outline-none transition focus:border-fmm-blue focus:ring-2 focus:ring-fmm-blue/10 sm:text-sm">
+                            <option value="">Todas as origens</option>
+                            <option>FMM</option>
+                            <option>Seduc</option>
+                            <option>Semed</option>
+                        </select>
+                    </label>
+                    <label class="block">
+                        <span class="mb-1.5 ml-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400">Matrícula</span>
+                        <select id="filterMatricula" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-bold text-slate-600 outline-none transition focus:border-fmm-blue focus:ring-2 focus:ring-fmm-blue/10 sm:text-sm">
+                            <option value="">Todas as situações</option>
+                            <option value="CURSANDO">Ativa</option>
+                            <option value="TRANSFERIDO">Transferida</option>
+                        </select>
+                    </label>
+                    <label class="block sm:col-span-2">
+                        <span class="mb-1.5 ml-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400">Pesquisar aluno</span>
+                        <span class="relative block">
+                            <i data-lucide="search" class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"></i>
+                            <input id="searchAluno" type="search" placeholder="Procurar por nome, RA ou e-mail..." class="w-full rounded-2xl border border-slate-100 bg-slate-50 py-3 pl-12 pr-4 outline-none transition focus:ring-2 focus:ring-fmm-blue placeholder:text-slate-400">
+                        </span>
+                    </label>
+                </div>
+            </section>
+
+            <section class="mt-6 overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-sm">
+                <div class="flex flex-col gap-3 border-b border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                    <div>
+                        <h2 class="text-sm font-bold text-fmm-dark">Alunos encontrados</h2>
+                        <p class="mt-1 text-xs text-slate-400">Pesquise por nome, RA ou e-mail e filtre as matrículas disponíveis.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span id="studentCount" class="inline-flex w-fit items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500"><i data-lucide="users" class="h-3.5 w-3.5"></i> 0 alunos</span>
+                        <button id="btnGerarLote" type="button" onclick="gerarHistoricosSelecionados()" disabled class="inline-flex items-center gap-2 rounded-xl bg-fmm-blue px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-white transition hover:bg-fmm-dark disabled:cursor-not-allowed disabled:opacity-40">
+                            <i data-lucide="files" class="h-3.5 w-3.5"></i>
+                            <span id="loteCount">Gerar selecionados (0)</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full min-w-[850px] border-collapse text-left">
+                        <thead>
+                            <tr class="bg-slate-50/70 text-[11px] font-black uppercase tracking-widest text-slate-400">
+                                <th class="px-4 py-4 text-center"><input id="selectAllHistoricos" type="checkbox" aria-label="Selecionar alunos visíveis" onchange="selecionarVisiveis(this.checked)" class="h-4 w-4 accent-fmm-blue"></th>
+                                <th class="px-6 py-4">Aluno</th>
+                                <th class="px-5 py-4">RA</th>
+                                <th class="px-5 py-4">Turma</th>
+                                <th class="px-5 py-4">Ano letivo</th>
+                                <th class="px-5 py-4 text-center">Origem</th>
+                                <th class="px-5 py-4 text-center">Matrícula</th>
+                                <th class="px-6 py-4 text-center">Histórico</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historicoTableBody">
+                            <tr>
+                                <td colspan="8" class="px-6 py-16 text-center">
+                                    <div class="mx-auto flex max-w-sm flex-col items-center">
+                                        <span class="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-fmm-blue/10 text-fmm-blue"><i data-lucide="file-search" class="h-7 w-7"></i></span>
+                                        <p class="font-bold text-fmm-dark">Carregando alunos...</p>
+                                        <p class="mt-1 text-xs leading-5 text-slate-400">Buscando matrículas para os filtros selecionados.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        let matriculas = [];
+        let searchTimer;
+        const selectedHistoricos = new Map();
+
+        const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+        const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+
+        function chavePdfTemporario(token) {
+            return `historico-pdf:${token}`;
+        }
+
+        function esperarPdf(token) {
+            const tela = document.createElement('main');
+            tela.style.cssText = 'min-height:100vh;display:grid;place-items:center;padding:24px;background:#f8fafc;font:14px Arial,sans-serif;color:#003c5b;text-align:center';
+            tela.innerHTML = '<div><div style="width:42px;height:42px;margin:0 auto 18px;border:4px solid #dbeafe;border-top-color:#00638f;border-radius:50%;animation:espera-spin .8s linear infinite"></div><h1 style="margin:0 0 8px;font-size:20px">Preparando seu PDF</h1><p style="margin:0;color:#64748b">Esta aba exibirá o documento assim que a geração terminar.</p></div><style>@keyframes espera-spin{to{transform:rotate(360deg)}}</style>';
+            document.body.replaceChildren(tela);
+            document.title = 'Preparando PDF | Histórico Escolar';
+
+            const timer = window.setInterval(() => {
+                let estado;
+                try {
+                    estado = localStorage.getItem(chavePdfTemporario(token));
+                } catch (error) {
+                    clearInterval(timer);
+                    mostrarErroEspera(`Não foi possível acompanhar a geração: ${error.message}`);
+                    return;
+                }
+                if (!estado) return;
+                clearInterval(timer);
+                let resultado;
+                try {
+                    resultado = JSON.parse(estado);
+                } catch (error) {
+                    mostrarErroEspera("Não foi possível ler o resultado da geração do PDF.");
+                    return;
+                }
+                if (resultado.status === 'ready') {
+                    window.location.replace(`historico_escolar_doc.html?pdfReady=${encodeURIComponent(token)}`);
+                } else {
+                    mostrarErroEspera(resultado.message || "Não foi possível gerar o PDF.");
+                }
+            }, 400);
+        }
+
+        function mostrarErroEspera(mensagem) {
+            const conteudo = document.createElement('main');
+            conteudo.style.cssText = 'min-height:100vh;display:grid;place-items:center;padding:24px;background:#f8fafc;font:14px Arial,sans-serif;color:#003c5b;text-align:center';
+            const caixa = document.createElement('div');
+            const titulo = document.createElement('h1');
+            titulo.textContent = "Falha ao preparar o PDF";
+            titulo.style.cssText = 'font-size:20px;margin:0 0 8px';
+            const texto = document.createElement('p');
+            texto.textContent = mensagem;
+            texto.style.cssText = 'color:#64748b;line-height:1.5';
+            const voltar = document.createElement('a');
+            voltar.href = 'historico_escolar_coordenador.html';
+            voltar.textContent = 'Voltar à consulta';
+            voltar.style.cssText = 'display:inline-block;margin-top:12px;padding:10px 16px;border-radius:10px;background:#00638f;color:white;font-weight:700;text-decoration:none';
+            caixa.append(titulo, texto, voltar);
+            conteudo.append(caixa);
+            document.body.replaceChildren(conteudo);
+        }
+
+        function renderTable() {
+            const term = normalize(document.getElementById('searchAluno').value);
+            const turmaSelecionada = document.getElementById('filterTurma').value;
+            const filtered = matriculas.filter(matricula => {
+                const aluno = matricula.alunos || {};
+                const turma = matricula.turmas || {};
+                const matchesSearch = !term || normalize(aluno.nome_completo).includes(term) || normalize(matricula.ra_aluno).includes(term) || normalize(aluno.email_institucional).includes(term);
+                return matchesSearch && (!turmaSelecionada || turma.id === turmaSelecionada);
+            });
+            const body = document.getElementById('historicoTableBody');
+            document.getElementById('studentCount').innerHTML = '<i data-lucide="users" class="h-3.5 w-3.5"></i> ' + filtered.length + ' aluno' + (filtered.length === 1 ? '' : 's');
+
+            if (!filtered.length) {
+                body.innerHTML = '<tr><td colspan="8" class="px-6 py-16 text-center text-sm font-medium text-slate-400">Nenhum aluno encontrado para os filtros selecionados.</td></tr>';
+            } else {
+                body.innerHTML = filtered.map(matricula => {
+                    const aluno = matricula.alunos || {};
+                    const turma = matricula.turmas || {};
+                    const chave = chaveSelecao(matricula.ra_aluno, matricula.ano_letivo);
+                    const status = normalize(matricula.status);
+                    const statusClass = status.includes('TRANSFER') ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700';
+                    return `<tr class="border-t border-slate-50 transition-colors hover:bg-slate-50/70">
+                        <td class="px-4 py-4 text-center"><input type="checkbox" class="row-select h-4 w-4 accent-fmm-blue" data-selection-key="${escapeHtml(chave)}" aria-label="Selecionar histórico de ${escapeHtml(aluno.nome_completo)}" ${selectedHistoricos.has(chave) ? 'checked' : ''} onchange="atualizarSelecao(this)"></td>
+                        <td class="px-6 py-4"><div class="text-sm font-bold uppercase text-fmm-dark">${escapeHtml(aluno.nome_completo)}</div><div class="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">${escapeHtml(turma.area_tecnica || 'Ensino médio técnico')}</div></td>
+                        <td class="px-5 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">${escapeHtml(matricula.ra_aluno)}</td>
+                        <td class="px-5 py-4 text-[10px] font-black uppercase text-slate-600">${escapeHtml(turma.nome || '-')}</td>
+                        <td class="px-5 py-4 text-xs font-semibold text-slate-600">${escapeHtml(matricula.ano_letivo)}</td>
+                        <td class="px-5 py-4 text-center text-xs font-bold text-slate-500">${escapeHtml(aluno.origem || '-')}</td>
+                        <td class="px-5 py-4 text-center"><span class="inline-flex rounded-full border px-2.5 py-1 text-[9px] font-black uppercase ${statusClass}">${escapeHtml(matricula.status)}</span></td>
+                        <td class="px-6 py-4 text-center"><button type="button" onclick="abrirHistorico('${encodeURIComponent(matricula.ra_aluno)}', '${encodeURIComponent(matricula.ano_letivo)}')" class="inline-flex items-center gap-2 rounded-xl bg-fmm-blue px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white transition hover:bg-fmm-dark"><i data-lucide="file-text" class="h-3.5 w-3.5"></i> Gerar</button></td>
+                    </tr>`;
+                }).join('');
+            }
+            const selectAll = document.getElementById('selectAllHistoricos');
+            const visibleCheckboxes = [...body.querySelectorAll('.row-select')];
+            selectAll.checked = visibleCheckboxes.length > 0 && visibleCheckboxes.every(checkbox => checkbox.checked);
+            selectAll.indeterminate = visibleCheckboxes.some(checkbox => checkbox.checked) && !selectAll.checked;
+            atualizarBotaoLote();
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        function chaveSelecao(ra, ano) {
+            return `${encodeURIComponent(String(ra))}:${Number(ano)}`;
+        }
+
+        function atualizarSelecao(checkbox) {
+            const chave = checkbox.dataset.selectionKey;
+            if (checkbox.checked) {
+                const [raCodificado, ano] = chave.split(':');
+                selectedHistoricos.set(chave, { ra: decodeURIComponent(raCodificado), ano });
+            } else {
+                selectedHistoricos.delete(chave);
+            }
+            atualizarBotaoLote();
+            const checkboxes = [...document.querySelectorAll('#historicoTableBody .row-select')];
+            const selectAll = document.getElementById('selectAllHistoricos');
+            selectAll.checked = checkboxes.length > 0 && checkboxes.every(item => item.checked);
+            selectAll.indeterminate = checkboxes.some(item => item.checked) && !selectAll.checked;
+        }
+
+        function selecionarVisiveis(selecionado) {
+            document.querySelectorAll('#historicoTableBody .row-select').forEach(checkbox => {
+                checkbox.checked = selecionado;
+                atualizarSelecao(checkbox);
+            });
+        }
+
+        function atualizarBotaoLote() {
+            const count = selectedHistoricos.size;
+            document.getElementById('loteCount').textContent = `Gerar selecionados (${count})`;
+            document.getElementById('btnGerarLote').disabled = count < 2;
+        }
+
+        async function loadMatriculas() {
+            const ano = document.getElementById('filterAno').value;
+            const origem = document.getElementById('filterOrigem').value;
+            const status = document.getElementById('filterMatricula').value;
+            let query = window.supabaseClient
+                .from('matriculas')
+                .select('ra_aluno, ano_letivo, status, id_turma, alunos!inner(nome_completo, origem, email_institucional), turmas!inner(id, nome, nivel, serie, area_tecnica)')
+                .eq('ano_letivo', ano)
+                .eq('turmas.nivel', 'EMT')
+                .eq('turmas.serie', '3ª Série')
+                .order('nome', { foreignTable: 'turmas' })
+                .order('nome_completo', { foreignTable: 'alunos' });
+            if (origem) query = query.eq('alunos.origem', origem);
+            if (status) query = query.eq('status', status);
+            const { data, error } = await query;
+            if (error) throw error;
+            matriculas = data || [];
+            await carregarTurmasFiltro(ano);
+            renderTable();
+        }
+
+        async function carregarTurmasFiltro(ano) {
+            const { data, error } = await window.supabaseClient
+                .from('matriculas')
+                .select('turmas!inner(id, nome, nivel, serie)')
+                .eq('ano_letivo', ano)
+                .eq('turmas.nivel', 'EMT')
+                .eq('turmas.serie', '3ª Série')
+                .order('nome', { foreignTable: 'turmas' });
+            if (error) throw error;
+
+            const select = document.getElementById('filterTurma');
+            const valorAtual = select.value;
+            const turmas = new Map();
+            (data || []).forEach(matricula => {
+                const turma = matricula.turmas || {};
+                if (turma.id) turmas.set(turma.id, turma.nome);
+            });
+            select.innerHTML = '<option value="">Todas as turmas</option>' +
+                [...turmas].sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'pt-BR', { numeric: true }))
+                    .map(([id, nome]) => `<option value="${escapeHtml(id)}">${escapeHtml(nome)}</option>`).join('');
+            if (turmas.has(valorAtual)) select.value = valorAtual;
+        }
+
+        function abrirAbaResultado(token) {
+            const urlEspera = new URL('historico_escolar_coordenador.html', window.location.href);
+            urlEspera.searchParams.set('aguardandoPdf', token);
+            const abaResultado = window.open(urlEspera.toString(), '_blank');
+            if (!abaResultado) {
+                alert("O navegador bloqueou a nova aba. Permita pop-ups para abrir o PDF após a geração.");
+                return false;
+            }
+            return true;
+        }
+
+        window.abrirHistorico = function(ra, ano) {
+            const token = crypto.randomUUID();
+            if (!abrirAbaResultado(token)) return;
+            const parametros = new URLSearchParams({
+                ra: decodeURIComponent(ra),
+                ano: decodeURIComponent(ano),
+                waitToken: token
+            });
+            window.location.assign(`historico_escolar_doc.html?${parametros.toString()}`);
+        };
+
+        window.gerarHistoricosSelecionados = function() {
+            const selecionados = [...selectedHistoricos.values()];
+            if (selecionados.length < 2) {
+                alert("Selecione pelo menos dois alunos para gerar históricos em lote.");
+                return;
+            }
+            const anos = new Set(selecionados.map(({ ano }) => ano));
+            if (anos.size !== 1) {
+                alert("Selecione históricos do mesmo ano letivo para gerar o lote.");
+                return;
+            }
+            const token = crypto.randomUUID();
+            if (!abrirAbaResultado(token)) return;
+            const parametros = new URLSearchParams();
+            selecionados.forEach(({ ra, ano }) => {
+                parametros.append('ra', ra);
+                parametros.set('ano', ano);
+            });
+            parametros.set('waitToken', token);
+            window.location.assign(`historico_escolar_doc.html?${parametros.toString()}`);
+        };
+
+        async function init() {
+            const parametros = new URLSearchParams(window.location.search);
+            const tokenAguardando = parametros.get('aguardandoPdf');
+            if (tokenAguardando) {
+                esperarPdf(tokenAguardando);
+                return;
+            }
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if (!user) return window.location.assign('../../index.html');
+            if (window.SidebarComponent) await window.SidebarComponent.render('sidebar-container');
+            document.getElementById('filterAno').addEventListener('change', () => {
+                selectedHistoricos.clear();
+                atualizarBotaoLote();
+                loadMatriculas().catch(showError);
+            });
+            ['filterOrigem', 'filterMatricula', 'filterTurma'].forEach(id => document.getElementById(id).addEventListener('change', () => loadMatriculas().catch(showError)));
+            document.getElementById('searchAluno').addEventListener('input', () => {
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(renderTable, 600);
+            });
+            try {
+                await loadMatriculas();
+            } catch (error) {
+                showError(error);
+            }
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        function showError(error) {
+            console.error('Erro ao carregar históricos:', error);
+            document.getElementById('historicoTableBody').innerHTML = '<tr><td colspan="8" class="px-6 py-16 text-center text-sm font-medium text-red-500">Não foi possível consultar os alunos. Tente novamente.</td></tr>';
+        }
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

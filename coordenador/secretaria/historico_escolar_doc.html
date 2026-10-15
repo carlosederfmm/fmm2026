@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="../../assets/js/supabase_client.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Histórico Escolar - Ensino Médio</title>
+<style>
+  @page { size: A4 portrait; margin: 0; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; background: #e9e9e9; font-family: "Times New Roman", Times, serif; font-size: 7.5pt; color: #000; }
+  .estado { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; background: #f8fafc; color: #003c5b; font: 14px Arial, sans-serif; text-align: center; }
+  .estado-spinner { width: 44px; height: 44px; border: 4px solid #dbeafe; border-top-color: #00638f; border-radius: 50%; animation: estado-spin .8s linear infinite; }
+  @keyframes estado-spin { to { transform: rotate(360deg); } }
+  .estado-conteudo { width: min(100%, 420px); }
+  .estado-titulo { margin: 0 0 8px; font-size: 18px; font-weight: 700; }
+  .estado-mensagem { margin: 0; color: #64748b; line-height: 1.5; }
+  .estado-progresso { width: 100%; height: 8px; margin-top: 18px; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
+  .estado-progresso-barra { width: 0; height: 100%; border-radius: inherit; background: #00638f; transition: width .2s ease; }
+  .estado-erro .estado-spinner, .estado-erro .estado-progresso { display: none; }
+  .estado-voltar { display: inline-block; margin-top: 18px; border-radius: 10px; background: #00638f; padding: 10px 16px; color: #fff; font-weight: 700; text-decoration: none; }
+  .pagina { width: 210mm; height: 296.8mm; margin: 0; padding: 8mm; overflow: hidden; background: #fff; page-break-after: always; break-after: page; page-break-inside: avoid; break-inside: avoid; }
+  .pagina:last-child { page-break-after: auto; break-after: auto; }
+  .pagina-conteudo { width: 194mm; transform-origin: top left; }
+  table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+  td, th { border: .1mm solid #000; padding: .45mm 1.2mm; line-height: 1.05; overflow: hidden; }
+  .sem-borda td { border: 0; }
+  .cab { display: grid; grid-template-columns: 24% 63% 13%; align-items: center; margin: 0; }
+  .cab-logo { grid-column: 1; grid-row: 1; }
+  .cab-logo img { display: block; width: 90%; height: auto; }
+  .cab-dados { grid-column: 2; grid-row: 1; text-align: center; }
+  .cab .t1 { font: bold 12pt Arial, Helvetica, sans-serif; margin-bottom: .6mm; }
+  .cab .t2 { font: 9pt Arial, Helvetica, sans-serif; line-height: 1.15; }
+  .cab-regua { height: .5pt; margin: 2.5mm 0 5mm; border: 0; border-top: .5pt solid #000; }
+  .titulo { margin-bottom: 5mm; text-align: center; font-weight: bold; font-size: 9pt; }
+  .info { display: grid; gap: 0; margin: 0 0 2mm; font-size: 7.5pt; }
+  .info-row { display: grid; gap: 0; }
+  .info-row > span { min-width: 0; min-height: 4mm; padding: .35mm 1mm; border: .1mm solid #000; overflow: hidden; }
+  .info .l { background: #d9d9d9; font-weight: bold; }
+  .info-row-aluno { grid-template-columns: 8% 46% 7% 14% 10% 15%; }
+  .info-row-pessoal { grid-template-columns: 12% 22% 12% 26% 8% 20%; }
+  .info-row-anterior { grid-template-columns: 12% 23% 16% 49%; }
+  .info-row-local { grid-template-columns: 12% 28% 8% 20% 14% 18%; }
+  .notas { margin-bottom: 2mm; }
+  .notas th { background: #d9d9d9; font-weight: bold; text-align: center; font-size: 8pt; }
+  .notas th.nome { font-size: 8.5pt; vertical-align: middle; }
+  .notas td { text-align: center; height: 3.9mm; }
+  .notas td.n { text-align: left; }
+  .notas tr.total td { font-weight: bold; text-align: left; border-top: .25pt solid #000; }
+  .notas tr.total td.v { text-align: center; }
+  .res th { background: #d9d9d9; font-weight: bold; text-align: center; padding: 1mm; }
+  .res td { text-align: center; padding: 1mm; }
+  .perfil { border: .75pt solid #000; min-height: 150mm; font: 7.5pt/1.25 Arial, Helvetica, sans-serif; }
+  .perfil .pt { font-weight: bold; padding: .8mm 1.2mm; border-bottom: .5pt solid #000; font-size: 7.5pt; }
+  .perfil .corpo { padding: .8mm 1.2mm; white-space: pre-line; }
+  .perfil .obs { margin-top: 3mm; }
+  .emissao { text-align: right; font: 10pt Arial, Helvetica, sans-serif; margin: 14mm 0 0; }
+  .assin { display: flex; justify-content: space-between; gap: 18mm; margin-top: 38mm; font: bold 7.5pt Arial, Helvetica, sans-serif; text-align: center; }
+  .assin div { flex: 0 0 30%; border-top: .75pt solid #000; padding-top: 1mm; }
+  body.pdf-preview-open { display: flex; width: 100vw; height: 100vh; flex-direction: column; overflow: hidden; background: #525659; }
+  .pdf-preview-toolbar { display: flex; flex: 0 0 48px; align-items: center; justify-content: flex-end; gap: 16px; padding: 0 20px; background: #3b3b3b; color: #fff; font: 13px Arial, sans-serif; }
+  .pdf-preview-toolbar a { border-radius: 3px; background: #f5f5f5; padding: 7px 14px; color: #222; font-weight: 600; text-decoration: none; }
+  .pdf-preview-toolbar a:hover { background: #fff; }
+  .pdf-preview-pages { min-height: 0; flex: 1 1 auto; overflow: auto; padding: 20px; }
+  .pdf-preview-page { margin: 0 auto 20px; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .45); }
+  .pdf-preview-page canvas { display: block; }
+  .pdf-preview-error { padding: 24px; color: #fff; font: 14px Arial, sans-serif; text-align: center; }
+  @media print {
+    body { background: #fff; }
+    .estado { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="estado" class="estado" role="status" aria-live="polite">
+  <div class="estado-spinner" aria-hidden="true"></div>
+  <div class="estado-conteudo">
+    <h1 class="estado-titulo">Preparando histórico escolar</h1>
+    <p id="estadoMensagem" class="estado-mensagem">Aguarde enquanto os documentos são gerados.</p>
+    <div class="estado-progresso" role="progressbar" aria-label="Progresso da geração">
+      <div id="estadoProgressoBarra" class="estado-progresso-barra"></div>
+    </div>
+  </div>
+</div>
+<div id="historicos"></div>
+
+<script>
+/* ===== Configuração da instituição (altere aqui) ===== */
+const INSTITUICAO = {
+  nome: "FUNDAÇÃO MATIAS MACHLINE",
+  endereco: "Av. Min. João Gonçalves de Souza, 916 - Distrito Industrial I, Manaus/AM",
+  reconhecimento: "Reconhecimento: Parecer 105/89 - CEE 20/09/89. Homologado em 27/09/89",
+  telefone: "Telefone: (92) 2129-2999",
+  logo: "../../assets/logo-fmm-color.png"
+};
+
+
+/* ===== Funções de renderização ===== */
+const HistoricoEscolar = (() => {
+  const MESES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const fmt = v => (v === null || v === undefined || v === "") ? "-" : esc(String(v).replace(".", ","));
+  const fmtNota = v => {
+    if (v === null || v === undefined || v === "") return "-";
+    const numero = Number(String(v).replace(",", "."));
+    if (!Number.isFinite(numero)) return esc(v);
+    const arredondada = Math.sign(numero) * Math.round((Math.abs(numero) + Number.EPSILON * Math.abs(numero)) * 10) / 10;
+    return esc(arredondada.toFixed(1).replace(".", ","));
+  };
+  const dataBR = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ""); return m ? `${m[3]}/${m[2]}/${m[1]}` : esc(iso); };
+  const dataExtenso = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ""); return m ? `${+m[3]} de ${MESES[+m[2]-1]} de ${m[1]}` : esc(iso); };
+
+  const cabecalho = a => `
+    <div class="cab">
+      <div class="cab-logo"><img src="${INSTITUICAO.logo}" alt="${esc(INSTITUICAO.nome)}"></div>
+      <div class="cab-dados"><div class="t1">${esc(INSTITUICAO.nome)}</div>
+        <div class="t2">${esc(INSTITUICAO.endereco)}<br>${esc(INSTITUICAO.reconhecimento)}<br>${esc(INSTITUICAO.telefone)}</div></div>
+    </div>
+    <hr class="cab-regua">
+    <div class="titulo">HISTÓRICO ESCOLAR - ENSINO MÉDIO</div>
+    <div class="info">
+      <div class="info-row info-row-aluno"><span class="l">Aluno(a):</span><span>${esc(a.nome)}</span><span class="l">CPF:</span><span>${esc(a.cpf)}</span><span class="l">Data Nasc.:</span><span>${dataBR(a.data_nascimento)}</span></div>
+      <div class="info-row info-row-pessoal"><span class="l">Nacionalidade:</span><span>${esc(a.nacionalidade)}</span><span class="l">Natural de:</span><span>${esc(a.naturalidade)}</span><span class="l">Estado:</span><span>${esc(a.estado_natal)}</span></div>
+      <div class="info-row info-row-anterior"><span class="l">Curso Anterior:</span><span>${esc(a.curso_anterior)}</span><span class="l">Estabelecimento:</span><span>${esc(a.instituicao_origem)}</span></div>
+      <div class="info-row info-row-local"><span class="l">Município:</span><span>${esc(a.instituicao_origem_cidade)}</span><span class="l">Estado:</span><span>${esc(a.instituicao_origem_uf)}</span><span class="l">Ano Conclusão:</span><span>${esc(a.ano_conclusao)}</span></div>
+    </div>`;
+
+  const soma = arr => arr.reduce((t, v) => t + (Number(v) || 0), 0);
+
+  const pagina1 = a => {
+    const linhas = a.disciplinas.map(d => {
+      const n = d.notas || [], c = d.chs || [];
+      return `<tr><td class="n">${esc(d.nome)}</td>` +
+        [0,1,2].map(i => `<td>${fmtNota(n[i])}</td><td>${fmt(c[i])}</td>`).join("") +
+        `<td>${soma(c)}</td></tr>`;
+    }).join("");
+    const vazias = '<tr><td class="n">&nbsp;</td>' + "<td></td>".repeat(7) + "</tr>";
+    const total = a.carga_horaria_total ?? a.disciplinas.reduce((t, d) => t + soma(d.chs || []), 0);
+    const res = (a.resultados || []).map(r =>
+      `<tr><td>${esc(r.ano)}</td><td>${esc(r.serie)}</td><td>${esc(r.estabelecimento)}</td><td>${esc(r.cidade)}</td><td>${esc(r.uf)}</td><td>${esc(r.resultado)}</td></tr>`).join("");
+    return `<section class="pagina"><div class="pagina-conteudo">${cabecalho(a)}
+      <table class="notas">
+        <colgroup><col style="width:58%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:9%"></colgroup>
+        <thead>
+          <tr><th class="nome" rowspan="2">Componente Curricular</th><th colspan="2">1ª Série</th><th colspan="2">2ª Série</th><th colspan="2">3ª Série</th><th rowspan="2">Total</th></tr>
+          <tr><th style="font-weight:normal">Nota</th><th style="font-weight:normal">CH</th><th style="font-weight:normal">Nota</th><th style="font-weight:normal">CH</th><th style="font-weight:normal">Nota</th><th style="font-weight:normal">CH</th></tr>
+        </thead>
+        <tbody>${linhas}${vazias}${vazias}
+          <tr class="total"><td colspan="7">CARGA HORÁRIA TOTAL</td><td class="v">${esc(total)}</td></tr>
+        </tbody>
+      </table>
+      <table class="res">
+        <colgroup><col style="width:9%"><col style="width:9%"><col style="width:41%"><col style="width:16%"><col style="width:9%"><col style="width:16%"></colgroup>
+        <thead><tr><th>Ano</th><th>Série</th><th>Estabelecimento</th><th>Cidade</th><th>UF</th><th>Resultado</th></tr></thead>
+        <tbody>${res}</tbody>
+      </table>
+    </div></section>`;
+  };
+
+  const pagina2 = a => {
+    const p = a.perfil || {};
+    return `<section class="pagina"><div class="pagina-conteudo">${cabecalho(a)}
+      <div class="perfil">
+        <div class="pt">Perfil Profissional: ${esc(p.titulo)}</div>
+        <div class="corpo">${esc(p.texto)}${p.observacoes ? `<div class="obs">Observações:\n${esc(p.observacoes.join("\n"))}</div>` : ""}</div>
+      </div>
+      <div class="emissao">${esc(a.cidade_emissao || "Manaus")}, ${dataExtenso(a.data_emissao)}.</div>
+      <div class="assin"><div>Secretário(a)</div><div>Diretor(a)</div></div>
+    </div></section>`;
+  };
+
+  const html = alunos => alunos.map(a => pagina1(a) + pagina2(a)).join("");
+  const render = (alunos, el = document.getElementById("historicos")) => {
+    el.innerHTML = html(alunos);
+  };
+  return { render, html };
+})();
+
+/* ===== Dados legados de referência (não são renderizados) ===== */
+const D = (nome, n1, c1, n2, c2, n3, c3) => ({ nome, notas: [n1, n2, n3], chs: [c1, c2, c3] });
+const EXEMPLO = {
+  nome: "ADRIA RAYANNE SILVEIRA DA SILVA", cpf: "000.000.000-00",
+  data_nascimento: "2007-01-05", nacionalidade: "BRASILEIRA", naturalidade: "MANAUS", estado_natal: "AM",
+  curso_anterior: "ENSINO FUNDAMENTAL", ano_conclusao: 2021,
+  instituicao_origem: "ESCOLA ESTADUAL TEN. CORONEL CANDIDO JOSE MARIANO", instituicao_origem_cidade: "MANAUS", instituicao_origem_uf: "AM",
+  disciplinas: [
+    D("ARTE","7",40,"8",40,"7,8",40), D("ATUALIDADES",null,null,"9,3",40,"8,3",40), D("BIOLOGIA","6,9",67,"6,6",80,"8,6",80),
+    D("EDUCAÇÃO FINANCEIRA","9,4",40,null,null,"7,8",null), D("EDUCAÇÃO FÍSICA","9",80,"8,1",80,"7,4",40), D("FILOSOFIA","7",40,"7,9",40,"7,5",40),
+    D("FÍSICA","6,2",100,"6,2",66,"6,8",80), D("FISICA APLICADA",null,null,"6,2",33,"6,8",40), D("GEOGRAFIA","8,1",40,"7,3",40,"8,4",40),
+    D("GEOGRAFIA GERAL E DO AMAZONAS",null,null,"7,3",33,"8,4",40), D("HISTÓRIA","7,6",67,"7,6",33,"7,7",40), D("HISTÓRIA DO AMAZONAS",null,null,"7,6",33,"7,7",40),
+    D("INGLÊS",null,null,null,null,null,40), D("L.E.M. - LÍNGUA INGLESA","9,8",100,"8,6",33,"7,7",40), D("LÍNGUA PORTUGUESA","7,3",160,"7,5",200,"8,1",80),
+    D("LITERATURA","7,9",40,"7,4",33,"8,5",40), D("MATEMÁTICA","6",180,"7,6",200,"7,5",80), D("MATEMÁTICA APLICADA",null,null,"7,1",67,"6,5",100),
+    D("PRÁTICAS DEPORTIVAS",null,null,"8,1",33,"7,4",40), D("PROJETO DE VIDA","9,5",40,"7,5",33,"10,0",40), D("QUÍMICA","7,2",67,"7,9",80,"8,7",80),
+    D("QUIMICA APLICADA",null,null,"7,9",33,"8,7",40), D("REDAÇÃO","7",80,"7,4",66,"8,1",66), D("SOCIOLOGIA","7,6",40,"7,3",40,"7,4",40),
+    D("APLICAÇÕES PRATICAS EM INFORMÁTICA I",null,null,"7,8",40,null,null), D("APLICAÇÕES PRATICAS EM INFORMÁTICA II",null,null,null,null,"8,9",80),
+    D("APLICAÇÕES PRÁTICAS EM INFORMÁTICA III",null,null,null,null,"10",80), D("ARQUITETURA DE COMPUTADORES E SUPORTE TÉCNICO","10",40,null,null,null,null),
+    D("DESENVOLVIMENTO DE JOGOS I",null,null,null,null,"7,4",80), D("DESENVOLVIMENTO DE JOGOS II",null,null,null,null,"9",80),
+    D("DESENVOLVIMENTO MOBILE I",null,null,"10",80,null,null), D("DESENVOLVIMENTO MOBILE II",null,null,null,null,"9",80),
+    D("DESENVOLVIMENTO WEB I",null,null,"8,4",80,null,null), D("DESENVOLVIMENTO WEB II",null,null,"9,3",80,null,null),
+    D("LÓGICA E TÉCNICAS DE PROGRAMAÇÃO","7,1",160,null,null,null,null), D("NOVAS TECNOLOGIAS",null,null,null,null,"7,3",40),
+    D("PROCESSO DE DESENVOLVIMENTO DE SOFTWARE","8,1",80,null,null,null,null), D("PROGRAMAÇÃO ORIENTADA A OBJETOS","9",80,null,null,null,null),
+    D("PROJETO E PROGRAMAÇÃO DE BANCO DE DADOS",null,null,"8,6",80,null,null), D("REDE DE DADOS E SEGURANÇA DA INFORMAÇÃO",null,null,"6,5",40,null,null),
+    D("USER EXPERIENCE","6,9",40,null,null,null,null)
+  ],
+  resultados: [
+    { ano: 2022, serie: "1ª", estabelecimento: "FUNDAÇÃO DE ENSINO MATIAS MACHLINE", cidade: "MANAUS", uf: "AM", resultado: "APROVADO" },
+    { ano: 2023, serie: "2ª", estabelecimento: "FUNDAÇÃO DE ENSINO MATIAS MACHLINE", cidade: "MANAUS", uf: "AM", resultado: "APROVADO" },
+    { ano: 2024, serie: "3ª", estabelecimento: "FUNDAÇÃO DE ENSINO MATIAS MACHLINE", cidade: "MANAUS", uf: "AM", resultado: "APROVADO" }
+  ],
+  perfil: {
+    titulo: "TÉCNICO EM INFORMÁTICA",
+    texto: "Perfil Profissional de Conclusão\n\nO Técnico em Mecatrônica será habilitado para:\n\nProjetar, instalar e operar equipamentos automatizados e/ou robotizados empregados em processos de manufatura considerando as normas, os padrões e os requisitos técnicos de qualidade, saúde e segurança e de meio ambiente.\nRealizar programação, parametrização, medições e testes de equipamentos automatizados em processos de manufatura.\nRealizar integração de equipamentos mecânicos e eletrônicos utilizados em processos de manufatura.\nReconhecer tecnologias inovadoras presentes no segmento visando a atender às transformações digitais na sociedade.\n\nPara atuação como Técnico em Mecatrônica, são fundamentais:\n\nConhecimentos e saberes relacionados ao planejamento e implementação de processos automatizados de manufatura de modo a assegurar a saúde e a segurança dos trabalhadores e dos usuários.\nConhecimento e saberes relacionados à sustentabilidade do processo produtivo, às técnicas e processos de produção, às normas técnicas, à liderança de equipes, à solução de problemas técnicos e trabalhistas e à gestão de conflitos.",
+    observacoes: ["Educação Profissional Técnica concomitante ao Ensino Médio.", "O (a) aluno(a) cumpriu a carga horária exigida para o estágio obrigatório.", "A Resolução Nº 150/2017 CEE/AM altera a denominação da Fundação Nokia de Ensino para Fundação Matias Machline.", "Média para aprovação: 6.0(seis)."]
+  },
+  cidade_emissao: "Manaus", data_emissao: "2024-12-15"
+};
+
+/*
+ * Para a consulta direta: ?ra=RA_DO_ALUNO&ano=2026
+ * O documento depende exclusivamente da consulta ao banco de dados.
+ * Sem RA, nenhum histórico é renderizado.
+ */
+const PERFIS_TECNICOS = {
+  "MECATRÔNICA": `Perfil Profissional de Conclusão
+
+O Técnico em Mecatrônica será habilitado para:
+
+Projetar, instalar e operar equipamentos automatizados e/ou robotizados empregados em processos de manufatura considerando as normas, os padrões e os requisitos técnicos de qualidade, saúde e segurança e de meio ambiente.
+Realizar programação, parametrização, medições e testes de equipamentos automatizados em processos de manufatura.
+Realizar integração de equipamentos mecânicos e eletrônicos utilizados em processos de manufatura.
+Reconhecer tecnologias inovadoras presentes no segmento visando a atender às transformações digitais na sociedade.
+
+Para atuação como Técnico em Mecatrônica, são fundamentais:
+
+Conhecimentos e saberes relacionados ao planejamento e implementação de processos automatizados de manufatura de modo a assegurar a saúde e a segurança dos trabalhadores e dos usuários.
+Conhecimento e saberes relacionados à sustentabilidade do processo produtivo, às técnicas e processos de produção, às normas técnicas, à liderança de equipes, à solução de problemas técnicos e trabalhistas e à gestão de conflitos.
+
+Observações:
+Educação Profissional Técnica concomitante ao Ensino Médio.
+O (a) aluno(a) cumpriu a carga horária exigida para o estágio obrigatório.
+A Resolução Nº 150/2017 CEE/AM altera a denominação da Fundação Nokia de Ensino para Fundação Matias Machline.
+Média para aprovação: 6.0(seis).`,
+  "INFORMÁTICA": `Perfil Profissional de Conclusão
+
+O Técnico em Informática será habilitado para:
+
+- Desenvolver sistemas computacionais utilizando ambiente de desenvolvimento.
+- Realizar modelagem, desenvolvimento, testes, implementação e manutenção de sistemas computacionais.
+- Modelar, construir e realizar manutenção de banco de dados.
+- Executar montagem, instalação e configuração de equipamentos de informática.
+- Instalar e configurar sistemas operacionais e aplicativos em equipamentos computacionais.
+- Realizar manutenção preventiva e corretiva de equipamentos de informática.
+- Instalar e configurar dispositivos de acesso à rede e realizar testes de conectividade.
+- Realizar atendimento help-desk.
+- Operar, instalar, configurar e realizar manutenção em redes de computadores.
+- Aplicar técnicas de instalação e configuração da rede física e lógica.
+- Instalar, configurar e administrar sistemas operacionais em redes de computadores.
+- Executar as rotinas de monitoramento do ambiente operacional.
+- Identificar e registrar os desvios e adotar os procedimentos de correção.
+Executar procedimentos de segurança, pré-definidos, para ambiente de rede.
+
+Para atuação como Técnico em Informática, são fundamentais:
+
+- Conhecimentos e saberes relacionados aos processos de planejamento e execução de projetos computacionais de forma a garantir a entrega de produtos digitais, análise de softwares, testagem de protótipos, de acordo com suas finalidades.
+- Conhecimentos e saberes relacionados às normas técnicas, à liderança de equipes, à solução de problemas técnicos e à assertividade na comunicação de laudos e análises.
+- Habilidades relacionadas à construção de soluções em BI e integrações sistêmica.
+
+Observações:
+Educação Profissional Técnica concomitante ao Ensino Médio.
+O (a) aluno(a) cumpriu a carga horária exigida para o estágio obrigatório.
+A Resolução Nº 150/2017 CEE/AM altera a denominação da Fundação Nokia de Ensino para Fundação Matias Machline.
+Média para aprovação: 6.0(seis).`
+};
+
+const HistoricoEscolarDados = (() => {
+  const campo = (obj, ...nomes) => nomes.map(nome => obj?.[nome]).find(valor => valor !== null && valor !== undefined && valor !== "") ?? "";
+  const normalizar = valor => String(valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  const serie = valor => Number(String(valor || "").match(/[123]/)?.[0]);
+  const pertence = (disciplina, numero) => (Array.isArray(disciplina.series) ? disciplina.series : String(disciplina.series || "").split(",")).some(item => serie(item) === numero);
+  const mediaTecnica = registros => {
+    const coluna = "nota_final_periodo";
+    const notas = registros.map(registro => Number(registro[coluna])).filter(Number.isFinite);
+    return notas.length ? (notas.reduce((total, nota) => total + nota, 0) / notas.length).toFixed(1) : null;
+  };
+
+  async function carregar(ra, anoConclusao) {
+    const ano3 = Number(anoConclusao || new Date().getFullYear());
+    const cliente = window.supabaseClient;
+    if (!cliente || !Number.isInteger(ano3)) throw new Error("Parâmetros do histórico inválidos.");
+    const [alunoRes, dadosHistoricoRes, matriculasRes, disciplinasRes] = await Promise.all([
+      cliente.from("alunos").select("*").eq("ra", ra).maybeSingle(),
+      cliente.from("alunos_dados_historico").select("*").eq("ra", ra).maybeSingle(),
+      cliente.from("matriculas").select("id, ano_letivo, status, turmas(*)").eq("ra_aluno", ra).gte("ano_letivo", ano3 - 2).lte("ano_letivo", ano3),
+      cliente.from("disciplinas").select("*").order("nome")
+    ]);
+    for (const resposta of [alunoRes, dadosHistoricoRes, matriculasRes, disciplinasRes]) if (resposta.error) throw resposta.error;
+    if (!alunoRes.data) throw new Error("Aluno não encontrado.");
+
+    const porAno = new Map((matriculasRes.data || []).map(matricula => [Number(matricula.ano_letivo), matricula]));
+    const ids = [...porAno.values()].map(matricula => matricula.id).filter(Boolean);
+    const [anualBasica, tecnica] = ids.length ? await Promise.all([
+      cliente.from("anual_basica").select("id_matricula, sigla_disciplina, media_final").in("id_matricula", ids),
+      cliente.from("notas_tecnica").select("*").in("id_matricula", ids)
+    ]) : [{ data: [] }, { data: [] }];
+    for (const resposta of [anualBasica, tecnica]) if (resposta.error) throw resposta.error;
+
+    const turma3 = porAno.get(ano3)?.turmas || {};
+    const area = campo(turma3, "area_tecnica", "curso_tecnico", "curso");
+    const areaNormalizada = normalizar(area);
+    const areaCanonica = {
+      INFORMATICA: "INFORMÁTICA",
+      MECATRONICA: "MECATRÔNICA"
+    }[areaNormalizada] || String(area || "").trim().toLocaleUpperCase("pt-BR");
+    const disciplinaDeOutraArea = disciplina => {
+      const nomeNormalizado = normalizar(disciplina.nome || disciplina.sigla).trim();
+      const disciplinaCarreira = "PLANEJAMENTO DE CARREIRA E PROCESSO SELETIVO";
+      if (nomeNormalizado === `${disciplinaCarreira} (I)`) return areaNormalizada !== "INFORMATICA";
+      if (nomeNormalizado === `${disciplinaCarreira} (M)`) return areaNormalizada !== "MECATRONICA";
+      return false;
+    };
+    const notas = new Map();
+    (tecnica.data || []).forEach(registro => {
+      const chave = `${registro.id_matricula}:${registro.sigla_disciplina}`;
+      notas.set(chave, [...(notas.get(chave) || []), registro]);
+    });
+    const finaisBasicas = new Map((anualBasica.data || []).map(registro => [`${registro.id_matricula}:${registro.sigla_disciplina}`, registro.media_final]));
+    const disciplinas = (disciplinasRes.data || [])
+      .filter(disciplina => {
+        const areaDisciplina = campo(disciplina, "area_tecnica", "curso_tecnico", "curso");
+        return !disciplinaDeOutraArea(disciplina) &&
+          (!areaDisciplina || !areaNormalizada || normalizar(areaDisciplina) === areaNormalizada);
+      })
+      .filter(disciplina => {
+        if (normalizar(disciplina.tipo) !== "TEC") return true;
+        return [...porAno.values()].some(matricula => notas.has(`${matricula.id}:${disciplina.sigla}`));
+      })
+      .filter(disciplina => [1, 2, 3].some(numero => pertence(disciplina, numero)))
+      .map(disciplina => ({
+        nome: disciplina.nome || disciplina.sigla,
+        notas: [0, 1, 2].map(indice => {
+          const matricula = porAno.get(ano3 - 2 + indice);
+          if (!matricula || !pertence(disciplina, indice + 1)) return null;
+          const chave = `${matricula.id}:${disciplina.sigla}`;
+          return normalizar(disciplina.tipo) === "TEC" ? mediaTecnica(notas.get(chave) || []) : finaisBasicas.get(chave) ?? null;
+        }),
+        chs: [0, 1, 2].map(indice => porAno.has(ano3 - 2 + indice) && pertence(disciplina, indice + 1) ? disciplina.carga_horaria : null)
+      }));
+    const resultado = status => normalizar(status).includes("TRANSFER") ? "TRANSFERIDO" : normalizar(status).includes("REPROV") ? "REPROVADO" : "APROVADO";
+    return {
+      nome: campo(alunoRes.data, "nome_completo", "nome"),
+      cpf: campo(dadosHistoricoRes.data, "cpf", "cpf_aluno") || campo(alunoRes.data, "cpf", "cpf_aluno"),
+      data_nascimento: campo(dadosHistoricoRes.data, "data_nascimento"),
+      nacionalidade: campo(dadosHistoricoRes.data, "nacionalidade"), naturalidade: campo(dadosHistoricoRes.data, "naturalidade"),
+      estado_natal: campo(dadosHistoricoRes.data, "estado_natal"), curso_anterior: campo(dadosHistoricoRes.data, "curso_anterior"),
+      ano_conclusao: campo(dadosHistoricoRes.data, "ano_conclusao_anterior"), instituicao_origem: campo(dadosHistoricoRes.data, "instituicao_origem"),
+      instituicao_origem_cidade: campo(dadosHistoricoRes.data, "instituicao_origem_cidade"), instituicao_origem_uf: campo(dadosHistoricoRes.data, "instituicao_origem_uf"),
+      disciplinas,
+      resultados: [0, 1, 2].map(indice => ({ ano: ano3 - 2 + indice, serie: `${indice + 1}ª Série`, estabelecimento: INSTITUICAO.nome, cidade: "MANAUS", uf: "AM", resultado: resultado(porAno.get(ano3 - 2 + indice)?.status) })),
+      perfil: { titulo: `TÉCNICO EM ${areaCanonica || "-"}`, texto: PERFIS_TECNICOS[areaCanonica] || "Perfil profissional não configurado para este curso técnico." },
+      cidade_emissao: "Manaus", data_emissao: new Date().toISOString().slice(0, 10)
+    };
+  }
+  return { carregar };
+})();
+
+function mostrarVisualizadorPdf(pdfUrl, nomeArquivo) {
+  document.title = nomeArquivo;
+  const barra = document.createElement("header");
+  barra.className = "pdf-preview-toolbar";
+  const baixar = document.createElement("a");
+  baixar.href = pdfUrl;
+  baixar.download = nomeArquivo;
+  baixar.textContent = "Baixar PDF";
+  barra.append(baixar);
+
+  const paginas = document.createElement("main");
+  paginas.className = "pdf-preview-pages";
+
+  document.body.classList.add("pdf-preview-open");
+  document.body.replaceChildren(barra, paginas);
+
+  if (!window.pdfjsLib) throw new Error("A biblioteca de visualização do PDF não foi carregada.");
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  return window.pdfjsLib.getDocument(pdfUrl).promise.then(async documento => {
+    const escalaDensidade = Math.min(window.devicePixelRatio || 1, 1.5);
+    const primeiraPagina = await documento.getPage(1);
+    const escalaInicial = Math.min(1, (window.innerWidth - 40) / primeiraPagina.getViewport({ scale: 1 }).width);
+    const viewportInicial = primeiraPagina.getViewport({ scale: escalaInicial });
+    const nodes = [];
+    for (let numero = 1; numero <= documento.numPages; numero++) {
+      const placeholder = document.createElement("div");
+      placeholder.className = "pdf-preview-page";
+      placeholder.style.width = `${viewportInicial.width}px`;
+      placeholder.style.height = `${viewportInicial.height}px`;
+      placeholder.dataset.pageNumber = String(numero);
+      paginas.append(placeholder);
+      nodes.push(placeholder);
+    }
+
+    const pending = [];
+    let rendering = false;
+    const renderNext = async () => {
+      if (rendering) return;
+      rendering = true;
+      while (pending.length) {
+        const node = pending.shift();
+        if (node.dataset.visible !== "true" || node.dataset.rendered === "true" || node.dataset.rendering === "true") continue;
+        node.dataset.rendering = "true";
+        const pagina = await documento.getPage(Number(node.dataset.pageNumber));
+        const escala = Math.min(1, (window.innerWidth - 40) / pagina.getViewport({ scale: 1 }).width);
+        const viewport = pagina.getViewport({ scale: escala });
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.ceil(viewport.width * escalaDensidade);
+        canvas.height = Math.ceil(viewport.height * escalaDensidade);
+        canvas.style.width = `${viewport.width}px`;
+        canvas.style.height = `${viewport.height}px`;
+        await pagina.render({
+          canvasContext: canvas.getContext("2d"),
+          viewport: pagina.getViewport({ scale: escala * escalaDensidade })
+        }).promise;
+        if (node.dataset.visible === "true") {
+          node.replaceChildren(canvas);
+          node.dataset.rendered = "true";
+        } else {
+          canvas.width = 0;
+          canvas.height = 0;
+        }
+        node.dataset.rendering = "false";
+      }
+      rendering = false;
+    };
+
+    const observar = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const node = entry.target;
+        node.dataset.visible = String(entry.isIntersecting);
+        if (entry.isIntersecting) {
+          if (node.dataset.rendered !== "true" && node.dataset.rendering !== "true") pending.push(node);
+        } else if (node.dataset.rendered === "true") {
+          const canvas = node.querySelector("canvas");
+          if (canvas) {
+            canvas.width = 0;
+            canvas.height = 0;
+          }
+          node.replaceChildren();
+          node.dataset.rendered = "false";
+        }
+      });
+      renderNext().catch(erro => {
+        console.error("Erro ao renderizar página do PDF:", erro);
+        const mensagem = document.createElement("p");
+        mensagem.className = "pdf-preview-error";
+        mensagem.textContent = `Não foi possível renderizar a página: ${erro.message}`;
+        paginas.prepend(mensagem);
+      });
+    }, { root: paginas, rootMargin: "400px 0px" });
+    nodes.forEach(node => observar.observe(node));
+  }).catch(erro => {
+    const mensagem = document.createElement("p");
+    mensagem.className = "pdf-preview-error";
+    mensagem.textContent = `Não foi possível exibir a pré-visualização do PDF: ${erro.message}`;
+    paginas.replaceChildren(mensagem);
+    throw erro;
+  });
+}
+
+function ajustarPaginaAoA4(pagina, escala) {
+  const conteudo = pagina.querySelector(".pagina-conteudo");
+  const tabelaNotas = pagina.querySelector(".notas");
+  const tabelaResultados = pagina.querySelector(".res");
+
+  if (tabelaNotas) {
+    tabelaNotas.style.fontSize = `${7.5 * escala}pt`;
+    tabelaNotas.querySelectorAll("td, th").forEach(celula => {
+      celula.style.padding = `${0.45 * escala}mm 1.2mm`;
+      celula.style.lineHeight = String(1.05 * escala);
+      celula.style.fontSize = `${(celula.matches("th.nome") ? 8.5 : celula.matches("th") ? 8 : 7.5) * escala}pt`;
+      if (celula.matches("td")) celula.style.height = `${3.9 * escala}mm`;
+    });
+  }
+
+  if (tabelaResultados) {
+    tabelaResultados.style.fontSize = `${7.5 * escala}pt`;
+    tabelaResultados.querySelectorAll("td, th").forEach(celula => {
+      celula.style.padding = `${escala}mm 1mm`;
+      celula.style.lineHeight = String(1.05 * escala);
+      celula.style.fontSize = `${7.5 * escala}pt`;
+    });
+  }
+
+  const perfil = pagina.querySelector(".perfil");
+  if (perfil) {
+    perfil.style.minHeight = `${150 * escala}mm`;
+    perfil.style.fontSize = `${7.5 * escala}pt`;
+    perfil.style.lineHeight = String(1.25 * escala);
+    const titulo = perfil.querySelector(".pt");
+    if (titulo) {
+      titulo.style.fontSize = `${7.5 * escala}pt`;
+      titulo.style.padding = `${0.8 * escala}mm ${1.2 * escala}mm`;
+    }
+    const corpo = perfil.querySelector(".corpo");
+    if (corpo) corpo.style.padding = `${0.8 * escala}mm ${1.2 * escala}mm`;
+    const emissao = pagina.querySelector(".emissao");
+    if (emissao) {
+      emissao.style.fontSize = `${10 * escala}pt`;
+      emissao.style.marginTop = `${14 * escala}mm`;
+    }
+    const assinaturas = pagina.querySelector(".assin");
+    if (assinaturas) {
+      assinaturas.style.fontSize = `${7.5 * escala}pt`;
+      assinaturas.style.marginTop = `${38 * escala}mm`;
+    }
+  }
+
+  return conteudo.scrollHeight;
+}
+
+function ajustarPaginasAoA4(documento) {
+  const larguraUtilPx = 194 * 96 / 25.4;
+  const alturaUtilPx = 280.8 * 96 / 25.4;
+
+  documento.querySelectorAll(".pagina").forEach(pagina => {
+    const conteudo = pagina.querySelector(".pagina-conteudo");
+    let escalaMinima = 0.35;
+    let escalaMaxima = 1;
+    let escalaFinal = escalaMinima;
+
+    if (conteudo.scrollWidth > larguraUtilPx || conteudo.scrollHeight > alturaUtilPx) {
+      for (let tentativa = 0; tentativa < 18; tentativa++) {
+        const escala = (escalaMinima + escalaMaxima) / 2;
+        const altura = ajustarPaginaAoA4(pagina, escala);
+        if (conteudo.scrollWidth <= larguraUtilPx && altura <= alturaUtilPx) {
+          escalaFinal = escala;
+          escalaMinima = escala;
+        } else {
+          escalaMaxima = escala;
+        }
+      }
+      ajustarPaginaAoA4(pagina, escalaFinal);
+    }
+  });
+}
+
+function abrirArmazenamentoPdf() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("fmm-historico-pdf", 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains("arquivos")) {
+        request.result.createObjectStore("arquivos");
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("Não foi possível abrir o armazenamento temporário do PDF."));
+  });
+}
+
+async function salvarPdfTemporario(token, blob, nomeArquivo) {
+  const database = await abrirArmazenamentoPdf();
+  await new Promise((resolve, reject) => {
+    const transaction = database.transaction("arquivos", "readwrite");
+    transaction.objectStore("arquivos").put({ blob, nomeArquivo }, token);
+    transaction.oncomplete = resolve;
+    transaction.onerror = () => reject(transaction.error || new Error("Não foi possível guardar o PDF temporariamente."));
+    transaction.onabort = () => reject(transaction.error || new Error("O armazenamento temporário do PDF foi interrompido."));
+  });
+  database.close();
+}
+
+async function carregarPdfTemporario(token) {
+  const database = await abrirArmazenamentoPdf();
+  const registro = await new Promise((resolve, reject) => {
+    const transaction = database.transaction("arquivos", "readonly");
+    const request = transaction.objectStore("arquivos").get(token);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("Não foi possível ler o PDF temporário."));
+  });
+  if (registro) {
+    await new Promise((resolve, reject) => {
+      const transaction = database.transaction("arquivos", "readwrite");
+      transaction.objectStore("arquivos").delete(token);
+      transaction.oncomplete = resolve;
+      transaction.onerror = () => reject(transaction.error || new Error("Não foi possível remover o PDF temporário."));
+    });
+  }
+  database.close();
+  return registro;
+}
+
+async function iniciarHistorico() {
+  const parametros = new URLSearchParams(location.search);
+  const estado = document.getElementById("estado");
+  const mensagemEstado = document.getElementById("estadoMensagem");
+  const tokenPdfPronto = parametros.get("pdfReady");
+  if (tokenPdfPronto) {
+    try {
+      const registro = await carregarPdfTemporario(tokenPdfPronto);
+      if (!registro?.blob || !registro?.nomeArquivo) throw new Error("O arquivo PDF temporário não foi encontrado.");
+      const pdfUrl = URL.createObjectURL(registro.blob);
+      await mostrarVisualizadorPdf(pdfUrl, registro.nomeArquivo);
+      localStorage.removeItem(`historico-pdf:${tokenPdfPronto}`);
+    } catch (erro) {
+      console.error("Erro ao abrir o PDF preparado:", erro);
+      if (estado) {
+        estado.classList.add("estado-erro");
+        if (mensagemEstado) mensagemEstado.textContent = `Não foi possível abrir o PDF: ${erro.message}`;
+        const voltar = document.createElement("a");
+        voltar.className = "estado-voltar";
+        voltar.href = "historico_escolar_coordenador.html";
+        voltar.textContent = "Voltar à consulta";
+        estado.querySelector(".estado-conteudo")?.append(voltar);
+      }
+    }
+    return;
+  }
+
+  const ras = [...new Set(parametros.getAll("ra").filter(Boolean))];
+  try {
+    if (!ras.length) throw new Error("Não foi informado o RA do aluno para gerar o histórico.");
+    const ano = parametros.get("ano");
+    if (!window.html2pdf) throw new Error("A biblioteca de geração de PDF não foi carregada.");
+    const documento = document.getElementById("historicos");
+    documento.style.width = "210mm";
+    documento.style.margin = "0";
+    const options = {
+      margin: 0,
+      image: { type: "jpeg", quality: 0.88 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: [] }
+    };
+    let pdfDocument = null;
+    let paginasProcessadas = 0;
+    let paginasPDF = 0;
+    const atualizarProgresso = (mensagem, progresso = null) => {
+      if (mensagemEstado) mensagemEstado.textContent = mensagem;
+      if (progresso !== null) {
+        const percentual = Math.max(0, Math.min(100, progresso));
+        const barra = document.getElementById("estadoProgressoBarra");
+        const trilho = barra?.parentElement;
+        if (barra) barra.style.width = `${percentual}%`;
+        if (trilho) trilho.setAttribute("aria-valuenow", String(Math.round(percentual)));
+      }
+    };
+    const aguardarLayout = () => new Promise(resolve =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve))
+    );
+
+    for (let inicio = 0; inicio < ras.length; inicio += 5) {
+      const lote = ras.slice(inicio, inicio + 5);
+      atualizarProgresso(`Carregando dados dos históricos ${inicio + 1} a ${inicio + lote.length} de ${ras.length}...`, paginasProcessadas / ras.length * 100);
+      const alunos = await Promise.all(lote.map(ra => HistoricoEscolarDados.carregar(ra, ano)));
+
+      for (let indice = 0; indice < alunos.length; indice++) {
+        HistoricoEscolar.render([alunos[indice]], documento);
+        await aguardarLayout();
+        ajustarPaginasAoA4(documento);
+        const paginas = [...documento.querySelectorAll(".pagina")];
+        if (paginas.length !== 2) {
+          throw new Error(`O histórico de ${ras[inicio + indice]} não gerou as duas páginas esperadas.`);
+        }
+
+        for (const pagina of paginas) {
+          const worker = window.html2pdf().set(options).from(pagina).toCanvas();
+          const canvas = await worker.get("canvas");
+          if (Math.abs(canvas.width / canvas.height - 210 / 297) > 0.005) {
+            throw new Error(`A página ${paginasPDF + 1} não corresponde às dimensões A4.`);
+          }
+          if (!pdfDocument) {
+            pdfDocument = await worker.toPdf().get("pdf");
+            if (pdfDocument.internal.getNumberOfPages() !== 1) {
+              throw new Error("A primeira página do histórico excedeu o tamanho A4.");
+            }
+          } else {
+            pdfDocument.addPage("a4", "portrait");
+            pdfDocument.addImage(canvas.toDataURL("image/jpeg", options.image.quality), "JPEG", 0, 0, 210, 297);
+          }
+          paginasPDF++;
+          canvas.width = 0;
+          canvas.height = 0;
+        }
+
+        paginasProcessadas++;
+        atualizarProgresso(`Preparando histórico ${paginasProcessadas} de ${ras.length}...`, paginasProcessadas / ras.length * 100);
+        documento.replaceChildren();
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+    }
+
+    if (!pdfDocument) throw new Error("Nenhuma página foi gerada para o PDF.");
+    if (pdfDocument.internal.getNumberOfPages() !== ras.length * 2) {
+      throw new Error(`O PDF gerou ${pdfDocument.internal.getNumberOfPages()} páginas; eram esperadas ${ras.length * 2}.`);
+    }
+    const raArquivo = ras[0].replace(/[^\w.-]+/g, "_");
+    const nomeArquivo = ras.length > 1
+      ? `historicos-escolares-${ano || "lote"}.pdf`
+      : `historico-escolar-${raArquivo}.pdf`;
+    pdfDocument.setProperties({ title: nomeArquivo });
+    const pdf = pdfDocument.output("blob");
+    const waitToken = parametros.get("waitToken");
+    if (!waitToken) throw new Error("Não foi informado o identificador da aba de resultado.");
+    await salvarPdfTemporario(waitToken, pdf, nomeArquivo);
+    localStorage.setItem(`historico-pdf:${waitToken}`, JSON.stringify({ status: "ready" }));
+    window.location.replace("historico_escolar_coordenador.html");
+  } catch (erro) {
+    console.error("Erro ao carregar histórico escolar:", erro);
+    const waitToken = parametros.get("waitToken");
+    if (waitToken) {
+      try {
+        localStorage.setItem(`historico-pdf:${waitToken}`, JSON.stringify({
+          status: "error",
+          message: erro.message
+        }));
+      } catch (erroArmazenamento) {
+        console.error("Não foi possível notificar a aba de resultado:", erroArmazenamento);
+      }
+    }
+    if (estado) {
+      estado.classList.add("estado-erro");
+      if (mensagemEstado) mensagemEstado.textContent = `Não foi possível gerar o histórico: ${erro.message}`;
+      const voltar = document.createElement("a");
+      voltar.className = "estado-voltar";
+      voltar.href = "historico_escolar_coordenador.html";
+      voltar.textContent = "Voltar à consulta";
+      estado.querySelector(".estado-conteudo")?.append(voltar);
+    }
+  }
+}
+window.HistoricoEscolarDados = HistoricoEscolarDados;
+iniciarHistorico();
+</script>
+</body>
+</html>

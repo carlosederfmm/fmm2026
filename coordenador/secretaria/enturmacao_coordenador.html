@@ -103,6 +103,10 @@
         <!-- ABA 1: ENTURMAÇÃO GERAL -->
         <div id="view-geral" class="flex-1 p-8 flex flex-col gap-6 overflow-hidden">
             <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-6">
+                <div class="flex flex-col gap-1 min-w-[150px]">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Ano Letivo</label>
+                    <select id="selectAnoLetivo" onchange="handleAnoLetivoChange()" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm font-bold text-fmm-dark"></select>
+                </div>
                 <div class="flex flex-col gap-1 min-w-[250px]">
                     <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Selecionar Turma Destino</label>
                     <select id="selectTurma" onchange="handleTurmaChange()" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-fmm-blue text-sm font-bold text-fmm-dark">
@@ -112,7 +116,7 @@
 
                 <div id="statsTurma" class="hidden flex items-center gap-6 border-l pl-6 animate-fade-in-up">
                     <div class="flex flex-col">
-                        <span class="text-[10px] font-bold text-slate-400 uppercase">Vagas Preenchidas</span>
+                        <span id="vagasLabel" class="text-[10px] font-bold text-slate-400 uppercase">Vagas Preenchidas</span>
                         <span id="vagasCount" class="text-lg font-extrabold text-fmm-blue">0 / 48</span>
                     </div>
                     <div class="h-8 w-px bg-slate-100"></div>
@@ -128,7 +132,7 @@
                     <div class="p-6 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center">
                         <div>
                             <h3 class="font-bold text-fmm-dark text-sm">Alunos Disponíveis</h3>
-                            <p class="text-[10px] text-slate-400 font-medium">Ativos e sem turma vinculada</p>
+                            <p id="availableStudentsHint" class="text-[10px] text-slate-400 font-medium">Ativos e sem turma vinculada</p>
                         </div>
                         <div class="relative w-48">
                             <i data-lucide="search" class="absolute left-3 top-2 w-3.5 h-3.5 text-slate-400"></i>
@@ -253,6 +257,7 @@
         let alunosDisponiveis = []; // Apenas alunos sem turma (server-side query)
         let alunosAlocados = [];    // Apenas alunos da turma selecionada
         let turmaAtualId = "";
+        let anoLetivoSelecionado = new Date().getFullYear();
         let userLevels = [];
         let searchTimeout = null;
         
@@ -302,6 +307,7 @@
             }
 
             await SidebarComponent.render('sidebar-container');
+            preencherAnosLetivos();
 
             try {
                 const { data: turmas } = await supabaseClient.from('turmas').select('*').order('nome');
@@ -324,6 +330,28 @@
             } catch (err) { console.error(err); }
         }
 
+        function preencherAnosLetivos() {
+            const select = document.getElementById('selectAnoLetivo');
+            const anoAtual = new Date().getFullYear();
+            select.innerHTML = Array.from({ length: anoAtual - 1999 }, (_, indice) => anoAtual - indice)
+                .map(ano => `<option value="${ano}">${ano}${ano === anoAtual ? ' (Atual)' : ''}</option>`)
+                .join('');
+            select.value = String(anoLetivoSelecionado);
+        }
+
+        async function handleAnoLetivoChange() {
+            anoLetivoSelecionado = Number(document.getElementById('selectAnoLetivo').value);
+            const historico = anoLetivoSelecionado !== new Date().getFullYear();
+            document.getElementById('vagasLabel').innerText = historico ? "Matrículas no ano" : "Vagas Preenchidas";
+            document.getElementById('availableStudentsHint').innerText = historico
+                ? "Pesquise alunos para consultar ou criar matrícula neste ano"
+                : "Ativos e sem turma vinculada";
+            await Promise.all([
+                fetchAlunosAlocados(turmaAtualId),
+                fetchAlunosDisponiveis(document.getElementById('searchDisponivel').value)
+            ]);
+        }
+
         // --- CORE: LÓGICA DE CARREGAMENTO ESCALÁVEL (> 1500 ALUNOS) ---
 
         /**
@@ -331,22 +359,48 @@
          * TASK: Filtrar para NÃO listar alunos transferidos
          */
         async function fetchAlunosDisponiveis(termo = '') {
+            const anoAtual = new Date().getFullYear();
+            if (anoLetivoSelecionado !== anoAtual && !turmaAtualId) {
+                alunosDisponiveis = [];
+                renderLists();
+                return;
+            }
+
             let query = supabaseClient
                 .from('alunos')
                 .select('ra, nome_completo, url_foto, id_turma, id_subturma_ingles, status')
-                .is('id_turma', null)
-                .ilike('status', 'Cursando') // Filtro crítico: Garante que apenas quem está cursando apareça para alocação
                 .order('nome_completo')
                 .limit(200); 
+
+            if (anoLetivoSelecionado === new Date().getFullYear()) {
+                query = query.is('id_turma', null).ilike('status', 'Cursando');
+            }
 
             if (termo) {
                 query = query.ilike('nome_completo', `%${termo}%`);
             }
 
             const { data, error } = await query;
-            if (error) return console.error(error);
-            
-            alunosDisponiveis = data || [];
+            if (error) {
+                console.error("Erro ao carregar alunos disponíveis:", error);
+                alert("Erro ao carregar alunos disponíveis: " + error.message);
+                return;
+            }
+
+            let raJaAlocados = new Set();
+            if (turmaAtualId) {
+                const alunosNoAno = await supabaseClient.from('matriculas')
+                    .select('ra_aluno')
+                    .eq('id_turma', turmaAtualId)
+                    .eq('ano_letivo', anoLetivoSelecionado);
+                if (alunosNoAno.error) {
+                    console.error("Erro ao verificar matrículas existentes:", alunosNoAno.error);
+                    alert("Erro ao verificar matrículas existentes: " + alunosNoAno.error.message);
+                    return;
+                }
+                raJaAlocados = new Set((alunosNoAno.data || []).map(matricula => matricula.ra_aluno));
+            }
+            alunosDisponiveis = (data || []).filter(aluno => !raJaAlocados.has(aluno.ra));
             renderLists();
         }
 
@@ -360,11 +414,29 @@
                 return;
             }
 
-            const { data, error } = await supabaseClient
-                .from('alunos')
-                .select('ra, nome_completo, url_foto, id_turma, id_subturma_ingles')
-                .eq('id_turma', turmaId)
-                .order('nome_completo');
+            let data;
+            let error;
+            if (anoLetivoSelecionado === new Date().getFullYear()) {
+                const resposta = await supabaseClient
+                    .from('alunos')
+                    .select('ra, nome_completo, url_foto, id_turma, id_subturma_ingles')
+                    .eq('id_turma', turmaId)
+                    .order('nome_completo');
+                data = resposta.data;
+                error = resposta.error;
+            } else {
+                const resposta = await supabaseClient
+                    .from('matriculas')
+                    .select('status, alunos!inner(ra, nome_completo, url_foto, id_turma, id_subturma_ingles)')
+                    .eq('id_turma', turmaId)
+                    .eq('ano_letivo', anoLetivoSelecionado)
+                    .order('nome_completo', { foreignTable: 'alunos' });
+                data = (resposta.data || []).map(matricula => ({
+                    ...matricula.alunos,
+                    status: matricula.status
+                }));
+                error = resposta.error;
+            }
 
             if (error) return console.error(error);
             
@@ -433,6 +505,7 @@
                 document.getElementById('nivelSerieDesc').innerText = `${t.nivel} / ${t.serie}`;
                 // Carrega especificamente os alunos dessa turma
                 await fetchAlunosAlocados(turmaAtualId);
+                await fetchAlunosDisponiveis(document.getElementById('searchDisponivel').value);
             } else {
                 document.getElementById('statsTurma').classList.add('hidden');
                 document.getElementById('turmaTitle').innerText = "Nenhuma turma selecionada";
@@ -447,36 +520,42 @@
          */
         async function moverParaTurma(ra) {
             if (!turmaAtualId) return;
-            
-            // 1. Atualizar o ID da turma na tabela principal (Atomic: Apenas um RA)
-            const { error: errorAlu } = await supabaseClient.from('alunos').update({ id_turma: turmaAtualId }).eq('ra', ra);
-            
-            if (!errorAlu) {
-                // 2. Garantir registro na tabela de matrículas (Atomic: Apenas este vínculo)
-                await supabaseClient.from('matriculas').upsert({ 
-                    ra_aluno: ra, 
-                    id_turma: turmaAtualId, 
-                    ano_letivo: 2026, 
-                    status: 'CURSANDO' 
-                }, { onConflict: 'ra_aluno, id_turma, ano_letivo' });
-
-                // Atualiza as listas locais
-                await fetchAlunosAlocados(turmaAtualId);
-                await fetchAlunosDisponiveis(document.getElementById('searchDisponivel').value);
-            } else {
-                alert("Erro ao enturmar aluno: " + errorAlu.message);
+            if (anoLetivoSelecionado === new Date().getFullYear()) {
+                const { error: errorAlu } = await supabaseClient.from('alunos').update({ id_turma: turmaAtualId }).eq('ra', ra);
+                if (errorAlu) return alert("Erro ao atualizar a turma do aluno: " + errorAlu.message);
             }
+
+            const { error } = await supabaseClient.from('matriculas').upsert({
+                ra_aluno: ra,
+                id_turma: turmaAtualId,
+                ano_letivo: anoLetivoSelecionado,
+                status: 'CURSANDO'
+            }, { onConflict: 'ra_aluno, id_turma, ano_letivo' });
+            if (error) return alert("Erro ao criar a matrícula: " + error.message);
+
+            await fetchAlunosAlocados(turmaAtualId);
+            await fetchAlunosDisponiveis(document.getElementById('searchDisponivel').value);
         }
 
         async function removerDaTurma(ra) {
             if(!confirm("Remover este aluno da turma?")) return;
             
-            // Limpa o vínculo sem afetar outros alunos
-            const { error } = await supabaseClient.from('alunos').update({ id_turma: null, id_subturma_ingles: null }).eq('ra', ra);
+            let error;
+            if (anoLetivoSelecionado === new Date().getFullYear()) {
+                const resposta = await supabaseClient.from('alunos')
+                    .update({ id_turma: null, id_subturma_ingles: null }).eq('ra', ra);
+                error = resposta.error;
+            } else {
+                const resposta = await supabaseClient.from('matriculas').delete()
+                    .eq('ra_aluno', ra)
+                    .eq('id_turma', turmaAtualId)
+                    .eq('ano_letivo', anoLetivoSelecionado);
+                error = resposta.error;
+            }
             if (!error) {
                 await fetchAlunosAlocados(turmaAtualId);
                 await fetchAlunosDisponiveis(document.getElementById('searchDisponivel').value);
-            }
+            } else alert("Erro ao remover o aluno da turma: " + error.message);
         }
 
         async function handleTurmaInglesChange() {

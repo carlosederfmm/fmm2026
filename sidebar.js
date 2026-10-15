@@ -66,6 +66,7 @@ const SidebarComponent = {
             top: 80px;
             width: 28px;
             height: 28px;
+            min-height: 28px;
             padding: 0 !important;
             line-height: 1;
             box-sizing: border-box;
@@ -178,6 +179,7 @@ const SidebarComponent = {
         ],
         secretaria: [
             { label: 'Ficha de Alunos', icon: 'users-2', link: 'coordenador/secretaria/alunos_coordenador.html', roles: ['diretor', 'coordenador', 'orientador'] },
+            { label: 'Histórico Escolar', icon: 'file-text', link: 'coordenador/secretaria/historico_escolar_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Enturmação', icon: 'user-plus', link: 'coordenador/secretaria/enturmacao_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Turmas', icon: 'library', link: 'coordenador/secretaria/turmas_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Professores', icon: 'graduation-cap', link: 'coordenador/secretaria/professor_coordenador.html', roles: ['diretor', 'coordenador'] }
