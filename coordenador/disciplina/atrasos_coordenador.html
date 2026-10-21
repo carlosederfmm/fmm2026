@@ -391,18 +391,27 @@
             empty.classList.add('hidden');
 
             try {
-                let query = window.supabaseClient.from('atrasos')
-                    .select('*, alunos!inner(nome_completo, url_foto, id_turma, ra, turmas!inner(nome, nivel)), prof:perfis(nome_completo)')
-                    .order('data_atraso', { ascending: false })
-                    .order('hora_atraso', { ascending: false })
-                    .limit(5000); 
-                
-                if (userLevels.length > 0) query = query.in('alunos.turmas.nivel', userLevels);
+                const pageSize = 1000;
+                const records = [];
 
-                const { data, error } = await query;
-                if(error) throw error;
-                
-                allRecords = data || [];
+                for (let from = 0; ; from += pageSize) {
+                    let query = window.supabaseClient.from('atrasos')
+                        .select('*, alunos!inner(nome_completo, url_foto, id_turma, ra, turmas!inner(nome, nivel)), prof:perfis(nome_completo)')
+                        .order('data_atraso', { ascending: false })
+                        .order('hora_atraso', { ascending: false })
+                        .order('id', { ascending: true });
+
+                    if (userLevels.length > 0) query = query.in('alunos.turmas.nivel', userLevels);
+
+                    const { data, error } = await query.range(from, from + pageSize - 1);
+                    if (error) throw error;
+
+                    const batch = data || [];
+                    records.push(...batch);
+                    if (batch.length < pageSize) break;
+                }
+
+                allRecords = records;
                 applyFiltersAndRender();
             } catch (err) { 
                 console.error(err); 
