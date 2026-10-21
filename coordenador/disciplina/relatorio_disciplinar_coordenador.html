@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório Disciplinar | SME FMM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="../../assets/js/supabase_client.js"></script>
+    <script src="../../sidebar.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fmm: {
+                            dark: '#003c5b',
+                            blue: '#00638f',
+                            green: '#80a51b',
+                            lime: '#c8d400'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .report-table th { position: sticky; top: 0; z-index: 5; background: #f8fafc; }
+        @media (max-width: 767px) {
+            main > header { padding: 16px !important; }
+            #filterPanel { padding: 12px !important; }
+            #tableArea { padding: 12px !important; }
+        }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden text-left">
+    <aside id="sidebar-container" class="sidebar-transition w-72 bg-fmm-dark text-white flex-shrink-0 flex flex-col shadow-2xl relative z-20"></aside>
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
+        <header class="bg-white border-b flex flex-col gap-2 px-8 py-5 shadow-sm flex-shrink-0 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h1 class="text-xl font-black text-fmm-dark uppercase tracking-tight">Relatório Disciplinar</h1>
+                <p class="mt-1 text-xs text-slate-400">Resumo disciplinar por aluno: sanções, atrasos e saídas antecipadas.</p>
+            </div>
+            <span id="studentCount" class="text-xs font-black uppercase tracking-widest text-fmm-blue">Carregando...</span>
+        </header>
+
+        <section id="filterPanel" class="flex-shrink-0 px-8 pt-6">
+            <div class="flex flex-col gap-3 rounded-3xl border border-slate-100 bg-white p-4 shadow-sm lg:flex-row">
+                <div class="relative min-w-0 flex-1">
+                    <i data-lucide="search" class="absolute left-4 top-3.5 h-4 w-4 text-slate-400"></i>
+                    <input id="searchInput" type="search" oninput="applyFilters()" placeholder="Buscar por nome ou RA..."
+                           class="w-full rounded-2xl border border-slate-100 bg-slate-50 py-3 pl-11 pr-4 text-sm outline-none transition-all focus:ring-2 focus:ring-fmm-blue">
+                </div>
+                <div class="flex flex-col gap-3 sm:flex-row">
+                    <select id="turmaFilter" onchange="applyFilters()" class="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600 outline-none sm:min-w-[180px]">
+                        <option value="">Todas as turmas</option>
+                    </select>
+                    <select id="statusFilter" onchange="applyFilters()" class="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600 outline-none sm:min-w-[170px]">
+                        <option value="">Todos os status</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <section id="tableArea" class="relative flex-1 min-h-0 overflow-auto p-8 custom-scrollbar">
+            <div id="loadingState" class="absolute inset-0 z-10 flex items-center justify-center bg-slate-50/80">
+                <div class="flex flex-col items-center gap-3 text-fmm-blue">
+                    <i data-lucide="loader-2" class="h-9 w-9 animate-spin"></i>
+                    <span class="text-xs font-black uppercase tracking-widest">Carregando dados disciplinares...</span>
+                </div>
+            </div>
+            <div id="errorState" class="hidden rounded-3xl border border-red-100 bg-white p-8 text-center shadow-sm">
+                <i data-lucide="circle-alert" class="mx-auto mb-3 h-8 w-8 text-red-500"></i>
+                <p class="font-bold text-slate-700">Não foi possível carregar o relatório.</p>
+                <p id="errorMessage" class="mt-2 text-sm text-slate-500"></p>
+                <button onclick="init()" class="mt-5 rounded-xl bg-fmm-dark px-5 py-2.5 text-xs font-black uppercase text-white">Tentar novamente</button>
+            </div>
+            <div id="emptyState" class="hidden rounded-3xl border border-slate-100 bg-white p-12 text-center text-slate-400 shadow-sm">
+                <i data-lucide="users-round" class="mx-auto mb-3 h-9 w-9"></i>
+                <p id="emptyMessage" class="text-sm font-bold">Nenhum aluno encontrado com esses filtros.</p>
+            </div>
+            <div id="tableContainer" class="hidden overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="report-table w-full min-w-[820px] border-collapse text-left">
+                        <thead>
+                            <tr class="border-b border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                <th class="px-6 py-4">Aluno</th>
+                                <th class="px-5 py-4">Turma</th>
+                                <th class="px-5 py-4 text-center">Status</th>
+                                <th class="px-4 py-4 text-center">Sanções / recente</th>
+                                <th class="px-4 py-4 text-center">Atrasos / recente</th>
+                                <th class="px-4 py-4 text-center">Saídas / recente</th>
+                                <th class="px-6 py-4 text-center">Relatório</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTableBody" class="divide-y divide-slate-50 text-sm"></tbody>
+                    </table>
+                </div>
+                <div class="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center">
+                    <span id="pageInfo" class="text-[10px] font-bold uppercase tracking-widest text-slate-400"></span>
+                    <div id="pagination" class="ml-auto flex items-center gap-1.5"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const PAGE_SIZE = 1000;
+        const ITEMS_PER_PAGE = 20;
+        const SANCTION_TYPES = {
+            1: 'Notificação',
+            2: 'Advertência verbal',
+            3: 'Advertência escrita',
+            4: 'Suspensão',
+            5: 'Conselho'
+        };
+
+        let userLevels = [];
+        let allStudents = [];
+        let visibleStudents = [];
+        let reportsByRa = new Map();
+        let currentPage = 1;
+
+        function normalizeRa(ra) {
+            return String(ra ?? '').trim();
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, character => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[character]);
+        }
+
+        async function fetchAllRows(queryFactory) {
+            const rows = [];
+            for (let from = 0; ; from += PAGE_SIZE) {
+                const { data, error } = await queryFactory().range(from, from + PAGE_SIZE - 1);
+                if (error) throw error;
+                const batch = data || [];
+                rows.push(...batch);
+                if (batch.length < PAGE_SIZE) return rows;
+            }
+        }
+
+        async function fetchSanctions(studentRas) {
+            const rows = [];
+            const batchSize = 100;
+            const raBatches = [];
+
+            for (let index = 0; index < studentRas.length; index += batchSize) {
+                raBatches.push(studentRas.slice(index, index + batchSize));
+            }
+
+            for (let index = 0; index < raBatches.length; index += 4) {
+                const batchResults = await Promise.all(raBatches.slice(index, index + 4).map(raBatch =>
+                    fetchAllRows(() => window.supabaseClient
+                        .from('sancoes_disciplinares')
+                            .select('id, ra_aluno, nivel, infracao, observacao, data_sancao')
+                        .in('ra_aluno', raBatch)
+                        .order('data_sancao', { ascending: false })
+                        .order('id', { ascending: true }))
+                ));
+                batchResults.forEach(batchRows => batchRows.forEach(row => rows.push(row)));
+            }
+
+            return rows;
+        }
+
+        async function loadReportData() {
+            const students = await fetchAllRows(() => {
+                let query = window.supabaseClient
+                    .from('alunos')
+                    .select('ra, nome_completo, id_turma, status, turmas!inner(nome, nivel)')
+                    .order('nome_completo')
+                    .order('ra');
+                if (userLevels.length > 0) query = query.in('turmas.nivel', userLevels);
+                return query;
+            });
+            const studentRas = [...new Map(students
+                .filter(student => normalizeRa(student.ra))
+                .map(student => [normalizeRa(student.ra), student.ra])).values()];
+
+            const [sanctions, delays, exits] = await Promise.all([
+                fetchSanctions(studentRas),
+                fetchAllRows(() => {
+                    let query = window.supabaseClient
+                        .from('atrasos')
+                        .select('id, aluno_ra, data_atraso, hora_atraso, motivo, alunos!inner(turmas!inner(nivel))')
+                        .order('data_atraso', { ascending: false })
+                        .order('id', { ascending: true });
+                    if (userLevels.length > 0) query = query.in('alunos.turmas.nivel', userLevels);
+                    return query;
+                }),
+                fetchAllRows(() => {
+                    let query = window.supabaseClient
+                        .from('saidas')
+                        .select('id, aluno_ra, data_saida, hora_saida, motivo, transporte, autorizado_por, retorno, alunos!inner(turmas!inner(nivel))')
+                        .order('data_saida', { ascending: false })
+                        .order('id', { ascending: true });
+                    if (userLevels.length > 0) query = query.in('alunos.turmas.nivel', userLevels);
+                    return query;
+                })
+            ]);
+
+            reportsByRa = new Map(students.map(student => [normalizeRa(student.ra), {
+                sanctions: [],
+                delays: [],
+                exits: []
+            }]));
+
+            sanctions.forEach(record => reportsByRa.get(normalizeRa(record.ra_aluno))?.sanctions.push(record));
+            delays.forEach(record => reportsByRa.get(normalizeRa(record.aluno_ra))?.delays.push(record));
+            exits.forEach(record => reportsByRa.get(normalizeRa(record.aluno_ra))?.exits.push(record));
+            allStudents = students;
+        }
+
+        function populateFilters() {
+            const classes = new Map();
+            const statuses = new Set();
+            allStudents.forEach(student => {
+                if (student.id_turma && student.turmas?.nome) classes.set(String(student.id_turma), student.turmas.nome);
+                if (student.status) statuses.add(student.status);
+            });
+
+            const turmaFilter = document.getElementById('turmaFilter');
+            turmaFilter.innerHTML = '<option value="">Todas as turmas</option>' +
+                [...classes.entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'))
+                    .map(([id, name]) => `<option value="${escapeHtml(id)}">${escapeHtml(name)}</option>`).join('');
+
+            const statusFilter = document.getElementById('statusFilter');
+            statusFilter.innerHTML = '<option value="">Todos os status</option>' +
+                [...statuses].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+                    .map(status => `<option value="${escapeHtml(status)}">${escapeHtml(status)}</option>`).join('');
+        }
+
+        function getStats(student) {
+            return reportsByRa.get(normalizeRa(student.ra)) || { sanctions: [], delays: [], exits: [] };
+        }
+
+        function applyFilters() {
+            const term = document.getElementById('searchInput').value.trim().toLocaleLowerCase('pt-BR');
+            const turmaId = document.getElementById('turmaFilter').value;
+            const status = document.getElementById('statusFilter').value;
+
+            visibleStudents = allStudents.filter(student => {
+                const name = String(student.nome_completo || '').toLocaleLowerCase('pt-BR');
+                const ra = normalizeRa(student.ra).toLocaleLowerCase('pt-BR');
+                return (!term || name.includes(term) || ra.includes(term)) &&
+                    (!turmaId || String(student.id_turma) === turmaId) &&
+                    (!status || student.status === status);
+            });
+
+            currentPage = 1;
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('studentTableBody');
+            const tableContainer = document.getElementById('tableContainer');
+            const emptyState = document.getElementById('emptyState');
+            const pageCount = Math.ceil(visibleStudents.length / ITEMS_PER_PAGE);
+            const start = (currentPage - 1) * ITEMS_PER_PAGE;
+            const pageStudents = visibleStudents.slice(start, start + ITEMS_PER_PAGE);
+
+            document.getElementById('studentCount').textContent =
+                `${visibleStudents.length.toLocaleString('pt-BR')} aluno${visibleStudents.length === 1 ? '' : 's'}`;
+
+            if (visibleStudents.length === 0) {
+                tableContainer.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                document.getElementById('emptyMessage').textContent = allStudents.length
+                    ? 'Nenhum aluno encontrado com esses filtros.'
+                    : 'Nenhum aluno encontrado para os níveis de acesso disponíveis.';
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            tableContainer.classList.remove('hidden');
+            tbody.innerHTML = pageStudents.map(student => {
+                const stats = getStats(student);
+                return `<tr class="transition-colors hover:bg-slate-50">
+                    <td class="px-6 py-4">
+                        <div class="font-black uppercase text-fmm-dark">${escapeHtml(student.nome_completo || 'Sem nome')}</div>
+                        <div class="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">RA: ${escapeHtml(student.ra)}</div>
+                    </td>
+                    <td class="px-5 py-4 text-xs font-bold uppercase text-slate-600">${escapeHtml(student.turmas?.nome || 'Sem turma')}</td>
+                    <td class="px-5 py-4 text-center">
+                        <span class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase text-slate-500">${escapeHtml(student.status || 'Não informado')}</span>
+                    </td>
+                    <td class="px-4 py-4 text-center">
+                        <div class="font-black text-blue-700">${stats.sanctions.length}</div>
+                        <div class="mt-1 text-[9px] font-bold text-slate-400">${escapeHtml(formatDate(latestDate(stats.sanctions, 'data_sancao')) || '—')}</div>
+                    </td>
+                    <td class="px-4 py-4 text-center">
+                        <div class="font-black text-amber-600">${stats.delays.length}</div>
+                        <div class="mt-1 text-[9px] font-bold text-slate-400">${escapeHtml(formatDate(latestDate(stats.delays, 'data_atraso')) || '—')}</div>
+                    </td>
+                    <td class="px-4 py-4 text-center">
+                        <div class="font-black text-rose-600">${stats.exits.length}</div>
+                        <div class="mt-1 text-[9px] font-bold text-slate-400">${escapeHtml(formatDate(latestDate(stats.exits, 'data_saida')) || '—')}</div>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <button type="button" data-ra="${escapeHtml(normalizeRa(student.ra))}" class="download-report inline-flex items-center gap-2 rounded-xl bg-fmm-dark px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white shadow-sm transition-all hover:bg-fmm-blue">
+                            <i data-lucide="download" class="h-4 w-4"></i><span>Baixar PDF</span>
+                        </button>
+                    </td>
+                </tr>`;
+            }).join('');
+            tbody.querySelectorAll('.download-report').forEach(button => {
+                button.addEventListener('click', () => downloadReport(button.dataset.ra));
+            });
+
+            document.getElementById('pageInfo').textContent =
+                `Exibindo ${start + 1}-${Math.min(start + ITEMS_PER_PAGE, visibleStudents.length)} de ${visibleStudents.length} alunos`;
+            renderPagination(pageCount);
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function renderPagination(pageCount) {
+            const container = document.getElementById('pagination');
+            if (pageCount <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const previousDisabled = currentPage === 1;
+            const nextDisabled = currentPage === pageCount;
+            const pages = [];
+            const first = Math.max(1, currentPage - 2);
+            const last = Math.min(pageCount, currentPage + 2);
+            for (let page = first; page <= last; page++) pages.push(page);
+
+            container.innerHTML = `
+                <button type="button" data-page="${currentPage - 1}" ${previousDisabled ? 'disabled' : ''} aria-label="Página anterior" class="rounded-xl border border-slate-200 p-2 text-slate-500 disabled:opacity-40"><i data-lucide="chevron-left" class="h-4 w-4"></i></button>
+                ${pages.map(page => `<button type="button" data-page="${page}" class="h-8 min-w-8 rounded-xl border px-2 text-xs font-black ${page === currentPage ? 'border-fmm-dark bg-fmm-dark text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}">${page}</button>`).join('')}
+                <button type="button" data-page="${currentPage + 1}" ${nextDisabled ? 'disabled' : ''} aria-label="Próxima página" class="rounded-xl border border-slate-200 p-2 text-slate-500 disabled:opacity-40"><i data-lucide="chevron-right" class="h-4 w-4"></i></button>`;
+
+            container.querySelectorAll('button[data-page]').forEach(button => {
+                button.addEventListener('click', () => {
+                    const page = Number(button.dataset.page);
+                    if (page < 1 || page > pageCount) return;
+                    currentPage = page;
+                    renderTable();
+                });
+            });
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function groupRecords(records, getLabel) {
+            const counts = new Map();
+            records.forEach(record => {
+                const label = String(getLabel(record) || 'Não informado').trim() || 'Não informado';
+                counts.set(label, (counts.get(label) || 0) + 1);
+            });
+            return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR'));
+        }
+
+        function formatDate(dateValue) {
+            if (!dateValue) return '';
+            const parts = String(dateValue).slice(0, 10).split('-');
+            return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : String(dateValue);
+        }
+
+        function latestDate(records, field) {
+            return records.reduce((latest, record) => {
+                const value = record[field];
+                return value && (!latest || String(value) > String(latest)) ? value : latest;
+            }, null);
+        }
+
+        function ensurePdfSpace(doc, student, y, height, bottomLimit = 278) {
+            if (y + height <= bottomLimit) return y;
+            doc.addPage();
+            return continuationHeader(doc, student);
+        }
+
+        function drawSection(doc, title, rows, y, student) {
+            y = ensurePdfSpace(doc, student, y, 12);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(0, 60, 91);
+            doc.text(title.toLocaleUpperCase('pt-BR'), 14, y);
+            y += 5;
+            doc.setDrawColor(226, 232, 240);
+            doc.line(14, y - 2, 196, y - 2);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(51, 65, 85);
+            const reportRows = rows.length ? rows : [['Sem registros', 0]];
+            reportRows.forEach(([label, count]) => {
+                const lines = doc.splitTextToSize(String(label), 160);
+                let lineIndex = 0;
+                let isFirstPart = true;
+
+                while (lineIndex < lines.length) {
+                    y = ensurePdfSpace(doc, student, y, 8);
+                    const availableLines = Math.max(1, Math.floor((278 - y) / 4));
+                    const chunk = lines.slice(lineIndex, lineIndex + availableLines);
+                    doc.text(chunk, 14, y);
+                    if (isFirstPart) {
+                        doc.setFont('helvetica', 'bold');
+                        doc.text(String(count), 196, y, { align: 'right' });
+                        doc.setFont('helvetica', 'normal');
+                    }
+                    lineIndex += chunk.length;
+                    y += chunk.length * 4 + (lineIndex >= lines.length ? 1.5 : 0);
+                    isFirstPart = false;
+                }
+            });
+            return y + 3;
+        }
+
+        function continuationHeader(doc, student) {
+            const pageWidth = doc.internal.pageSize.getWidth();
+            doc.setFillColor(0, 60, 91);
+            doc.rect(0, 0, pageWidth, 22, 'F');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.setTextColor(255, 255, 255);
+            doc.text('RELATÓRIO DISCIPLINAR · CONTINUAÇÃO', 14, 9);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.text(`${student.nome_completo || 'Sem nome'} · RA ${student.ra || 'Não informado'}`, 14, 16);
+            return 30;
+        }
+
+        function drawDetailedHistory(doc, student, stats, startY) {
+            const bottomLimit = 278;
+            let y = startY;
+            let pageNumber = doc.internal.getNumberOfPages();
+            const timeline = [
+                ...stats.sanctions.slice().sort((a, b) => String(b.data_sancao || '').localeCompare(String(a.data_sancao || ''))).map(record => ({
+                    date: record.data_sancao,
+                    time: '',
+                    type: 'SANÇÃO',
+                    detail: [
+                        SANCTION_TYPES[record.nivel] || `Nível ${record.nivel || 'não informado'}`,
+                        `Infração: ${record.infracao || 'Não informada'}`,
+                        record.observacao ? `Observação: ${record.observacao}` : ''
+                    ].filter(Boolean).join(' · ')
+                })),
+                ...stats.delays.slice().sort((a, b) => {
+                    const left = `${a.data_atraso || ''}T${a.hora_atraso || ''}`;
+                    const right = `${b.data_atraso || ''}T${b.hora_atraso || ''}`;
+                    return right.localeCompare(left);
+                }).map(record => ({
+                    date: record.data_atraso,
+                    time: record.hora_atraso,
+                    type: 'ATRASO',
+                    detail: `Motivo: ${record.motivo || 'Não informado'}`
+                })),
+                ...stats.exits.slice().sort((a, b) => {
+                    const left = `${a.data_saida || ''}T${a.hora_saida || ''}`;
+                    const right = `${b.data_saida || ''}T${b.hora_saida || ''}`;
+                    return right.localeCompare(left);
+                }).map(record => ({
+                    date: record.data_saida,
+                    time: record.hora_saida,
+                    type: 'SAÍDA ANTECIPADA',
+                    detail: [
+                        `Motivo: ${record.motivo || 'Não informado'}`,
+                        record.transporte ? `Transporte: ${record.transporte}` : '',
+                        record.autorizado_por ? `Autorizado por: ${record.autorizado_por}` : '',
+                        `Tipo: ${record.retorno ? 'Vai retornar' : 'Definitivo'}`
+                    ].filter(Boolean).join(' · ')
+                }))
+            ].sort((a, b) => {
+                const left = `${a.date || ''}T${a.time || ''}`;
+                const right = `${b.date || ''}T${b.time || ''}`;
+                return right.localeCompare(left);
+            });
+
+            y = ensurePdfSpace(doc, student, y, 12, bottomLimit);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(0, 60, 91);
+            doc.text(`HISTÓRICO COMPLETO (${timeline.length} OCORRÊNCIAS)`, 14, y);
+            y += 5;
+            doc.setDrawColor(226, 232, 240);
+            doc.line(14, y - 2, 196, y - 2);
+
+            if (timeline.length === 0) {
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(8);
+                doc.setTextColor(71, 85, 105);
+                doc.text('Nenhuma ocorrência disciplinar registrada.', 14, y + 2);
+                return y + 8;
+            }
+
+            timeline.forEach((entry, index) => {
+                const heading = `${formatDate(entry.date) || 'Data não informada'}${entry.time ? ` às ${String(entry.time).slice(0, 5)}` : ''} · ${entry.type}`;
+                const detailLines = doc.splitTextToSize(entry.detail, 174);
+                let lineIndex = 0;
+                let isFirstPart = true;
+
+                while (lineIndex < detailLines.length) {
+                    if (y + 13 > bottomLimit) {
+                        doc.addPage();
+                        pageNumber++;
+                        y = continuationHeader(doc, student);
+                    }
+
+                    if (isFirstPart) {
+                        if (index > 0 || pageNumber > 1) {
+                            doc.setDrawColor(241, 245, 249);
+                            doc.line(14, y - 2, 196, y - 2);
+                        }
+                        doc.setFont('helvetica', 'bold');
+                        doc.setFontSize(8);
+                        doc.setTextColor(0, 99, 143);
+                        doc.text(heading, 14, y + 2);
+                        y += 7;
+                    } else {
+                        doc.setFont('helvetica', 'bold');
+                        doc.setFontSize(7);
+                        doc.setTextColor(100, 116, 139);
+                        doc.text(`${heading} (continuação)`, 14, y + 2);
+                        y += 6;
+                    }
+
+                    const availableLines = Math.max(1, Math.floor((bottomLimit - y) / 4));
+                    const chunk = detailLines.slice(lineIndex, lineIndex + availableLines);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(7.5);
+                    doc.setTextColor(51, 65, 85);
+                    doc.text(chunk, 14, y);
+                    lineIndex += chunk.length;
+                    y += chunk.length * 4 + 3;
+                    isFirstPart = false;
+                }
+            });
+
+            return y;
+        }
+
+        function downloadReport(ra) {
+            try {
+                if (!window.jspdf?.jsPDF) throw new Error('A biblioteca de geração de PDF não foi carregada. Atualize a página e tente novamente.');
+                const student = allStudents.find(item => normalizeRa(item.ra) === normalizeRa(ra));
+                if (!student) throw new Error('Aluno não encontrado na lista atual. Atualize a página e tente novamente.');
+                const stats = getStats(student);
+                const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+                const pageWidth = doc.internal.pageSize.getWidth();
+
+                doc.setFillColor(0, 60, 91);
+                doc.rect(0, 0, pageWidth, 28, 'F');
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(16);
+                doc.setTextColor(255, 255, 255);
+                doc.text('RELATÓRIO DISCIPLINAR', 14, 13);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(8);
+                doc.text('RESUMO CONSOLIDADO DO HISTÓRICO DO ALUNO', 14, 20);
+
+                doc.setTextColor(15, 23, 42);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                const identity = doc.splitTextToSize(`ALUNO: ${student.nome_completo || 'Sem nome'}  |  RA: ${student.ra || 'Não informado'}`, 182).slice(0, 2);
+                doc.text(identity, 14, 38);
+                const nextY = 38 + identity.length * 5;
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(9);
+                doc.text(`Turma: ${student.turmas?.nome || 'Não informada'}  |  Status: ${student.status || 'Não informado'}`, 14, nextY);
+
+                const allDates = [...stats.sanctions.map(item => item.data_sancao), ...stats.delays.map(item => item.data_atraso), ...stats.exits.map(item => item.data_saida)]
+                    .filter(Boolean).map(date => String(date).slice(0, 10)).sort();
+                const period = allDates.length
+                    ? `Período com registros: ${formatDate(allDates[0])} a ${formatDate(allDates[allDates.length - 1])}`
+                    : 'Período com registros: sem ocorrências';
+                doc.setTextColor(100, 116, 139);
+                doc.setFontSize(8);
+                doc.text(`${period}  |  Emitido em ${new Date().toLocaleDateString('pt-BR')}`, 14, nextY + 6);
+
+                const cardY = nextY + 13;
+                const cardWidth = 58;
+                const gap = 4;
+                const cardData = [
+                    ['SANÇÕES', stats.sanctions.length],
+                    ['ATRASOS', stats.delays.length],
+                    ['SAÍDAS ANTECIPADAS', stats.exits.length]
+                ];
+                cardData.forEach(([label, count], index) => {
+                    const x = 14 + index * (cardWidth + gap);
+                    doc.setFillColor(241, 245, 249);
+                    doc.roundedRect(x, cardY, cardWidth, 16, 2, 2, 'F');
+                    doc.setTextColor(100, 116, 139);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(7);
+                    doc.text(label, x + 3, cardY + 5);
+                    doc.setTextColor(0, 60, 91);
+                    doc.setFontSize(12);
+                    doc.text(String(count), x + 3, cardY + 12);
+                });
+
+                let y = cardY + 25;
+                const sanctionsByType = groupRecords(stats.sanctions, item => SANCTION_TYPES[item.nivel] || `Sanção (nível ${item.nivel || 'não informado'})`);
+                y = drawSection(doc, 'Sanções por tipo', sanctionsByType, y, student);
+                y = drawSection(doc, 'Infrações registradas', groupRecords(stats.sanctions, item => item.infracao), y, student);
+                y = drawSection(doc, 'Motivos dos atrasos', groupRecords(stats.delays, item => item.motivo), y, student);
+                y = drawSection(doc, 'Motivos das saídas', groupRecords(stats.exits, item => item.motivo), y, student);
+
+                y = drawDetailedHistory(doc, student, stats, y + 2);
+
+                const pageCount = doc.internal.getNumberOfPages();
+                for (let page = 1; page <= pageCount; page++) {
+                    doc.setPage(page);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(7);
+                    doc.setTextColor(148, 163, 184);
+                    doc.text('Documento para uso interno da instituição.', 14, 287);
+                    doc.text(`Página ${page} de ${pageCount}`, 196, 287, { align: 'right' });
+                }
+                const fileName = String(student.nome_completo || 'aluno').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'aluno';
+                doc.save(`relatorio-disciplinar-${fileName}-${normalizeRa(student.ra) || 'sem-ra'}.pdf`);
+            } catch (error) {
+                console.error('Erro ao gerar relatório disciplinar:', error);
+                window.alert(error.message || 'Não foi possível gerar o PDF. Tente novamente.');
+            }
+        }
+
+        async function init() {
+            document.getElementById('studentCount').textContent = 'Carregando...';
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('errorState').classList.add('hidden');
+            document.getElementById('tableContainer').classList.add('hidden');
+            document.getElementById('emptyState').classList.add('hidden');
+
+            try {
+                const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
+                if (authError) throw authError;
+                if (!user) {
+                    window.location.href = '../../index.html';
+                    return;
+                }
+
+                if (window.SidebarComponent) await SidebarComponent.render('sidebar-container');
+                const { data: profile, error: profileError } = await window.supabaseClient
+                    .from('perfis').select('cargo, niveis_acesso').eq('id', user.id).single();
+                if (profileError) throw profileError;
+                if (!profile || !['diretor', 'coordenador'].includes(profile.cargo)) {
+                    window.location.href = '../../index.html';
+                    return;
+                }
+
+                userLevels = profile.cargo === 'diretor' ? ['EF1', 'EF2', 'EMT'] : (profile.niveis_acesso || []);
+                await loadReportData();
+                populateFilters();
+                applyFilters();
+            } catch (error) {
+                console.error('Erro ao carregar relatório disciplinar:', error);
+                document.getElementById('studentCount').textContent = 'Erro ao carregar';
+                document.getElementById('errorMessage').textContent = error.message || 'Verifique sua conexão e tente novamente.';
+                document.getElementById('errorState').classList.remove('hidden');
+                if (window.lucide) lucide.createIcons();
+            } finally {
+                document.getElementById('loadingState').classList.add('hidden');
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

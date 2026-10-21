@@ -185,6 +185,7 @@ const SidebarComponent = {
             { label: 'Professores', icon: 'graduation-cap', link: 'coordenador/secretaria/professor_coordenador.html', roles: ['diretor', 'coordenador'] }
         ],
         disciplina: [
+            { label: 'Relatório Disciplinar', icon: 'file-text', link: 'coordenador/disciplina/relatorio_disciplinar_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Sanções', icon: 'shield-alert', link: 'coordenador/disciplina/sancoes_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Fila de Chamados', icon: 'bell-plus', link: 'coordenador/disciplina/chamados_coordenador.html', roles: ['diretor', 'coordenador'] },
             { label: 'Atrasos', icon: 'clock', link: 'coordenador/disciplina/atrasos_coordenador.html', roles: ['diretor', 'coordenador', 'secretaria'] },

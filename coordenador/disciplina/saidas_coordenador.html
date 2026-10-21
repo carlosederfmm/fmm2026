@@ -737,9 +737,11 @@
             if(motivo === 'Outro') motivo = document.getElementById('recReasonOther').value.trim();
             let transporte = document.getElementById('recTransport').value;
             if(transporte === 'Outro') transporte = document.getElementById('recTransportOther').value.trim();
+            motivo = motivo || 'Não Informado';
+            transporte = transporte || 'Não Informado';
             const retorno = document.querySelector('input[name="retorno"]:checked').value === 'true';
 
-            if(!data_saida || !hora_saida || !autorizado_por || !motivo) return alert("Preencha todos os campos obrigatórios.");
+            if(!data_saida || !hora_saida || !autorizado_por) return alert("Preencha todos os campos obrigatórios.");
 
             btn.disabled = true;
             btn.innerText = "Sincronizando...";
