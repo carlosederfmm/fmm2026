@@ -45,7 +45,7 @@
                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Arquivos existentes no bucket justificativas_docs</p>
             </div>
             <button id="refreshButton" onclick="loadFiles()" class="self-start bg-fmm-blue hover:bg-fmm-dark text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all md:self-auto">
-                <i data-lucide="refresh-cw" class="w-4 h-4"></i> Atualizar arquivos
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i> Recarregar lista
             </button>
         </header>
 
@@ -80,16 +80,30 @@
 
         <section class="flex-1 min-h-[350px] px-4 py-3 pb-5 flex flex-col sm:px-6 md:min-h-[450px] md:px-8 md:py-4 md:pb-6">
             <div class="flex-1 flex flex-col bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                <div class="px-6 py-3.5 border-b border-slate-100 flex items-center justify-between gap-4 shrink-0">
-                    <h2 class="text-xs font-black text-slate-500 uppercase tracking-widest">Arquivos encontrados</h2>
-                    <span id="visibleCount" class="text-[10px] font-bold text-slate-400"></span>
+                <div class="px-6 py-3.5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 shrink-0">
+                    <div>
+                        <h2 class="text-xs font-black text-slate-500 uppercase tracking-widest">Arquivos encontrados</h2>
+                        <p class="mt-1 text-[10px] font-medium text-slate-400">Selecione os arquivos e clique em “Excluir selecionados”. Recarregar a lista não exclui arquivos.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-end gap-3">
+                        <button id="deleteSelectedButton" type="button" onclick="deleteSelectedFiles()" disabled
+                                class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 text-red-600 border border-red-100 text-[10px] font-bold hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Excluir selecionados
+                        </button>
+                        <span id="selectedFilesCount" class="text-[10px] font-bold text-slate-400">0 selecionados</span>
+                        <span id="visibleCount" class="text-[10px] font-bold text-slate-400"></span>
+                    </div>
                 </div>
                 <div class="flex-1 overflow-auto custom-scrollbar relative min-h-[250px]">
                     <table class="w-full text-left border-collapse">
                         <thead class="sticky top-0 bg-slate-50 z-10">
                             <tr class="text-[9px] uppercase tracking-widest text-slate-400 font-black border-b border-slate-100">
+                                <th class="px-4 py-3.5 text-center"><input id="selectPageCheckbox" type="checkbox" aria-label="Selecionar arquivos desta página" onchange="toggleSelectCurrentPage(this.checked)" class="h-4 w-4 accent-fmm-blue"></th>
                                 <th class="px-6 py-3.5">Data do arquivo</th>
                                 <th class="px-6 py-3.5">Arquivo</th>
+                                <th class="px-6 py-3.5">RA</th>
+                                <th class="px-6 py-3.5">Aluno</th>
+                                <th class="px-6 py-3.5">Turma</th>
                                 <th class="px-6 py-3.5">Tipo</th>
                                 <th class="px-6 py-3.5 text-right">Tamanho</th>
                                 <th class="px-6 py-3.5 text-right">Ação</th>
@@ -103,7 +117,7 @@
                 </div>
                 <div id="pagination" class="px-6 py-2.5 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0"></div>
                 <div class="px-6 py-2.5 bg-slate-50 border-t border-slate-100 text-[9px] text-slate-400 font-medium shrink-0">
-                    A lista vem diretamente do bucket justificativas_docs: arquivos removidos do Storage não aparecem, mesmo que ainda exista referência no banco.
+                    A lista vem do bucket justificativas_docs. Ao excluir, o arquivo e suas referências em justificativas_ausencia são removidos; o requerimento do aluno é preservado.
                 </div>
             </div>
         </section>
@@ -116,6 +130,8 @@
         let storedFiles = [];
         let visibleFiles = [];
         let currentPage = 1;
+        const selectedFileKeys = new Set();
+        let isDeletingFiles = false;
 
         async function init() {
             if (window.SidebarComponent) await SidebarComponent.render('sidebar-container');
@@ -203,7 +219,28 @@
             document.getElementById('statusMessage').classList.add('hidden');
 
             try {
-                storedFiles = await listStorageFolder(ATESTADOS_BUCKET);
+                const [files, references] = await Promise.all([
+                    listStorageFolder(ATESTADOS_BUCKET),
+                    loadDatabaseFileReferences()
+                ]);
+                const referencesByPath = new Map();
+                references.forEach(reference => {
+                    const path = getStoragePathFromReference(reference.anexo_url, ATESTADOS_BUCKET);
+                    if (path && !referencesByPath.has(path)) referencesByPath.set(path, reference);
+                });
+                storedFiles = files.map(file => {
+                    const reference = referencesByPath.get(file.path);
+                    return {
+                        ...file,
+                        studentRa: reference?.aluno_ra || '',
+                        studentName: reference?.alunos?.nome_completo || '',
+                        studentClass: reference?.alunos?.turmas?.nome || ''
+                    };
+                });
+                const availableFileKeys = new Set(storedFiles.map(getFileKey));
+                selectedFileKeys.forEach(key => {
+                    if (!availableFileKeys.has(key)) selectedFileKeys.delete(key);
+                });
                 storedFiles.sort((a, b) => {
                     const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
                     const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -214,15 +251,17 @@
                 updateTypeGroups();
                 renderFiles();
                 setStatus(`${storedFiles.length.toLocaleString('pt-BR')} arquivo(s) existente(s) encontrados no bucket "${ATESTADOS_BUCKET}". Ordenados pela data de envio, do mais recente para o mais antigo.`, 'success');
+                return true;
             } catch (error) {
                 storedFiles = [];
                 updateMonthOptions();
                 updateTypeGroups();
                 renderFiles();
                 setStatus(error.message, 'error');
+                return false;
             } finally {
                 button.disabled = false;
-                button.innerHTML = '<i data-lucide="refresh-cw" class="w-4 h-4"></i> Atualizar arquivos';
+                button.innerHTML = '<i data-lucide="refresh-cw" class="w-4 h-4"></i> Recarregar lista';
                 lucide.createIcons();
             }
         }
@@ -343,7 +382,13 @@
 
             visibleFiles = monthFiles.filter(file =>
                 (!type || file.extension === type) &&
-                (!term || file.name.toLocaleLowerCase('pt-BR').includes(term) || file.path.toLocaleLowerCase('pt-BR').includes(term))
+                (!term || [
+                    file.name,
+                    file.path,
+                    file.studentRa,
+                    file.studentName,
+                    file.studentClass
+                ].some(value => value?.toLocaleLowerCase('pt-BR').includes(term)))
             );
             visibleFiles.sort((a, b) => {
                 const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
@@ -365,11 +410,24 @@
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-slate-50 transition-colors border-b border-slate-50';
                 row.innerHTML = `
+                    <td class="px-4 py-3.5 text-center"><input type="checkbox" class="file-selection-checkbox h-4 w-4 accent-fmm-blue" aria-label="Selecionar ${escapeHtml(file.name)}"></td>
                     <td class="px-6 py-3.5 text-[10px] font-semibold text-slate-500 whitespace-nowrap">${formatDate(file.createdAt)}</td>
                     <td class="px-6 py-3.5"><div class="font-bold text-xs text-fmm-dark break-all">${escapeHtml(file.name)}</div><div class="text-[9px] text-slate-400 mt-0.5 break-all">${escapeHtml(file.bucket + '/' + file.path)}</div></td>
+                    <td class="px-6 py-3.5 text-[10px] font-semibold text-slate-500 whitespace-nowrap">${escapeHtml(file.studentRa || '—')}</td>
+                    <td class="px-6 py-3.5 text-xs font-bold text-fmm-dark">${escapeHtml(file.studentName || 'Aluno não identificado')}</td>
+                    <td class="px-6 py-3.5 text-[10px] font-semibold text-slate-500 whitespace-nowrap">${escapeHtml(file.studentClass || '—')}</td>
                     <td class="px-6 py-3.5"><span class="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 text-[9px] font-black uppercase">.${escapeHtml(file.extension)}</span></td>
                     <td class="px-6 py-3.5 text-right text-[10px] font-semibold text-slate-500 whitespace-nowrap">${formatBytes(file.size)}</td>
                     <td class="px-6 py-3.5 text-right"><button type="button" class="download-one p-1.5 rounded-lg text-slate-400 hover:text-fmm-blue hover:bg-blue-50 transition-colors" title="Baixar arquivo"><i data-lucide="download" class="w-4 h-4"></i></button></td>`;
+                const checkbox = row.querySelector('.file-selection-checkbox');
+                checkbox.checked = selectedFileKeys.has(getFileKey(file));
+                checkbox.disabled = isDeletingFiles;
+                checkbox.addEventListener('change', () => {
+                    const key = getFileKey(file);
+                    if (checkbox.checked) selectedFileKeys.add(key);
+                    else selectedFileKeys.delete(key);
+                    updateSelectionControls(pageFiles);
+                });
                 row.querySelector('.download-one').addEventListener('click', event => downloadFile(file, event.currentTarget));
                 body.appendChild(row);
             });
@@ -379,7 +437,136 @@
                 : '0 arquivos';
             document.getElementById('emptyState').classList.toggle('hidden', visibleFiles.length > 0);
             renderPagination(pageCount);
+            updateSelectionControls(pageFiles);
             lucide.createIcons();
+        }
+
+        function getFileKey(file) {
+            return `${file.bucket}/${file.path}`;
+        }
+
+        function toggleSelectCurrentPage(checked) {
+            const start = (currentPage - 1) * FILES_PER_PAGE;
+            const pageFiles = visibleFiles.slice(start, start + FILES_PER_PAGE);
+            pageFiles.forEach(file => {
+                const key = getFileKey(file);
+                if (checked) selectedFileKeys.add(key);
+                else selectedFileKeys.delete(key);
+            });
+            renderFiles();
+        }
+
+        function updateSelectionControls(pageFiles) {
+            const checkbox = document.getElementById('selectPageCheckbox');
+            const selectedOnPage = pageFiles.filter(file => selectedFileKeys.has(getFileKey(file))).length;
+            checkbox.checked = pageFiles.length > 0 && selectedOnPage === pageFiles.length;
+            checkbox.indeterminate = selectedOnPage > 0 && selectedOnPage < pageFiles.length;
+            checkbox.disabled = pageFiles.length === 0 || isDeletingFiles;
+            document.getElementById('selectedFilesCount').innerText =
+                `${selectedFileKeys.size.toLocaleString('pt-BR')} selecionado(s)`;
+            document.getElementById('deleteSelectedButton').disabled =
+                selectedFileKeys.size === 0 || isDeletingFiles;
+        }
+
+        function getStoragePathFromReference(reference, bucket) {
+            if (!reference) return null;
+            const value = String(reference).trim();
+            if (!value) return null;
+
+            let objectPath = value;
+            const marker = '/storage/v1/object/';
+            try {
+                const url = new URL(value);
+                const markerIndex = url.pathname.indexOf(marker);
+                if (markerIndex === -1) return null;
+                objectPath = decodeURIComponent(url.pathname.slice(markerIndex + marker.length));
+            } catch (error) {
+                if (/^[a-z][a-z\d+.-]*:/i.test(value)) return null;
+                const markerIndex = value.indexOf(marker);
+                if (markerIndex !== -1) {
+                    objectPath = decodeURIComponent(value.slice(markerIndex + marker.length));
+                }
+            }
+
+            const segments = objectPath.replace(/^\/+/, '').split('/');
+            if (['public', 'sign', 'authenticated'].includes(segments[0])) segments.shift();
+            if (segments[0] === bucket) return segments.slice(1).join('/');
+            return segments.join('/');
+        }
+
+        async function loadDatabaseFileReferences() {
+            const references = [];
+            for (let offset = 0; ; offset += STORAGE_PAGE_SIZE) {
+                const { data, error } = await window.supabaseClient
+                    .from('justificativas_ausencia')
+                    .select('id, anexo_url, aluno_ra, alunos(nome_completo, turmas(nome))')
+                    .not('anexo_url', 'is', null)
+                    .order('id')
+                    .range(offset, offset + STORAGE_PAGE_SIZE - 1);
+                if (error) throw new Error(`Não foi possível consultar as referências no banco: ${error.message}`);
+                references.push(...(data || []));
+                if (!data || data.length < STORAGE_PAGE_SIZE) break;
+            }
+            return references;
+        }
+
+        async function deleteSelectedFiles() {
+            if (isDeletingFiles || selectedFileKeys.size === 0) return;
+            const filesToDelete = storedFiles.filter(file => selectedFileKeys.has(getFileKey(file)));
+            if (filesToDelete.length === 0) {
+                selectedFileKeys.clear();
+                renderFiles();
+                return;
+            }
+            if (!confirm(`Excluir permanentemente ${filesToDelete.length} arquivo(s) selecionado(s) do bucket e remover suas referências no banco de dados?`)) return;
+
+            isDeletingFiles = true;
+            renderFiles();
+            setStatus(`Excluindo ${filesToDelete.length} arquivo(s)...`, 'info');
+            let deletedCount = 0;
+            let failure = null;
+
+            try {
+                const references = await loadDatabaseFileReferences();
+                for (const file of filesToDelete) {
+                    const matchingIds = references
+                        .filter(reference => getStoragePathFromReference(reference.anexo_url, file.bucket) === file.path)
+                        .map(reference => reference.id);
+
+                    if (matchingIds.length > 0) {
+                        const { data, error } = await window.supabaseClient
+                            .from('justificativas_ausencia')
+                            .update({ anexo_url: null })
+                            .in('id', matchingIds)
+                            .select('id');
+                        if (error) throw new Error(`Falha ao remover referências de "${file.name}" do banco: ${error.message}`);
+                        if ((data || []).length !== matchingIds.length) {
+                            throw new Error(`Não foi possível confirmar a remoção de todas as referências de "${file.name}" no banco.`);
+                        }
+                    }
+
+                    const { error: storageError } = await window.supabaseClient.storage
+                        .from(file.bucket)
+                        .remove([file.path]);
+                    if (storageError) throw new Error(`Falha ao excluir "${file.name}" do bucket: ${storageError.message}`);
+
+                    selectedFileKeys.delete(getFileKey(file));
+                    deletedCount++;
+                }
+            } catch (error) {
+                failure = error;
+            } finally {
+                isDeletingFiles = false;
+                const refreshed = await loadFiles();
+                if (failure) {
+                    const refreshMessage = refreshed ? '' : ' A lista não pôde ser atualizada.';
+                    setStatus(`${deletedCount} arquivo(s) excluído(s). ${failure.message}${refreshMessage}`, 'error');
+                } else if (!refreshed) {
+                    setStatus(`${deletedCount} arquivo(s) excluído(s), mas não foi possível atualizar a lista.`, 'error');
+                } else {
+                    setStatus(`${deletedCount} arquivo(s) excluído(s) do bucket e suas referências removidas do banco.`, 'success');
+                }
+            }
         }
 
         function renderPagination(pageCount) {
