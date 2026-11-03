@@ -123,15 +123,43 @@
         </section>
     </main>
 
+    <div id="filePreviewModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-3 sm:p-6"
+         role="dialog" aria-modal="true" aria-labelledby="filePreviewTitle" aria-hidden="true">
+        <div class="w-full max-w-5xl h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <header class="flex items-center justify-between gap-4 px-4 py-3 border-b border-slate-100 sm:px-6">
+                <div class="min-w-0">
+                    <h2 id="filePreviewTitle" class="text-sm font-black text-fmm-dark">Visualizar arquivo</h2>
+                    <p id="filePreviewName" class="text-[10px] text-slate-400 font-semibold mt-0.5 truncate"></p>
+                </div>
+                <button id="closeFilePreview" type="button" class="shrink-0 p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-fmm-dark transition-colors" aria-label="Fechar visualização">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </header>
+            <div id="filePreviewContent" class="min-h-0 flex-1 bg-slate-100 flex items-center justify-center overflow-auto">
+                <p id="filePreviewStatus" class="p-6 text-center text-xs font-semibold text-slate-500" role="status"></p>
+            </div>
+        </div>
+    </div>
+
     <script>
         const ATESTADOS_BUCKET = 'justificativas_docs';
         const STORAGE_PAGE_SIZE = 1000;
         const FILES_PER_PAGE = 100;
+        const PREVIEWABLE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'pdf']);
+        const PREVIEW_MIME_TYPES = {
+            png: 'image/png',
+            jpg: 'image/jpeg',
+            jpeg: 'image/jpeg',
+            pdf: 'application/pdf'
+        };
         let storedFiles = [];
         let visibleFiles = [];
         let currentPage = 1;
         const selectedFileKeys = new Set();
         let isDeletingFiles = false;
+        let previewRequestId = 0;
+        let previewObjectUrl = null;
+        let previewTrigger = null;
 
         async function init() {
             if (window.SidebarComponent) await SidebarComponent.render('sidebar-container');
@@ -152,7 +180,19 @@
             }
 
             lucide.createIcons();
+            setupFilePreviewModal();
             await loadFiles();
+        }
+
+        function setupFilePreviewModal() {
+            const modal = document.getElementById('filePreviewModal');
+            document.getElementById('closeFilePreview').addEventListener('click', closeFilePreview);
+            modal.addEventListener('click', event => {
+                if (event.target === modal) closeFilePreview();
+            });
+            document.addEventListener('keydown', event => {
+                if (event.key === 'Escape') closeFilePreview();
+            });
         }
 
         function setStatus(message, type = 'info') {
@@ -418,7 +458,14 @@
                     <td class="px-6 py-3.5 text-[10px] font-semibold text-slate-500 whitespace-nowrap">${escapeHtml(file.studentClass || '—')}</td>
                     <td class="px-6 py-3.5"><span class="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 text-[9px] font-black uppercase">.${escapeHtml(file.extension)}</span></td>
                     <td class="px-6 py-3.5 text-right text-[10px] font-semibold text-slate-500 whitespace-nowrap">${formatBytes(file.size)}</td>
-                    <td class="px-6 py-3.5 text-right"><button type="button" class="download-one p-1.5 rounded-lg text-slate-400 hover:text-fmm-blue hover:bg-blue-50 transition-colors" title="Baixar arquivo"><i data-lucide="download" class="w-4 h-4"></i></button></td>`;
+                    <td class="px-6 py-3.5 text-right whitespace-nowrap">
+                        <button type="button" class="preview-one p-1.5 rounded-lg text-slate-400 hover:text-fmm-blue hover:bg-blue-50 transition-colors" title="Visualizar arquivo" aria-label="Visualizar ${escapeHtml(file.name)}">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
+                        </button>
+                        <button type="button" class="download-one p-1.5 rounded-lg text-slate-400 hover:text-fmm-blue hover:bg-blue-50 transition-colors" title="Baixar arquivo" aria-label="Baixar ${escapeHtml(file.name)}">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                        </button>
+                    </td>`;
                 const checkbox = row.querySelector('.file-selection-checkbox');
                 checkbox.checked = selectedFileKeys.has(getFileKey(file));
                 checkbox.disabled = isDeletingFiles;
@@ -428,6 +475,7 @@
                     else selectedFileKeys.delete(key);
                     updateSelectionControls(pageFiles);
                 });
+                row.querySelector('.preview-one').addEventListener('click', event => previewFile(file, event.currentTarget));
                 row.querySelector('.download-one').addEventListener('click', event => downloadFile(file, event.currentTarget));
                 body.appendChild(row);
             });
@@ -609,6 +657,94 @@
                 button.innerHTML = original;
                 lucide.createIcons();
             }
+        }
+
+        async function previewFile(file, button) {
+            const modal = document.getElementById('filePreviewModal');
+            const content = document.getElementById('filePreviewContent');
+            let status = document.getElementById('filePreviewStatus');
+            if (!status) {
+                status = document.createElement('p');
+                status.id = 'filePreviewStatus';
+                status.setAttribute('role', 'status');
+            }
+            const requestId = ++previewRequestId;
+            releasePreviewObjectUrl();
+            previewTrigger = button;
+            document.getElementById('filePreviewName').textContent = file.name;
+            content.replaceChildren(status);
+            modal.classList.remove('hidden');
+            modal.setAttribute('aria-hidden', 'false');
+
+            if (!PREVIEWABLE_EXTENSIONS.has(file.extension)) {
+                status.textContent = `Visualização do arquivo indisponível para o formato .${file.extension}.`;
+                status.className = 'p-6 text-center text-xs font-semibold text-slate-500';
+                document.getElementById('closeFilePreview').focus();
+                return;
+            }
+
+            status.textContent = 'Carregando visualização...';
+            status.className = 'p-6 text-center text-xs font-semibold text-slate-500';
+            document.getElementById('closeFilePreview').focus();
+            try {
+                const { data, error } = await window.supabaseClient.storage
+                    .from(file.bucket)
+                    .download(file.path);
+                if (error) throw error;
+                if (requestId !== previewRequestId) return;
+                if (!data) throw new Error('O armazenamento não retornou o conteúdo do arquivo.');
+
+                const previewBlob = new Blob([data], { type: PREVIEW_MIME_TYPES[file.extension] });
+                previewObjectUrl = URL.createObjectURL(previewBlob);
+
+                if (file.extension === 'pdf') {
+                    const frame = document.createElement('iframe');
+                    frame.src = previewObjectUrl;
+                    frame.title = `Visualização de ${file.name}`;
+                    frame.className = 'w-full h-full min-h-[50vh] bg-white';
+                    content.replaceChildren(frame);
+                } else {
+                    const image = document.createElement('img');
+                    image.alt = `Visualização de ${file.name}`;
+                    image.className = 'max-w-full max-h-full object-contain';
+                    image.onerror = () => {
+                        if (requestId !== previewRequestId) return;
+                        releasePreviewObjectUrl();
+                        image.remove();
+                        status.textContent = 'Não foi possível carregar a visualização deste arquivo.';
+                        status.className = 'p-6 text-center text-xs font-semibold text-red-600';
+                        content.replaceChildren(status);
+                    };
+                    content.replaceChildren(image);
+                    image.src = previewObjectUrl;
+                }
+            } catch (error) {
+                if (requestId !== previewRequestId) return;
+                console.error(`Erro ao visualizar "${file.name}":`, error);
+                releasePreviewObjectUrl();
+                status.textContent = `Falha ao carregar a visualização: ${error.message}`;
+                status.className = 'p-6 text-center text-xs font-semibold text-red-600';
+                content.replaceChildren(status);
+            }
+        }
+
+        function releasePreviewObjectUrl() {
+            if (!previewObjectUrl) return;
+            URL.revokeObjectURL(previewObjectUrl);
+            previewObjectUrl = null;
+        }
+
+        function closeFilePreview() {
+            const modal = document.getElementById('filePreviewModal');
+            if (modal.classList.contains('hidden')) return;
+            previewRequestId++;
+            releasePreviewObjectUrl();
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+            document.getElementById('filePreviewContent').replaceChildren();
+            document.getElementById('filePreviewName').textContent = '';
+            if (previewTrigger?.isConnected) previewTrigger.focus();
+            previewTrigger = null;
         }
 
         async function compileType(extension, button) {
