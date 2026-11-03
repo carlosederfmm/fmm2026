@@ -262,6 +262,7 @@
         let turmasData = [];
         let matriculasData = [];
         let userLevels = [];
+        const SALA_SEPARADA_ID = 'sala-separada';
 
         async function init() {
             if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
@@ -390,8 +391,12 @@
 
                             return isSerieMatch && isNivelMatch && count > 0;
                         });
+                        const turmasAutorizadasIds = new Set(turmasData.map(t => t.id));
+                        const alunosSalaSeparada = matriculasData.filter(m =>
+                            turmasAutorizadasIds.has(m.id_turma) && m.alunos?.prova_adaptada === true
+                        );
 
-                        if (relevantTurmas.length === 0) return;
+                        if (relevantTurmas.length === 0 && alunosSalaSeparada.length === 0) return;
                         
                         const examHtml = `
                             <div class="bg-white rounded-[40px] shadow-sm border border-slate-200 overflow-hidden animate-fade">
@@ -413,14 +418,13 @@
                                     ${relevantTurmas.map(t => {
                                         const students = matriculasData.filter(m => m.id_turma === t.id);
                                         const commonCount = students.filter(m => m.alunos?.prova_adaptada !== true).length;
-                                        const adaptedCount = students.length - commonCount;
                                         return `
                                             <label class="relative cursor-pointer group">
                                                 <input type="checkbox" class="peer sr-only checkbox-exam-item" data-exam-id="${exam.id}" data-turma-id="${t.id}">
                                                 <div class="p-4 bg-white border-2 border-slate-100 rounded-3xl transition-all group-hover:border-fmm-lime/50 peer-checked:border-fmm-blue peer-checked:bg-blue-50/50 text-left">
                                                     <div class="flex justify-between items-start mb-2">
                                                         <span class="text-sm font-black text-fmm-dark uppercase leading-tight">${t.nome}</span>
-                                                        <span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[8px] font-black rounded uppercase">${commonCount} COMUNS${adaptedCount ? ` · ${adaptedCount} ADAPTADOS` : ''}</span>
+                                                        <span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[8px] font-black rounded uppercase">${commonCount} ALUNOS</span>
                                                     </div>
                                                     <button onclick="printSingle('${exam.id}', '${t.id}')" class="w-full mt-2 py-2.5 bg-white border border-slate-200 text-slate-500 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-fmm-blue hover:text-white hover:border-fmm-blue transition-all">
                                                         Imprimir Lista
@@ -429,6 +433,20 @@
                                             </label>
                                         `;
                                     }).join('')}
+                                    ${alunosSalaSeparada.length > 0 ? `
+                                        <label class="relative cursor-pointer group">
+                                            <input type="checkbox" class="peer sr-only checkbox-exam-item" data-exam-id="${exam.id}" data-turma-id="${SALA_SEPARADA_ID}">
+                                            <div class="p-4 bg-white border-2 border-slate-100 rounded-3xl transition-all group-hover:border-fmm-lime/50 peer-checked:border-fmm-blue peer-checked:bg-blue-50/50 text-left">
+                                                <div class="flex justify-between items-start mb-2">
+                                                    <span class="text-sm font-black text-fmm-dark uppercase leading-tight">SALA SEPARADA</span>
+                                                    <span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[8px] font-black rounded uppercase">${alunosSalaSeparada.length} ALUNOS</span>
+                                                </div>
+                                                <button onclick="printSingle('${exam.id}', '${SALA_SEPARADA_ID}')" class="w-full mt-2 py-2.5 bg-white border border-slate-200 text-slate-500 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-fmm-blue hover:text-white hover:border-fmm-blue transition-all">
+                                                    Imprimir Lista
+                                                </button>
+                                            </div>
+                                        </label>
+                                    ` : ''}
                                 </div>
                             </div>`;
                         container.innerHTML += examHtml;
@@ -465,37 +483,66 @@
         async function generatePrintLayout(items) {
             const printArea = document.getElementById('printArea');
             printArea.innerHTML = '';
+            const listas = [];
+            const turmasPorId = new Map(turmasData.map(t => [t.id, t]));
 
             for (const item of items) {
                 const exam = examsData.find(e => e.id === item.examId);
+                if (item.turmaId === SALA_SEPARADA_ID) {
+                    const alunosSalaSeparada = new Map();
+                    matriculasData
+                        .filter(m => turmasPorId.has(m.id_turma) && m.alunos?.prova_adaptada === true)
+                        .forEach(m => {
+                            alunosSalaSeparada.set(m.ra_aluno, {
+                                ra: m.ra_aluno,
+                                nome: m.alunos.nome_completo,
+                                turma: turmasPorId.get(m.id_turma).nome
+                            });
+                        });
+
+                    if (alunosSalaSeparada.size > 0) {
+                        listas.push({
+                            exam,
+                            alunos: Array.from(alunosSalaSeparada.values()),
+                            nomeTurma: 'SALA SEPARADA: ____________________',
+                            turmaNaLista: 'SALA SEPARADA',
+                            salaSeparada: true
+                        });
+                    }
+                    continue;
+                }
+
                 const turma = turmasData.find(t => t.id === item.turmaId);
                 const matriculasDaTurma = matriculasData
                     .filter(m => m.id_turma === item.turmaId)
-                    .map(m => ({ ra: m.ra_aluno, nome: m.alunos.nome_completo, provaAdaptada: m.alunos?.prova_adaptada === true }));
-                const listas = [
-                    {
-                        alunos: matriculasDaTurma.filter(aluno => !aluno.provaAdaptada),
+                    .map(m => ({
+                        ra: m.ra_aluno,
+                        nome: m.alunos.nome_completo,
+                        provaAdaptada: m.alunos?.prova_adaptada === true
+                    }));
+                const alunosRegulares = matriculasDaTurma.filter(aluno => !aluno.provaAdaptada);
+
+                if (alunosRegulares.length > 0) {
+                    listas.push({
+                        exam,
+                        alunos: alunosRegulares,
                         nomeTurma: turma.nome,
                         turmaNaLista: turma.nome
-                    },
-                    {
-                        alunos: matriculasDaTurma.filter(aluno => aluno.provaAdaptada),
-                        nomeTurma: `ADAPTADOS - ${turma.nome}`,
-                        turmaNaLista: 'ADAPTADOS'
-                    }
-                ].filter(lista => lista.alunos.length > 0);
+                    });
+                }
+            }
 
+            for (const lista of listas) {
+                const exam = lista.exam;
+                const alunos = lista.alunos.sort((a, b) => a.nome.localeCompare(b.nome));
                 const periodoFormatado = exam.periodo_ref.replace('_', 'º ');
                 const dataProva = new Date(exam.data_prova + 'T12:00:00').toLocaleDateString('pt-BR');
                 const nomeDisc = exam.disciplinas?.nome || exam.sigla_disciplina;
                 const tituloProva = `PROVA ${exam.tipo_prova} | ${periodoFormatado}`;
+                const sheet = document.createElement('div');
+                sheet.className = 'sheet';
 
-                for (const lista of listas) {
-                    const alunos = lista.alunos.sort((a, b) => a.nome.localeCompare(b.nome));
-                    const sheet = document.createElement('div');
-                    sheet.className = 'sheet';
-
-                    let tableHtml = `
+                let tableHtml = `
                     <table class="layout">
                         <colgroup>
                             <col style="width: 4%;" />
@@ -531,7 +578,7 @@
                         <tbody>
                 `;
 
-                    const totalLinhas = Math.max(50, alunos.length);
+                    const totalLinhas = Math.max(lista.salaSeparada ? 49 : 50, alunos.length);
                 
                     for (let i = 0; i < totalLinhas; i++) {
                         const aluno = alunos[i];
@@ -540,7 +587,7 @@
                             <td class="s3">${aluno ? (i + 1) : ''}</td>
                             <td class="s3">${aluno ? aluno.ra : ''}</td>
                             <td class="s4" title="${aluno ? aluno.nome : ''}">${aluno ? aluno.nome : ''}</td>
-                            <td class="s3">${aluno ? lista.turmaNaLista : ''}</td>
+                            <td class="s3">${aluno ? (aluno.turma || lista.turmaNaLista) : ''}</td>
                             <td class="s-empty"></td>
                             <td class="s-empty"></td>
                         </tr>
@@ -548,9 +595,8 @@
                     }
 
                     tableHtml += `</tbody></table>`;
-                    sheet.innerHTML = tableHtml;
-                    printArea.appendChild(sheet);
-                }
+                sheet.innerHTML = tableHtml;
+                printArea.appendChild(sheet);
             }
         }
 
