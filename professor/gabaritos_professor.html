@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <script src="../assets/js/supabase_client.js"></script>
+    <script src="../assets/js/gabarito_rules.js"></script>
     <script src="../sidebar.js"></script>
 
     <script>
@@ -173,7 +174,7 @@
             <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
                 <div class="max-w-2xl mx-auto bg-white rounded-[40px] shadow-sm border border-slate-100 overflow-hidden">
                     <div class="p-8 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center">
-                        <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest">Cartão Resposta Digital</h3>
+                        <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest">Gabarito das Questões Objetivas</h3>
                         <span id="completionLabel" class="text-[10px] font-black text-red-500 uppercase">Pendente: 0/0</span>
                     </div>
                     
@@ -194,32 +195,9 @@
         let currentUser = null;
         let myAssignments = [];
         let existingGabaritos = [];
+        let questionConfigurations = [];
         let currentFormConfig = null;
         let selectedAnswers = {};
-
-        // MAPEADOR DE REGRAS (FMM Official)
-        const RULES = {
-            'Básica': {
-                'P1': { Regular: { q: 20, p: 0.4 }, Adaptada: { q: 15, p: 0.5 } },
-                'RC': { Regular: { q: 25, p: 0.4 }, Adaptada: { q: 20, p: 0.5 } },
-                'P2': { Regular: { q: 25, p: 0.4 }, Adaptada: { q: 20, p: 0.5 } },
-                'P1 - 2ª CHAMADA': { Regular: { q: 20, p: 0.4 }, Adaptada: { q: 15, p: 0.5 } },
-                'P2 - 2ª CHAMADA': { Regular: { q: 25, p: 0.4 }, Adaptada: { q: 20, p: 0.5 } }
-            },
-            'Técnica': {
-                'P1': { Regular: { q: 20, p: 0.5 }, Adaptada: { q: 15, p: 0.6667 } },
-                'RC': { Regular: { q: 10, p: 1.0 }, Adaptada: { q: 5, p: 2.0 } },
-                '2ª CHAMADA': { Regular: { q: 20, p: 0.5 }, Adaptada: { q: 15, p: 0.67 } }
-            },
-            'Fundamental': {
-                'Lower': { // 5º, 6º, 7º
-                    all: { Regular: { q: 15, p: 0.5 }, Adaptada: { q: 10, p: 0.6667 } }
-                },
-                'Upper': { // 8º, 9º
-                    all: { Regular: { q: 20, p: 0.4 }, Adaptada: { q: 15, p: 0.5 } }
-                }
-            }
-        };
 
         async function init() {
             if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
@@ -247,16 +225,28 @@
 
             try {
                 // 1. Buscar vínculos onde este professor é o elaborador
-                const { data: assignmentData } = await window.supabaseClient
+                const { data: assignmentData, error: assignmentError } = await window.supabaseClient
                     .from('vinculo_elaboradores')
                     .select('*, calendario_referencia_provas(*, disciplinas(nome))')
                     .eq('professor_id', currentUser.id);
+                if (assignmentError) throw assignmentError;
 
-                // 2. Buscar gabaritos que ele já enviou
-                const { data: gabData } = await window.supabaseClient
+                const calendarIds = [...new Set((assignmentData || []).map(assignment => assignment.calendario_id))];
+                questionConfigurations = [];
+                if (calendarIds.length) {
+                    const { data: configurationData, error: configurationError } = await window.supabaseClient
+                        .from('gabarito_configuracoes')
+                        .select('calendario_id, serie_alvo, modalidade, qtd_questoes_objetivas, valor_ponto')
+                        .in('calendario_id', calendarIds);
+                    if (configurationError) throw configurationError;
+                    questionConfigurations = configurationData || [];
+                }
+
+                // Check by exam, not by current author, since the database key is exam-specific.
+                const { data: gabData, error: gabaritosError } = await window.supabaseClient
                     .from('gabaritos_oficiais')
-                    .select('*')
-                    .eq('elaborador_id', currentUser.id);
+                    .select('calendario_id, serie_alvo, modalidade');
+                if (gabaritosError) throw gabaritosError;
 
                 myAssignments = assignmentData || [];
                 existingGabaritos = gabData || [];
@@ -279,10 +269,10 @@
                             <p class="text-[10px] font-bold text-slate-500 uppercase mt-1 tracking-widest">${v.serie} • ${cal.matriz} • ${cal.tipo_prova}</p>
                         </div>
                         <div class="grid grid-cols-2 gap-3 pt-4 border-t border-slate-50">
-                            <button onclick="openGabarito('${v.id}', 'Regular')" class="py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${hasRegular ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-fmm-blue text-white shadow-lg shadow-fmm-blue/10 active:scale-95'}">
+                            <button ${hasRegular ? 'disabled' : ''} onclick="openGabarito('${v.id}', 'Regular')" class="py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${hasRegular ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-fmm-blue text-white shadow-lg shadow-fmm-blue/10 active:scale-95'}">
                                 <i data-lucide="${hasRegular ? 'check-circle' : 'plus'}"></i> Regular
                             </button>
-                            <button onclick="openGabarito('${v.id}', 'Adaptada')" class="py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${hasAdaptada ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-fmm-green text-white shadow-lg shadow-fmm-green/10 active:scale-95'}">
+                            <button ${hasAdaptada ? 'disabled' : ''} onclick="openGabarito('${v.id}', 'Adaptada')" class="py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${hasAdaptada ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-fmm-green text-white shadow-lg shadow-fmm-green/10 active:scale-95'}">
                                 <i data-lucide="${hasAdaptada ? 'check-circle' : 'plus'}"></i> Adaptada
                             </button>
                         </div>
@@ -290,35 +280,28 @@
                 }).join('');
                 lucide.createIcons();
 
-            } catch (err) { console.error(err); } finally { loading.classList.add('hidden'); }
-        }
-
-        // TASK: Correção de BUG e Defensividade
-        function getExamRules(matriz, serie, tipo, modalidade) {
-            // Normalização de tipo para evitar erros com REC/RC
-            const normalizedTipo = tipo === 'REC' ? 'RC' : tipo;
-            
-            if (matriz === 'Básica') {
-                const ruleSet = RULES['Básica'][normalizedTipo] || RULES['Básica']['P1'];
-                return ruleSet ? ruleSet[modalidade] : null;
-            }
-            if (matriz === 'Técnica') {
-                const ruleSet = RULES['Técnica'][normalizedTipo] || RULES['Técnica']['P1'];
-                return ruleSet ? ruleSet[modalidade] : null;
-            }
-            if (matriz === 'Fundamental') {
-                const group = ['5º Ano', '6º Ano', '7º Ano'].includes(serie) ? 'Lower' : 'Upper';
-                return RULES['Fundamental'][group].all[modalidade];
-            }
-            return null;
+            } catch (err) {
+                console.error(err);
+                alert("Erro ao carregar os gabaritos: " + (err.message || "Erro inesperado."));
+            } finally { loading.classList.add('hidden'); }
         }
 
         function openGabarito(assignmentId, modalidade) {
             const v = myAssignments.find(a => a.id === assignmentId);
             const cal = v.calendario_referencia_provas;
             
-            // TASK: Implementação de proteção contra undefined
-            const rule = getExamRules(cal.matriz, v.serie, cal.tipo_prova, modalidade);
+            const configuredRule = questionConfigurations.find(config =>
+                config.calendario_id === cal.id &&
+                config.serie_alvo === v.serie &&
+                config.modalidade === modalidade
+            );
+            const rule = window.GabaritoRules.getRule(
+                cal.matriz,
+                v.serie,
+                cal.tipo_prova,
+                modalidade,
+                configuredRule
+            );
             if (!rule) return alert("Regra de prova não configurada para este segmento ou tipo de prova.");
 
             currentFormConfig = { assignment: v, modalidade, rule };
@@ -327,7 +310,7 @@
             document.getElementById('formExamTitle').innerText = `${cal.disciplinas?.nome} - ${modalidade}`;
             document.getElementById('formExamSubtitle').innerText = `${v.serie} • ${cal.matriz} • ${cal.tipo_prova}`;
             document.getElementById('ruleQty').innerText = `${rule.q} Questões`;
-            document.getElementById('rulePoints').innerText = `${rule.p.toFixed(2)} pts cada`;
+            document.getElementById('rulePoints').innerText = `${Number(rule.p).toFixed(2)} pts cada`;
 
             renderAnswersGrid(rule.q);
             updateCompletion();
@@ -387,6 +370,20 @@
 
         async function submitGabarito() {
             const btn = document.getElementById('btnSubmitGabarito');
+            const { rule } = currentFormConfig || {};
+            const answerKeys = Object.keys(selectedAnswers);
+            const answersAreComplete = rule &&
+                answerKeys.length === rule.q &&
+                Array.from({ length: rule.q }, (_, index) => String(index + 1))
+                    .every(question => Object.prototype.hasOwnProperty.call(selectedAnswers, question) &&
+                        ['A', 'B', 'C', 'D', 'E'].includes(selectedAnswers[question]));
+
+            if (!answersAreComplete) {
+                alert('Preencha uma alternativa válida para cada questão antes de enviar.');
+                if (rule) updateCompletion();
+                return;
+            }
+
             btn.disabled = true;
             btn.innerText = "Enviando para o sistema...";
 

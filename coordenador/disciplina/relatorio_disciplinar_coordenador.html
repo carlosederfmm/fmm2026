@@ -96,8 +96,8 @@
                                 <th class="px-5 py-4">Turma</th>
                                 <th class="px-5 py-4 text-center">Status</th>
                                 <th class="px-4 py-4 text-center">Sanções / recente</th>
-                                <th class="px-4 py-4 text-center">Atrasos / recente</th>
-                                <th class="px-4 py-4 text-center">Saídas / recente</th>
+                                <th class="px-4 py-4 text-center">Total de atrasos</th>
+                                <th class="px-4 py-4 text-center">Total de saídas</th>
                                 <th class="px-6 py-4 text-center">Relatório</th>
                             </tr>
                         </thead>
@@ -305,11 +305,11 @@
                     </td>
                     <td class="px-4 py-4 text-center">
                         <div class="font-black text-amber-600">${stats.delays.length}</div>
-                        <div class="mt-1 text-[9px] font-bold text-slate-400">${escapeHtml(formatDate(latestDate(stats.delays, 'data_atraso')) || '—')}</div>
+                        <div class="mt-1 text-[9px] font-bold text-slate-400">Último: ${escapeHtml(formatDate(latestDate(stats.delays, 'data_atraso')) || '—')}</div>
                     </td>
                     <td class="px-4 py-4 text-center">
                         <div class="font-black text-rose-600">${stats.exits.length}</div>
-                        <div class="mt-1 text-[9px] font-bold text-slate-400">${escapeHtml(formatDate(latestDate(stats.exits, 'data_saida')) || '—')}</div>
+                        <div class="mt-1 text-[9px] font-bold text-slate-400">Último: ${escapeHtml(formatDate(latestDate(stats.exits, 'data_saida')) || '—')}</div>
                     </td>
                     <td class="px-6 py-4 text-center">
                         <button type="button" data-ra="${escapeHtml(normalizeRa(student.ra))}" class="download-report inline-flex items-center gap-2 rounded-xl bg-fmm-dark px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white shadow-sm transition-all hover:bg-fmm-blue">

@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <script src="../../assets/js/supabase_client.js"></script>
+    <script src="../../assets/js/gabarito_rules.js"></script>
     <script src="../../sidebar.js"></script>
 
     <script>
@@ -154,12 +155,56 @@
         </div>
     </div>
 
+    <div id="questionConfigModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-fmm-dark/80 backdrop-blur-md">
+        <div class="bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden animate-fade">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center">
+                <div>
+                    <h2 class="text-xl font-black text-fmm-dark uppercase">Quantidade de Questões</h2>
+                    <p id="questionConfigSubtitle" class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1"></p>
+                </div>
+                <button onclick="closeQuestionConfig()" class="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-all"><i data-lucide="x" class="w-6 h-6 text-slate-400"></i></button>
+            </div>
+            <div class="p-8">
+                <p class="text-xs text-slate-500 mb-5">Defina a quantidade de questões objetivas para cada modalidade desta prova e série.</p>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="text-[10px] font-black text-slate-400 uppercase">
+                                <th class="py-3">Modalidade</th>
+                                <th class="py-3">Questões objetivas</th>
+                                <th class="py-3">Valor por questão</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr>
+                                <td class="py-4 text-xs font-black text-fmm-dark">Regular</td>
+                                <td class="py-4"><input id="regularObjectiveCount" type="number" min="1" max="200" class="w-24 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"></td>
+                                <td class="py-4"><input id="regularQuestionPoints" type="number" min="0.0001" max="999999.9999" step="0.0001" class="w-32 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"></td>
+                            </tr>
+                            <tr>
+                                <td class="py-4 text-xs font-black text-fmm-dark">Adaptada</td>
+                                <td class="py-4"><input id="adaptedObjectiveCount" type="number" min="1" max="200" class="w-24 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"></td>
+                                <td class="py-4"><input id="adaptedQuestionPoints" type="number" min="0.0001" max="999999.9999" step="0.0001" class="w-32 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pt-6 flex gap-3">
+                    <button onclick="closeQuestionConfig()" class="flex-1 py-4 bg-slate-100 text-slate-500 text-xs font-black uppercase rounded-2xl hover:bg-slate-200 transition-all">Cancelar</button>
+                    <button id="saveQuestionConfigButton" onclick="saveQuestionConfig()" class="flex-[2] py-4 bg-fmm-blue text-white text-xs font-black uppercase rounded-2xl shadow-lg hover:shadow-fmm-blue/20 transition-all active:scale-95">Salvar Quantidades</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let calendarItems = [];
         let professors = [];
         let vinculos = [];
         let gabaritos = [];
         let currentTargetVinculo = null;
+        let currentTargetQuestionConfig = null;
+        let questionConfigurations = [];
 
         async function init() {
             if(window.SidebarComponent) await SidebarComponent.render('sidebar-container');
@@ -182,31 +227,41 @@
 
             try {
                 // 1. Carregar Calendário baseado no período exato do regime
-                const { data: calData } = await window.supabaseClient
+                const { data: calData, error: calendarError } = await window.supabaseClient
                     .from('calendario_referencia_provas')
                     .select('*, disciplinas(nome)')
                     .eq('periodo_ref', periodo);
+                if (calendarError) throw calendarError;
 
                 // 2. Carregar Lista de Professores
-                const { data: profData } = await window.supabaseClient
+                const { data: profData, error: professorsError } = await window.supabaseClient
                     .from('perfis')
                     .select('id, nome_completo')
                     .eq('cargo', 'professor')
                     .order('nome_completo');
+                if (professorsError) throw professorsError;
 
                 // 3. Carregar Vínculos e Gabaritos
-                const { data: vincData } = await window.supabaseClient.from('vinculo_elaboradores').select('*');
-                const { data: gabData } = await window.supabaseClient.from('gabaritos_oficiais').select('*');
+                const { data: vincData, error: assignmentsError } = await window.supabaseClient.from('vinculo_elaboradores').select('*');
+                if (assignmentsError) throw assignmentsError;
+                const { data: gabData, error: gabaritosError } = await window.supabaseClient.from('gabaritos_oficiais').select('*');
+                if (gabaritosError) throw gabaritosError;
+                const { data: configData, error: configError } = await window.supabaseClient
+                    .from('gabarito_configuracoes')
+                    .select('calendario_id, serie_alvo, modalidade, qtd_questoes_objetivas, valor_ponto');
+                if (configError) throw configError;
 
                 calendarItems = calData || [];
                 professors = profData || [];
                 vinculos = vincData || [];
                 gabaritos = gabData || [];
+                questionConfigurations = configData || [];
 
                 updateTipoProvaFilter();
                 renderTable();
             } catch (err) {
                 console.error(err);
+                alert("Erro ao carregar os dados dos gabaritos: " + (err.message || "Erro inesperado."));
             } finally {
                 loading.classList.add('hidden');
             }
@@ -250,6 +305,8 @@
                 
                 const gabRegular = gabaritos.find(g => g.calendario_id === item.id && g.serie_alvo === item.serie_especifica && g.modalidade === 'Regular');
                 const gabAdaptado = gabaritos.find(g => g.calendario_id === item.id && g.serie_alvo === item.serie_especifica && g.modalidade === 'Adaptada');
+                const regularRule = getQuestionRule(item, item.serie_especifica, 'Regular');
+                const adaptedRule = getQuestionRule(item, item.serie_especifica, 'Adaptada');
 
                 // Definição de Badges de Regime
                 const regimeMap = { 'Fundamental': { l: 'FUND', c: 'bg-purple-100 text-purple-600' }, 'Básica': { l: 'BAS', c: 'bg-blue-100 text-blue-600' }, 'Técnica': { l: 'TEC', c: 'bg-orange-100 text-orange-600' } };
@@ -273,6 +330,10 @@
                             <span class="regime-badge ${regime.c}">${regime.l}</span>
                         </div>
                         <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest">${item.serie_especifica} • ${item.tipo_prova}</p>
+                        <p class="text-[9px] font-bold text-slate-500 mt-2">Regular: ${regularRule ? `${regularRule.q} questões (${Number(regularRule.p).toFixed(2)} pts cada)` : 'Regra não definida'} • Adaptada: ${adaptedRule ? `${adaptedRule.q} questões (${Number(adaptedRule.p).toFixed(2)} pts cada)` : 'Regra não definida'}</p>
+                        <button onclick="openQuestionConfig('${item.id}', '${item.serie_especifica}')" class="mt-2 text-[9px] font-black text-fmm-blue uppercase hover:underline flex items-center gap-1">
+                            <i data-lucide="sliders-horizontal" class="w-3 h-3"></i> Configurar quantidades
+                        </button>
                     </td>
                     <td class="p-5">
                         ${prof ? `
@@ -332,6 +393,93 @@
         }
 
         function closeVinculoModal() { document.getElementById('vinculoModal').classList.add('hidden'); }
+
+        function getQuestionRule(item, serie, modalidade) {
+            const config = questionConfigurations.find(entry =>
+                entry.calendario_id === item.id &&
+                entry.serie_alvo === serie &&
+                entry.modalidade === modalidade
+            );
+            return window.GabaritoRules.getRule(
+                item.matriz,
+                serie,
+                item.tipo_prova,
+                modalidade,
+                config
+            );
+        }
+
+        function openQuestionConfig(calendarioId, serie) {
+            const item = calendarItems.find(entry => entry.id === calendarioId);
+            if (!item) return alert('Não foi possível localizar a prova selecionada.');
+
+            const regularRule = getQuestionRule(item, serie, 'Regular');
+            const adaptedRule = getQuestionRule(item, serie, 'Adaptada');
+            if (!regularRule || !adaptedRule) return alert('Não há regras padrão cadastradas para esta prova.');
+
+            currentTargetQuestionConfig = { calendarioId, serie };
+            document.getElementById('questionConfigSubtitle').innerText =
+                `${item.disciplinas?.nome || item.sigla_disciplina} • ${serie} • ${item.tipo_prova}`;
+            document.getElementById('regularObjectiveCount').value = regularRule.q;
+            document.getElementById('regularQuestionPoints').value = regularRule.p;
+            document.getElementById('adaptedObjectiveCount').value = adaptedRule.q;
+            document.getElementById('adaptedQuestionPoints').value = adaptedRule.p;
+            document.getElementById('questionConfigModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeQuestionConfig() {
+            document.getElementById('questionConfigModal').classList.add('hidden');
+            currentTargetQuestionConfig = null;
+        }
+
+        async function saveQuestionConfig() {
+            if (!currentTargetQuestionConfig) return;
+
+            const entries = [
+                {
+                    modalidade: 'Regular',
+                    qtd_questoes_objetivas: Number(document.getElementById('regularObjectiveCount').value),
+                    valor_ponto: Number(document.getElementById('regularQuestionPoints').value)
+                },
+                {
+                    modalidade: 'Adaptada',
+                    qtd_questoes_objetivas: Number(document.getElementById('adaptedObjectiveCount').value),
+                    valor_ponto: Number(document.getElementById('adaptedQuestionPoints').value)
+                }
+            ];
+            if (entries.some(entry =>
+                !Number.isInteger(entry.qtd_questoes_objetivas) ||
+                entry.qtd_questoes_objetivas < 1 ||
+                entry.qtd_questoes_objetivas > 200 ||
+                !Number.isFinite(entry.valor_ponto) ||
+                entry.valor_ponto <= 0 ||
+                entry.valor_ponto > 999999.9999
+            )) return alert('Informe de 1 a 200 questões e um valor positivo válido por questão.');
+
+            const button = document.getElementById('saveQuestionConfigButton');
+            button.disabled = true;
+            button.innerText = 'Salvando...';
+            try {
+                const { error } = await window.supabaseClient
+                    .from('gabarito_configuracoes')
+                    .upsert(entries.map(entry => ({
+                        ...entry,
+                        calendario_id: currentTargetQuestionConfig.calendarioId,
+                        serie_alvo: currentTargetQuestionConfig.serie
+                    })), { onConflict: 'calendario_id,serie_alvo,modalidade' });
+                if (error) throw error;
+
+                closeQuestionConfig();
+                await loadData();
+            } catch (err) {
+                console.error(err);
+                alert('Erro ao salvar as quantidades: ' + (err.message || 'Erro inesperado.'));
+            } finally {
+                button.disabled = false;
+                button.innerText = 'Salvar Quantidades';
+            }
+        }
 
         async function saveVinculo() {
             const profId = document.getElementById('selectProfessor').value;
